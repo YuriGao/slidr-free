@@ -13,7 +13,7 @@ This project is independent and non-affiliated with any similarly named commerci
 
 ```bash
 swift build
-swift test
+swift run SlidrFreeCoreChecks
 ```
 
 ## Unsigned build warning

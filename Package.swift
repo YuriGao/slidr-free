@@ -6,7 +6,8 @@ let package = Package(
     platforms: [.macOS(.v13)],
     products: [
         .library(name: "SlidrFreeCore", targets: ["SlidrFreeCore"]),
-        .executable(name: "SlidrFreeApp", targets: ["SlidrFreeApp"])
+        .executable(name: "SlidrFreeApp", targets: ["SlidrFreeApp"]),
+        .executable(name: "SlidrFreeCoreChecks", targets: ["SlidrFreeCoreChecks"])
     ],
     targets: [
         .target(name: "SlidrFreeCore"),
@@ -22,6 +23,6 @@ let package = Package(
                 .linkedFramework("IOKit")
             ]
         ),
-        .testTarget(name: "SlidrFreeCoreTests", dependencies: ["SlidrFreeCore"])
+        .executableTarget(name: "SlidrFreeCoreChecks", dependencies: ["SlidrFreeCore"])
     ]
 )

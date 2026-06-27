@@ -6,7 +6,7 @@
 
 **Architecture:** Use a Swift Package with a testable `SlidrFreeCore` library and an executable `SlidrFreeApp`. Core owns settings models, gesture recognition, dispatch decisions, and testable abstractions; App owns AppKit/SwiftUI UI, permissions, CGEventTap, and macOS system controls.
 
-**Tech Stack:** Swift 5.9+, SwiftPM, AppKit, SwiftUI, CoreGraphics, ApplicationServices, ServiceManagement, XCTest, GitHub Actions, gh CLI.
+**Tech Stack:** Swift 5.9+, SwiftPM, AppKit, SwiftUI, CoreGraphics, ApplicationServices, ServiceManagement, executable `SlidrFreeCoreChecks`, GitHub Actions, gh CLI.
 
 ## Global Constraints
 
@@ -23,13 +23,13 @@
 
 ## File Structure
 
-- `Package.swift` — SwiftPM package definition for core library, app executable, and tests.
+- `Package.swift` — SwiftPM package definition for core library, app executable, and executable core checks.
 - `Sources/SlidrFreeCore/AppSettings.swift` — settings model, defaults, toggle fields, persistence keys.
 - `Sources/SlidrFreeCore/InputEvent.swift` — normalized input event types used by tests and app event tap.
 - `Sources/SlidrFreeCore/GestureRecognizer.swift` — pure gesture recognition state machine.
 - `Sources/SlidrFreeCore/ActionDispatcher.swift` — maps recognized gestures to abstract system actions.
 - `Sources/SlidrFreeCore/PermissionStatus.swift` — pure permission status model for UI display.
-- `Tests/SlidrFreeCoreTests/*.swift` — XCTest coverage for settings, gesture recognition, dispatch, and permissions model.
+- `Sources/SlidrFreeCoreChecks/main.swift` — executable checks for core behavior in environments without XCTest/Testing modules.
 - `Sources/SlidrFreeApp/main.swift` — NSApplication entry point.
 - `Sources/SlidrFreeApp/AppDelegate.swift` — app lifecycle, dependency wiring, event tap start/stop.
 - `Sources/SlidrFreeApp/MenuBarController.swift` — `NSStatusItem` menu.
@@ -53,7 +53,7 @@
 - Create: `LICENSE`
 - Create: `Sources/SlidrFreeCore/AppSettings.swift`
 - Create: `Sources/SlidrFreeApp/main.swift`
-- Create: `Tests/SlidrFreeCoreTests/AppSettingsTests.swift`
+- Create: `Sources/SlidrFreeCoreChecks/main.swift`
 
 **Interfaces:**
 - Produces: `AppSettings`, `FeatureToggles`, `GestureSettings`, `AppSettings.default`, `AppSettings.validate()`.
@@ -116,53 +116,31 @@ release/
 
 Create `LICENSE` with MIT license using copyright holder `Slidr-Free contributors`.
 
-Create initial `README.md` with: project purpose, independent/non-affiliated notice, macOS 13+ requirement, unsigned-build warning, build command `swift build`, test command `swift test`, and feature list.
+Create initial `README.md` with: project purpose, independent/non-affiliated notice, macOS 13+ requirement, unsigned-build warning, build command `swift build`, executable check command `swift run SlidrFreeCoreChecks`, and feature list.
 
-- [ ] **Step 3: Write failing settings test**
+- [ ] **Step 3: Write settings executable checks**
 
-Create `Tests/SlidrFreeCoreTests/AppSettingsTests.swift`:
+Create `Sources/SlidrFreeCoreChecks/main.swift` with simple assertion helpers that exercise the AppSettings defaults and validation behavior without XCTest/Testing.
 
 ```swift
-import XCTest
-@testable import SlidrFreeCore
+import SlidrFreeCore
 
-final class AppSettingsTests: XCTestCase {
-    func testDefaultSettingsEnableAllFirstVersionFeaturesIndividually() {
-        let settings = AppSettings.default
-
-        XCTAssertTrue(settings.isAppEnabled)
-        XCTAssertTrue(settings.features.volumeEdgeGesture)
-        XCTAssertTrue(settings.features.brightnessEdgeGesture)
-        XCTAssertTrue(settings.features.middleClick)
-        XCTAssertTrue(settings.features.fineControl)
-        XCTAssertFalse(settings.features.swapSides)
-        XCTAssertFalse(settings.features.bottomQuarterOnly)
-        XCTAssertTrue(settings.features.smartTypingDetection)
-        XCTAssertTrue(settings.features.cursorFreeze)
-        XCTAssertFalse(settings.launchAtLogin)
-    }
-
-    func testValidationClampsGestureSettings() {
-        var settings = AppSettings.default
-        settings.gesture.edgeWidthPercent = 0.50
-        settings.gesture.sensitivity = -2.0
-        settings.gesture.typingCooldownSeconds = 5.0
-
-        let validated = settings.validated()
-
-        XCTAssertEqual(validated.gesture.edgeWidthPercent, 0.20, accuracy: 0.0001)
-        XCTAssertEqual(validated.gesture.sensitivity, 0.10, accuracy: 0.0001)
-        XCTAssertEqual(validated.gesture.typingCooldownSeconds, 2.0, accuracy: 0.0001)
-    }
+private func check(_ condition: @autoclosure () -> Bool, _ message: String) {
+    precondition(condition(), message)
 }
+
+let settings = AppSettings.default
+check(settings.isAppEnabled, "App should be enabled by default")
+// Continue checking default feature toggles and validated gesture clamping.
+print("All SlidrFreeCore checks passed")
 ```
 
-- [ ] **Step 4: Run test to verify it fails**
+- [ ] **Step 4: Run executable checks to verify they fail**
 
 Run:
 
 ```bash
-swift test --filter AppSettingsTests
+swift run SlidrFreeCoreChecks
 ```
 
 Expected: FAIL because `AppSettings` is not defined.
@@ -251,12 +229,12 @@ app.run()
 Run:
 
 ```bash
-swift test
+swift run SlidrFreeCoreChecks
 git add .
 git commit -m "chore: initialize swift package"
 ```
 
-Expected: tests PASS and first git commit created.
+Expected: executable checks PASS and first git commit created.
 
 ---
 
@@ -273,114 +251,17 @@ Expected: tests PASS and first git commit created.
 - Consumes: `AppSettings`.
 - Produces: `NormalizedInputEvent`, `RecognizedGesture`, `GestureRecognizer.process(_:)`, `SystemAction`, `ActionDispatcher.actions(for:)`.
 
-- [ ] **Step 1: Write failing gesture tests**
+- [ ] **Step 1: Extend failing executable gesture checks**
 
-Create `Tests/SlidrFreeCoreTests/GestureRecognizerTests.swift` with tests for left brightness, right volume, swap sides, bottom-quarter filtering, typing cooldown, disabled app, and middle click.
+Extend `Sources/SlidrFreeCoreChecks/main.swift` with checks for left brightness, right volume, swap sides, bottom-quarter filtering, typing cooldown, disabled app, and middle click.
 
-Use exact event constructors:
+Use exact event constructors from the original plan examples and custom equality assertions.
 
-```swift
-import XCTest
-@testable import SlidrFreeCore
-
-final class GestureRecognizerTests: XCTestCase {
-    func testLeftEdgeVerticalSlideProducesBrightnessGesture() {
-        var recognizer = GestureRecognizer(settings: .default, surfaceSize: CGSize(width: 1000, height: 600))
-
-        let gesture = recognizer.process(.scroll(x: 50, y: 300, deltaY: 8, timestamp: 10))
-
-        XCTAssertEqual(gesture, .edgeSlide(action: .brightness, direction: .increase, magnitude: 1.0))
-    }
-
-    func testRightEdgeVerticalSlideProducesVolumeGesture() {
-        var recognizer = GestureRecognizer(settings: .default, surfaceSize: CGSize(width: 1000, height: 600))
-
-        let gesture = recognizer.process(.scroll(x: 950, y: 300, deltaY: -8, timestamp: 10))
-
-        XCTAssertEqual(gesture, .edgeSlide(action: .volume, direction: .decrease, magnitude: 1.0))
-    }
-
-    func testSwapSidesReversesEdgeActions() {
-        var settings = AppSettings.default
-        settings.features.swapSides = true
-        var recognizer = GestureRecognizer(settings: settings, surfaceSize: CGSize(width: 1000, height: 600))
-
-        let gesture = recognizer.process(.scroll(x: 50, y: 300, deltaY: 8, timestamp: 10))
-
-        XCTAssertEqual(gesture, .edgeSlide(action: .volume, direction: .increase, magnitude: 1.0))
-    }
-
-    func testBottomQuarterModeIgnoresUpperEvents() {
-        var settings = AppSettings.default
-        settings.features.bottomQuarterOnly = true
-        var recognizer = GestureRecognizer(settings: settings, surfaceSize: CGSize(width: 1000, height: 600))
-
-        XCTAssertNil(recognizer.process(.scroll(x: 50, y: 200, deltaY: 8, timestamp: 10)))
-        XCTAssertNotNil(recognizer.process(.scroll(x: 50, y: 520, deltaY: 8, timestamp: 11)))
-    }
-
-    func testTypingCooldownSuppressesGesture() {
-        var recognizer = GestureRecognizer(settings: .default, surfaceSize: CGSize(width: 1000, height: 600))
-
-        _ = recognizer.process(.keyDown(timestamp: 10))
-        let gesture = recognizer.process(.scroll(x: 50, y: 300, deltaY: 8, timestamp: 10.5))
-
-        XCTAssertNil(gesture)
-    }
-
-    func testDisabledFeatureDoesNotEmitAction() {
-        var settings = AppSettings.default
-        settings.features.brightnessEdgeGesture = false
-        var recognizer = GestureRecognizer(settings: settings, surfaceSize: CGSize(width: 1000, height: 600))
-
-        XCTAssertNil(recognizer.process(.scroll(x: 50, y: 300, deltaY: 8, timestamp: 10)))
-    }
-
-    func testThreeFingerClickProducesMiddleClickGesture() {
-        var recognizer = GestureRecognizer(settings: .default, surfaceSize: CGSize(width: 1000, height: 600))
-
-        let gesture = recognizer.process(.click(x: 500, y: 300, button: .left, clickCount: 1, fingerCount: 3, timestamp: 10))
-
-        XCTAssertEqual(gesture, .middleClick(x: 500, y: 300))
-    }
-}
-```
-
-Create `Tests/SlidrFreeCoreTests/ActionDispatcherTests.swift`:
-
-```swift
-import XCTest
-@testable import SlidrFreeCore
-
-final class ActionDispatcherTests: XCTestCase {
-    func testFineControlUsesFineStep() {
-        let dispatcher = ActionDispatcher(settings: .default)
-        let actions = dispatcher.actions(for: .edgeSlide(action: .volume, direction: .increase, magnitude: 1.0))
-
-        XCTAssertEqual(actions, [.adjustVolume(delta: 0.35), .showFeedback(kind: .volume)])
-    }
-
-    func testNormalControlUsesNormalStepWhenFineControlDisabled() {
-        var settings = AppSettings.default
-        settings.features.fineControl = false
-        let dispatcher = ActionDispatcher(settings: settings)
-
-        let actions = dispatcher.actions(for: .edgeSlide(action: .brightness, direction: .decrease, magnitude: 1.0))
-
-        XCTAssertEqual(actions, [.adjustBrightness(delta: -1.0), .showFeedback(kind: .brightness)])
-    }
-
-    func testMiddleClickGestureDispatchesMiddleClick() {
-        let dispatcher = ActionDispatcher(settings: .default)
-
-        XCTAssertEqual(dispatcher.actions(for: .middleClick(x: 10, y: 20)), [.middleClick(x: 10, y: 20)])
-    }
-}
-```
+Extend `Sources/SlidrFreeCoreChecks/main.swift` with action dispatcher checks for fine control, normal control when fine control is disabled, and middle click dispatch.
 
 - [ ] **Step 2: Run failing tests**
 
-Run: `swift test --filter GestureRecognizerTests && swift test --filter ActionDispatcherTests`
+Run: `swift run SlidrFreeCoreChecks`
 
 Expected: FAIL because recognizer and dispatcher types do not exist.
 
@@ -402,12 +283,12 @@ Implementation rules:
 Run:
 
 ```bash
-swift test
-git add Sources/SlidrFreeCore Tests/SlidrFreeCoreTests
+swift run SlidrFreeCoreChecks
+git add Sources/SlidrFreeCore Sources/SlidrFreeCoreChecks
 git commit -m "feat: add gesture recognition core"
 ```
 
-Expected: tests PASS.
+Expected: executable checks PASS.
 
 ---
 
@@ -443,12 +324,12 @@ Run:
 
 ```bash
 swift build
-swift test
+swift run SlidrFreeCoreChecks
 git add Sources/SlidrFreeApp
 git commit -m "feat: add menu bar settings app"
 ```
 
-Expected: build and tests PASS.
+Expected: build and executable checks PASS.
 
 ---
 
@@ -456,7 +337,7 @@ Expected: build and tests PASS.
 
 **Files:**
 - Create: `Sources/SlidrFreeCore/PermissionStatus.swift`
-- Create: `Tests/SlidrFreeCoreTests/PermissionStatusTests.swift`
+- Modify: `Sources/SlidrFreeCoreChecks/main.swift`
 - Create: `Sources/SlidrFreeApp/PermissionManager.swift`
 - Modify: `Sources/SlidrFreeApp/SettingsView.swift`
 - Modify: `Sources/SlidrFreeApp/MenuBarController.swift`
@@ -464,9 +345,9 @@ Expected: build and tests PASS.
 **Interfaces:**
 - Produces: `PermissionState`, `PermissionSnapshot`, `PermissionManager.currentSnapshot()`, `PermissionManager.promptForAccessibility()`, `PermissionManager.openPrivacySettings()`, `PermissionManager.setLaunchAtLogin(_:)`.
 
-- [ ] **Step 1: Add permission model tests**
+- [ ] **Step 1: Add permission model executable checks**
 
-Test that `PermissionSnapshot.canListen` is true only when both Accessibility and Input Monitoring are granted.
+Check that `PermissionSnapshot.canListen` is true only when both Accessibility and Input Monitoring are granted.
 
 - [ ] **Step 2: Implement pure permission model**
 
@@ -481,13 +362,13 @@ Use `AXIsProcessTrustedWithOptions`, `CGPreflightListenEventAccess()`, and `NSWo
 Run:
 
 ```bash
-swift test
+swift run SlidrFreeCoreChecks
 swift build
-git add Sources Tests
+git add Sources
 git commit -m "feat: add permission and login controls"
 ```
 
-Expected: tests and build PASS.
+Expected: executable checks and build PASS.
 
 ---
 
@@ -527,12 +408,12 @@ Run:
 
 ```bash
 swift build
-swift test
+swift run SlidrFreeCoreChecks
 git add Sources/SlidrFreeApp
 git commit -m "feat: connect event tap actions"
 ```
 
-Expected: build and tests PASS. Manual functionality may require macOS permissions.
+Expected: build and executable checks PASS. Manual functionality may require macOS permissions.
 
 ---
 
@@ -552,7 +433,7 @@ Create script that runs `swift build -c release`, creates `release/Slidr-Free.ap
 
 - [ ] **Step 2: Add CI**
 
-GitHub Actions on push/PR using `macos-14`, steps: checkout, `swift test`, `swift build`, `bash scripts/package-release.sh`, upload artifact `Slidr-Free.app.zip`.
+GitHub Actions on push/PR using `macos-14`, steps: checkout, `swift run SlidrFreeCoreChecks`, `swift build`, `bash scripts/package-release.sh`, upload artifact `Slidr-Free.app.zip`.
 
 - [ ] **Step 3: Complete README**
 
@@ -564,12 +445,12 @@ Run:
 
 ```bash
 bash scripts/package-release.sh
-swift test
+swift run SlidrFreeCoreChecks
 git add README.md scripts .github
 git commit -m "chore: add packaging and ci"
 ```
 
-Expected: package zip exists and tests PASS.
+Expected: package zip exists and executable checks PASS.
 
 ---
 
@@ -587,12 +468,12 @@ Run:
 
 ```bash
 git status --short
-swift test
+swift run SlidrFreeCoreChecks
 swift build
 bash scripts/package-release.sh
 ```
 
-Expected: clean or intentional working tree, tests PASS, build PASS, `release/Slidr-Free.app.zip` exists.
+Expected: clean or intentional working tree, executable checks PASS, build PASS, `release/Slidr-Free.app.zip` exists.
 
 - [ ] **Step 2: Create public GitHub repository with gh**
 
