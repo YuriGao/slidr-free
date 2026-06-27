@@ -13,7 +13,7 @@ final class PermissionManager: ObservableObject {
 
     static func currentSnapshot() -> PermissionSnapshot {
         PermissionSnapshot(
-            accessibility: AXIsProcessTrustedWithOptions([:] as CFDictionary) ? .granted : .denied,
+            accessibility: AXIsProcessTrustedWithOptions(nil) ? .granted : .denied,
             inputMonitoring: CGPreflightListenEventAccess() ? .granted : .denied
         )
     }
