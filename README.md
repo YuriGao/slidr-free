@@ -37,7 +37,29 @@ The app will display a permissions guide on first launch if either permission is
 
 ## Unsigned build warning
 
-Development builds are unsigned. macOS may require you to explicitly allow the app in **Privacy & Security** settings before running it. To open an unsigned build, right-click the app and select **Open**, then confirm in the dialog.
+This app is **not code-signed**. When you download the zip from GitHub and extract it, macOS will mark it as "damaged" due to the quarantine attribute. To fix this, run the following command in Terminal:
+
+```bash
+xattr -cr /path/to/Slidr-Free.app
+```
+
+Replace `/path/to/` with the actual path where you extracted the app. For example, if you extracted it to your Downloads folder:
+
+```bash
+xattr -cr ~/Downloads/Slidr-Free.app
+```
+
+After removing the quarantine attribute, double-click the app to launch it. On first launch, grant **Accessibility** and **Input Monitoring** permissions in **System Settings → Privacy & Security**.
+
+Alternatively, build from source to avoid Gatekeeper entirely:
+
+```bash
+git clone https://github.com/YuriGao/slidr-free.git
+cd slidr-free
+swift build -c release
+bash scripts/package-release.sh
+open release/Slidr-Free.app
+```
 
 ## Build, test, and package
 

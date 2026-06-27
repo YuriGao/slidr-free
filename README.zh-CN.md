@@ -35,9 +35,31 @@ Slidr Free 需要以下权限：
 
 如果缺少任一权限，应用将在首次启动时显示权限引导。
 
-## 未签名构建提示
+## 安装说明（下载版）
 
-开发版未签名。macOS 可能要求你在 **隐私与安全性** 中明确允许该应用后才能运行。打开未签名构建的方法：右键点击应用，选择 **打开**，然后在弹窗中确认。
+本应用**未签名**。从 GitHub 下载 zip 解压后，macOS 会因隔离属性（quarantine）将应用标记为"已损坏"。请在终端运行以下命令修复：
+
+```bash
+xattr -cr /path/to/Slidr-Free.app
+```
+
+将 `/path/to/` 替换为实际路径。例如解压到"下载"文件夹：
+
+```bash
+xattr -cr ~/Downloads/Slidr-Free.app
+```
+
+移除隔离属性后，双击应用即可启动。首次启动时，请在 **系统设置 → 隐私与安全性** 中授予 **辅助功能** 和 **输入监控** 权限。
+
+也可以从源码构建以完全避免 Gatekeeper 限制：
+
+```bash
+git clone https://github.com/YuriGao/slidr-free.git
+cd slidr-free
+swift build -c release
+bash scripts/package-release.sh
+open release/Slidr-Free.app
+```
 
 ## 构建、测试和打包
 
