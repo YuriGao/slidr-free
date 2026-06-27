@@ -41,6 +41,24 @@ private func checkEqual(_ actual: [SystemAction], _ expected: [SystemAction], _ 
     }
 }
 
+private func testPermissionSnapshotCanListenRequiresBothPermissions() throws {
+    let cases: [(PermissionSnapshot, Bool)] = [
+        (PermissionSnapshot(accessibility: .granted, inputMonitoring: .granted), true),
+        (PermissionSnapshot(accessibility: .granted, inputMonitoring: .denied), false),
+        (PermissionSnapshot(accessibility: .denied, inputMonitoring: .granted), false),
+        (PermissionSnapshot(accessibility: .unknown, inputMonitoring: .granted), false),
+        (PermissionSnapshot(accessibility: .granted, inputMonitoring: .unknown), false),
+        (PermissionSnapshot(accessibility: .denied, inputMonitoring: .denied), false)
+    ]
+
+    for (snapshot, expected) in cases {
+        try check(
+            snapshot.canListen == expected,
+            "PermissionSnapshot.canListen should be \(expected) for accessibility=\(snapshot.accessibility.rawValue), inputMonitoring=\(snapshot.inputMonitoring.rawValue)"
+        )
+    }
+}
+
 private func testDefaultSettingsEnableAllFirstVersionFeaturesIndividually() throws {
     let settings = AppSettings.default
 
@@ -161,7 +179,8 @@ let checks: [(String, () throws -> Void)] = [
     ("default settings", testDefaultSettingsEnableAllFirstVersionFeaturesIndividually),
     ("gesture validation", testValidationClampsGestureSettings),
     ("gesture recognition", testGestureRecognition),
-    ("action dispatch", testActionDispatcher)
+    ("action dispatch", testActionDispatcher),
+    ("permission snapshot", testPermissionSnapshotCanListenRequiresBothPermissions)
 ]
 
 do {

@@ -3,15 +3,19 @@ import SlidrFreeCore
 
 struct SettingsView: View {
     @ObservedObject var store: SettingsStore
+    @ObservedObject var permissionManager: PermissionManager
+    @State private var launchAtLoginError: String?
 
     var body: some View {
         Form {
             Section("General") {
                 Toggle("Enable app", isOn: binding(\.isAppEnabled))
-                Toggle("Launch at login", isOn: binding(\.launchAtLogin))
-                Text("Launch at login wiring will be enabled in a later task.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Toggle("Launch at login", isOn: launchAtLoginBinding)
+                if let launchAtLoginError {
+                    Text(launchAtLoginError)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
             }
 
             Section("Edge Gestures") {
@@ -38,9 +42,21 @@ struct SettingsView: View {
             }
 
             Section("Permissions") {
-                statusRow("Accessibility", value: "Not checked yet")
-                statusRow("Input Monitoring", value: "Not checked yet")
-                Text("Permission checks and event tap setup are scheduled for later tasks.")
+                statusRow("Accessibility", value: permissionManager.snapshot.accessibility.rawValue)
+                statusRow("Input Monitoring", value: permissionManager.snapshot.inputMonitoring.rawValue)
+                statusRow("Can listen", value: permissionManager.snapshot.canListen ? "granted" : "denied")
+                HStack {
+                    Button("Prompt for Accessibility") {
+                        permissionManager.promptForAccessibility()
+                    }
+                    Button("Open Privacy Settings") {
+                        permissionManager.openPrivacySettings()
+                    }
+                    Button("Refresh") {
+                        permissionManager.currentSnapshot()
+                    }
+                }
+                Text("Input Monitoring may require enabling Slidr-Free in System Settings before event listening can start.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -57,6 +73,23 @@ struct SettingsView: View {
                 var updated = store.settings
                 updated[keyPath: keyPath] = newValue
                 store.save(updated)
+            }
+        )
+    }
+
+    private var launchAtLoginBinding: Binding<Bool> {
+        Binding(
+            get: { store.settings.launchAtLogin },
+            set: { newValue in
+                do {
+                    try permissionManager.setLaunchAtLogin(newValue)
+                    var updated = store.settings
+                    updated.launchAtLogin = newValue
+                    store.save(updated)
+                    launchAtLoginError = nil
+                } catch {
+                    launchAtLoginError = "Could not update launch at login: \(error.localizedDescription)"
+                }
             }
         )
     }
