@@ -30,7 +30,7 @@ final class SystemControl: SystemControlling {
 
     func adjustVolume(delta: Double) {
         let isUp = delta > 0
-        postMediaKey(keyCode: isUp ? NX_KEYTYPE_SOUND_UP : NX_KEYTYPE_SOUND_DOWN)
+        postMediaKey(keyCode: isUp ? UInt16(0x48) : UInt16(0x49))
         showFeedback(kind: isUp ? .volumeUp : .volumeDown)
     }
 
@@ -163,9 +163,10 @@ final class SystemControl: SystemControlling {
 
         feedbackWindow = panel
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-            self?.feedbackWindow?.orderOut(nil)
-            self?.feedbackWindow = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self, weak panel] in
+            guard let self, let panel, self.feedbackWindow === panel else { return }
+            self.feedbackWindow?.orderOut(nil)
+            self.feedbackWindow = nil
         }
     }
 
@@ -174,7 +175,3 @@ final class SystemControl: SystemControlling {
     }
 }
 
-// MARK: - NX Key Constants
-
-private let NX_KEYTYPE_SOUND_UP: UInt16 = 0
-private let NX_KEYTYPE_SOUND_DOWN: UInt16 = 1

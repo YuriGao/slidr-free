@@ -7,7 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let permissionManager = PermissionManager()
     private var menuBarController: MenuBarController?
     private var settingsWindowController: SettingsWindowController?
-    private var cancellable: AnyCancellable?
+    private var cancellables = Set<AnyCancellable>()
 
     private let systemControl = SystemControl()
     private var inputEventTap: InputEventTap?
@@ -22,12 +22,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Rebuild recognizer and manage event tap lifecycle on settings changes
-        cancellable = settingsStore.$settings.sink { [weak self] settings in
+        settingsStore.$settings.sink { [weak self] settings in
             guard let self = self else { return }
             self.gestureRecognizer = GestureRecognizer(settings: settings)
             self.menuBarController?.refresh()
             self.updateEventTap()
-        }
+        }.store(in: &cancellables)
+
+        // React to permission changes at runtime
+        permissionManager.$snapshot.sink { [weak self] _ in
+            self?.updateEventTap()
+        }.store(in: &cancellables)
 
         // Initial setup
         gestureRecognizer = GestureRecognizer(settings: settingsStore.settings)
