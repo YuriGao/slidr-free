@@ -1,5 +1,7 @@
 # Slidr Free
 
+English | [简体中文](README.zh-CN.md)
+
 Slidr Free is an open-source macOS utility for edge gestures, middle click, fine control, smart typing detection, and cursor freeze workflows.
 
 This project is independent and non-affiliated with any similarly named commercial products or vendors.
