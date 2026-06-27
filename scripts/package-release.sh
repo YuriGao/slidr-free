@@ -9,9 +9,13 @@ swift build -c release
 
 echo "==> Creating app bundle structure..."
 mkdir -p "release/Slidr-Free.app/Contents/MacOS"
+mkdir -p "release/Slidr-Free.app/Contents/Resources"
 
 echo "==> Copying binary..."
 cp ".build/release/SlidrFreeApp" "release/Slidr-Free.app/Contents/MacOS/SlidrFreeApp"
+
+echo "==> Copying icon..."
+cp "AppIcon.icns" "release/Slidr-Free.app/Contents/Resources/AppIcon.icns"
 
 echo "==> Writing Info.plist..."
 cat > "release/Slidr-Free.app/Contents/Info.plist" <<EOF
@@ -31,6 +35,8 @@ cat > "release/Slidr-Free.app/Contents/Info.plist" <<EOF
     <string>0.1.0</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>LSUIElement</key>
     <true/>
 </dict>
