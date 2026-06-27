@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: ["*"]
+
+jobs:
+  build-and-test:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run core checks
+        run: swift run SlidrFreeCoreChecks
+
+      - name: Build
+        run: swift build
+
+      - name: Package release
+        run: bash scripts/package-release.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Slidr-Free.app.zip
+          path: release/Slidr-Free.app.zip
