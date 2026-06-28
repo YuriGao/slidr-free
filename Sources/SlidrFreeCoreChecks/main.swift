@@ -43,18 +43,15 @@ private func checkEqual(_ actual: [SystemAction], _ expected: [SystemAction], _ 
 
 private func testPermissionSnapshotCanListenRequiresAccessibility() throws {
     let cases: [(PermissionSnapshot, Bool)] = [
-        (PermissionSnapshot(accessibility: .granted, inputMonitoring: .granted), true),
-        (PermissionSnapshot(accessibility: .granted, inputMonitoring: .denied), true),
-        (PermissionSnapshot(accessibility: .denied, inputMonitoring: .granted), false),
-        (PermissionSnapshot(accessibility: .unknown, inputMonitoring: .granted), false),
-        (PermissionSnapshot(accessibility: .granted, inputMonitoring: .unknown), true),
-        (PermissionSnapshot(accessibility: .denied, inputMonitoring: .denied), false)
+        (PermissionSnapshot(accessibility: .granted), true),
+        (PermissionSnapshot(accessibility: .denied), false),
+        (PermissionSnapshot(accessibility: .unknown), false)
     ]
 
     for (snapshot, expected) in cases {
         try check(
             snapshot.canListen == expected,
-            "PermissionSnapshot.canListen should be \(expected) for accessibility=\(snapshot.accessibility.rawValue), inputMonitoring=\(snapshot.inputMonitoring.rawValue)"
+            "PermissionSnapshot.canListen should be \(expected) for accessibility=\(snapshot.accessibility.rawValue)"
         )
     }
 }
@@ -65,7 +62,6 @@ private func testDefaultSettingsEnableAllFirstVersionFeaturesIndividually() thro
     try check(settings.isAppEnabled, "App should be enabled by default")
     try check(settings.features.volumeEdgeGesture, "Volume edge gesture should be enabled by default")
     try check(settings.features.brightnessEdgeGesture, "Brightness edge gesture should be enabled by default")
-    try check(settings.features.middleClick, "Middle click should be enabled by default")
     try check(!settings.features.swapSides, "Swap sides should be disabled by default")
     try check(!settings.launchAtLogin, "Launch at login should be disabled by default")
     try checkEqual(settings.gesture.physicalStepDistance, 0.05, accuracy: 0.0001, "Physical step distance should default to 0.05")
@@ -93,7 +89,6 @@ private func testSettingsDecodeMigratesMissingPhysicalStepFields() throws {
       "features": {
         "volumeEdgeGesture": true,
         "brightnessEdgeGesture": false,
-        "middleClick": true,
         "swapSides": true
       },
       "gesture": {
@@ -207,21 +202,6 @@ private func testGestureRecognition() throws {
         "Movement after physical touch ID baseline should emit"
     )
 
-    var disabledSettings = AppSettings.default
-    disabledSettings.isAppEnabled = false
-    recognizer = GestureRecognizer(settings: disabledSettings)
-    try checkEqual(
-        recognizer.process(.middleClick(x: 400, y: 300, timestamp: 30)),
-        nil,
-        "Disabled app should suppress gestures"
-    )
-
-    recognizer = GestureRecognizer(settings: .default)
-    try checkEqual(
-        recognizer.process(.middleClick(x: 400, y: 300, timestamp: 40)),
-        .middleClick(x: 400, y: 300),
-        "Middle click should be recognized"
-    )
 }
 
 private func testActionDispatcher() throws {
@@ -235,11 +215,6 @@ private func testActionDispatcher() throws {
         dispatcher.actions(for: .volume(direction: .decrease, magnitude: 1.0)),
         [.adjustVolume(delta: -1.0)],
         "Volume step should dispatch delta -1.0"
-    )
-    try checkEqual(
-        dispatcher.actions(for: .middleClick(x: 250, y: 125)),
-        [.middleClick(x: 250, y: 125)],
-        "Middle click should dispatch"
     )
 }
 

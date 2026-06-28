@@ -6,14 +6,12 @@ public enum PermissionState: String, Codable, Equatable {
 
 public struct PermissionSnapshot: Codable, Equatable {
     public var accessibility: PermissionState
-    public var inputMonitoring: PermissionState
 
     public var canListen: Bool {
         accessibility == .granted
     }
 
-    public init(accessibility: PermissionState, inputMonitoring: PermissionState) {
+    public init(accessibility: PermissionState) {
         self.accessibility = accessibility
-        self.inputMonitoring = inputMonitoring
     }
 }

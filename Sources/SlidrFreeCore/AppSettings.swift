@@ -3,7 +3,6 @@ import Foundation
 public struct FeatureToggles: Codable, Equatable, Sendable {
     public var volumeEdgeGesture: Bool
     public var brightnessEdgeGesture: Bool
-    public var middleClick: Bool
     public var swapSides: Bool
 }
 
@@ -48,7 +47,6 @@ public struct AppSettings: Codable, Equatable, Sendable {
         features: FeatureToggles(
             volumeEdgeGesture: true,
             brightnessEdgeGesture: true,
-            middleClick: true,
             swapSides: false
         ),
         gesture: GestureSettings(

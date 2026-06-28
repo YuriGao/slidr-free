@@ -3,7 +3,6 @@ import Foundation
 public enum RecognizedGesture: Equatable, Sendable {
     case brightness(direction: GestureDirection, magnitude: Double)
     case volume(direction: GestureDirection, magnitude: Double)
-    case middleClick(x: Double, y: Double)
 }
 
 public enum GestureDirection: Equatable, Sendable {
@@ -26,10 +25,6 @@ public struct GestureRecognizer: Sendable {
         guard settings.isAppEnabled else { return nil }
 
         switch event {
-        case .middleClick(let x, let y, _):
-            guard settings.features.middleClick else { return nil }
-            return .middleClick(x: x, y: y)
-
         case .physicalTouchFrame(let touches, let timestamp):
             guard let current = touches.first else {
                 resetPhysicalContinuity()

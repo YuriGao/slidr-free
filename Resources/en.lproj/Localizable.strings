@@ -11,7 +11,6 @@
 /* Sections */
 "section_general" = "General";
 "section_edge_gestures" = "Physical Trackpad Edge Gestures";
-"section_clicks" = "Clicks";
 "section_permissions" = "Permissions";
 
 /* General */
@@ -25,17 +24,11 @@
 "swap_sides" = "Swap sides";
 "edge_width" = "Edge width";
 
-/* Clicks */
-"middle_click" = "Middle click";
-
 /* Permissions */
 "accessibility" = "Accessibility";
-"input_monitoring" = "Input Monitoring";
 "can_listen" = "Can listen";
 "open_accessibility_settings" = "Open Accessibility Settings";
-"open_input_monitoring_settings" = "Open Input Monitoring Settings";
 "refresh" = "Refresh";
-"input_monitoring_hint" = "After granting permissions, return to Slidr-Free or click Refresh. If Accessibility still shows denied, remove the old Slidr-Free entry in System Settings, add this app again, then restart Slidr-Free.";
 
 /* Errors */
 "launch_at_login_error" = "Could not update launch at login: %@";

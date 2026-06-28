@@ -1,6 +1,5 @@
 import AppKit
 import ApplicationServices
-import CoreGraphics
 import ServiceManagement
 import SlidrFreeCore
 
@@ -13,8 +12,7 @@ final class PermissionManager: ObservableObject {
 
     static func currentSnapshot() -> PermissionSnapshot {
         PermissionSnapshot(
-            accessibility: AXIsProcessTrustedWithOptions(nil) ? .granted : .denied,
-            inputMonitoring: CGPreflightListenEventAccess() ? .granted : .denied
+            accessibility: AXIsProcessTrustedWithOptions(nil) ? .granted : .denied
         )
     }
 
@@ -31,22 +29,8 @@ final class PermissionManager: ObservableObject {
         currentSnapshot()
     }
 
-    func promptForInputMonitoring() {
-        _ = CGRequestListenEventAccess()
-        currentSnapshot()
-    }
-
-    func openPrivacySettings() {
-        openAccessibilitySettings()
-    }
-
     func openAccessibilitySettings() {
         let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-        NSWorkspace.shared.open(url)
-    }
-
-    func openInputMonitoringSettings() {
-        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!
         NSWorkspace.shared.open(url)
     }
 

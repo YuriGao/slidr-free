@@ -12,7 +12,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var cancellables = Set<AnyCancellable>()
 
     private let systemControl = SystemControl()
-    private var inputEventTap: InputEventTap?
     private var physicalTrackpadMonitor: PhysicalTrackpadMonitor?
     private var gestureRecognizer = GestureRecognizer(settings: .default.validated())
 
@@ -20,9 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         settingsWindowController = SettingsWindowController(store: settingsStore, permissionManager: permissionManager)
-        debugWindowController = DebugWindowController(state: debugState) { [weak self] in
-            self?.testMiddleClick()
-        }
+        debugWindowController = DebugWindowController(state: debugState)
         menuBarController = MenuBarController(
             settingsStore: settingsStore,
             showSettings: { [weak self] in self?.settingsWindowController?.show() },
@@ -56,7 +53,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
             physicalTrackpadMonitor?.stop()
-            inputEventTap?.stop()
         }
 
     // MARK: - Event Pipeline
@@ -73,26 +69,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
             physicalTrackpadMonitor?.start()
-
-            if inputEventTap == nil {
-                inputEventTap = InputEventTap { [weak self] event in
-                    self?.handleAuxiliaryInputEvent(event)
-                }
-            }
-            inputEventTap?.start()
         } else {
             debugState.monitorStatus = settings.isAppEnabled ? "Stopped (permissions)" : "Stopped (disabled)"
             physicalTrackpadMonitor?.stop()
-            inputEventTap?.stop()
-        }
-    }
-
-    private func handleAuxiliaryInputEvent(_ event: NormalizedInputEvent) {
-        switch event {
-        case .middleClick:
-            handleInputEvent(event)
-        case .physicalTouchFrame:
-            updateDebugInput(event)
         }
     }
 
@@ -114,8 +93,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             result = systemControl.adjustVolume(delta: delta)
         case .adjustBrightness(let delta):
             result = systemControl.adjustBrightness(delta: delta)
-        case .middleClick(let x, let y):
-            result = systemControl.middleClick(x: x, y: y)
         }
         if case .success = result, case .adjustVolume = action {
             NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
@@ -130,7 +107,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func updateDebugPermissions(_ snapshot: PermissionSnapshot) {
         debugState.accessibility = NSLocalizedString(snapshot.accessibility.rawValue, comment: "")
-        debugState.inputMonitoring = NSLocalizedString(snapshot.inputMonitoring.rawValue, comment: "")
     }
 
     private func updateDebugInput(_ event: NormalizedInputEvent) {
@@ -152,21 +128,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 debugState.lastTouchDescription = "None"
                 debugState.lastEdgeHit = "None"
             }
-        case .middleClick(let x, let y, _):
-            debugState.lastTouchDescription = String(format: "Middle click x=%.1f y=%.1f", x, y)
         }
     }
 
     private func optionalDescription<T>(_ value: T?) -> String {
         value.map { String(describing: $0) } ?? "nil"
-    }
-
-    private func testMiddleClick() {
-        let cocoaPoint = NSEvent.mouseLocation
-        let screenHeight = NSScreen.main?.frame.height ?? 1080
-        let cgPoint = CGPoint(x: cocoaPoint.x, y: screenHeight - cocoaPoint.y)
-        debugState.log("Test: middle click at cocoa=\(cocoaPoint) cg=\(cgPoint)")
-        let result = systemControl.middleClick(x: Double(cgPoint.x), y: Double(cgPoint.y))
-        debugState.log("Test: middle click result -> \(result)")
     }
 }

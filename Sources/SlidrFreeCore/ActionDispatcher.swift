@@ -3,7 +3,6 @@ import Foundation
 public enum SystemAction: Equatable, Sendable {
     case adjustBrightness(delta: Double)
     case adjustVolume(delta: Double)
-    case middleClick(x: Double, y: Double)
 }
 
 public struct ActionDispatcher: Sendable {
@@ -19,9 +18,6 @@ public struct ActionDispatcher: Sendable {
             return [.adjustBrightness(delta: signedDelta(direction: direction, magnitude: magnitude))]
         case .volume(let direction, let magnitude):
             return [.adjustVolume(delta: signedDelta(direction: direction, magnitude: magnitude))]
-        case .middleClick(let x, let y):
-            guard settings.features.middleClick else { return [] }
-            return [.middleClick(x: x, y: y)]
         }
     }
 

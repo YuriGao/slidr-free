@@ -28,28 +28,17 @@ struct SettingsView: View {
                 labeledSlider(NSLocalizedString("edge_width", comment: ""), value: binding(\.gesture.edgeWidthPercent), range: 0.04...0.20, isPercent: true)
             }
 
-            Section(NSLocalizedString("section_clicks", comment: "")) {
-                Toggle(NSLocalizedString("middle_click", comment: ""), isOn: binding(\.features.middleClick))
-            }
-
             Section(NSLocalizedString("section_permissions", comment: "")) {
                 statusRow(NSLocalizedString("accessibility", comment: ""), value: localizedPermissionState(permissionManager.snapshot.accessibility))
-                statusRow(NSLocalizedString("input_monitoring", comment: ""), value: localizedPermissionState(permissionManager.snapshot.inputMonitoring))
                 statusRow(NSLocalizedString("can_listen", comment: ""), value: permissionManager.snapshot.canListen ? NSLocalizedString("granted", comment: "") : NSLocalizedString("denied", comment: ""))
                 HStack {
                     Button(NSLocalizedString("open_accessibility_settings", comment: "")) {
                         permissionManager.openAccessibilitySettings()
                     }
-                    Button(NSLocalizedString("open_input_monitoring_settings", comment: "")) {
-                        permissionManager.openInputMonitoringSettings()
-                    }
                     Button(NSLocalizedString("refresh", comment: "")) {
                         permissionManager.currentSnapshot()
                     }
                 }
-                Text(NSLocalizedString("input_monitoring_hint", comment: ""))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

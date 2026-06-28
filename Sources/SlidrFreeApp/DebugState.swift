@@ -2,7 +2,6 @@ import Foundation
 
 final class DebugState: ObservableObject {
     @Published var accessibility = ""
-    @Published var inputMonitoring = ""
     @Published var multitouchStatus = "Not connected"
     @Published var deviceStatus = "Unknown"
     @Published var monitorStatus = "Stopped"
