@@ -41,13 +41,13 @@ private func checkEqual(_ actual: [SystemAction], _ expected: [SystemAction], _ 
     }
 }
 
-private func testPermissionSnapshotCanListenRequiresBothPermissions() throws {
+private func testPermissionSnapshotCanListenRequiresAccessibility() throws {
     let cases: [(PermissionSnapshot, Bool)] = [
         (PermissionSnapshot(accessibility: .granted, inputMonitoring: .granted), true),
-        (PermissionSnapshot(accessibility: .granted, inputMonitoring: .denied), false),
+        (PermissionSnapshot(accessibility: .granted, inputMonitoring: .denied), true),
         (PermissionSnapshot(accessibility: .denied, inputMonitoring: .granted), false),
         (PermissionSnapshot(accessibility: .unknown, inputMonitoring: .granted), false),
-        (PermissionSnapshot(accessibility: .granted, inputMonitoring: .unknown), false),
+        (PermissionSnapshot(accessibility: .granted, inputMonitoring: .unknown), true),
         (PermissionSnapshot(accessibility: .denied, inputMonitoring: .denied), false)
     ]
 
@@ -249,7 +249,7 @@ let checks: [(String, () throws -> Void)] = [
     ("settings migration", testSettingsDecodeMigratesMissingPhysicalStepFields),
     ("gesture recognition", testGestureRecognition),
     ("action dispatch", testActionDispatcher),
-    ("permission snapshot", testPermissionSnapshotCanListenRequiresBothPermissions)
+    ("permission snapshot", testPermissionSnapshotCanListenRequiresAccessibility)
 ]
 
 do {

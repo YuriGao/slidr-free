@@ -9,7 +9,7 @@ public struct PermissionSnapshot: Codable, Equatable {
     public var inputMonitoring: PermissionState
 
     public var canListen: Bool {
-        accessibility == .granted && inputMonitoring == .granted
+        accessibility == .granted
     }
 
     public init(accessibility: PermissionState, inputMonitoring: PermissionState) {
