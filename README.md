@@ -13,8 +13,8 @@ This project is independent and non-affiliated with any similarly named commerci
 
 ## Features
 
-- **Volume edge gesture** — Slide at screen edge to adjust volume.
-- **Brightness edge gesture** — Slide at screen edge to adjust brightness.
+- **Physical trackpad volume edge gesture** — Slide along the physical trackpad edge to adjust volume.
+- **Physical trackpad brightness edge gesture** — Slide along the physical trackpad edge to adjust brightness.
 - **Middle click** — Trigger middle click via gesture or keyboard shortcut.
 - **Fine control** — Hold a modifier key for slower, more precise adjustments.
 - **Side swapping option** — Swap left and right edge gesture zones.
@@ -22,9 +22,17 @@ This project is independent and non-affiliated with any similarly named commerci
 - **Smart typing detection** — Automatically suppress gestures while typing to avoid interference.
 - **Cursor freeze** — Hold a modifier key to freeze the cursor during gesture input.
 
+## Experimental physical trackpad support
+
+Physical trackpad edge gestures are experimental. Slidr Free reads physical touch frames through Apple's private `MultitouchSupport` framework because macOS does not provide a public API for per-finger physical trackpad coordinates.
+
+- There is **no public API fallback** and no screen-edge cursor fallback. If `MultitouchSupport` is unavailable, blocked, or changes in a future macOS release, physical trackpad edge gestures are disabled instead of guessing from pointer position.
+- Use the menu bar **Debug…** panel to inspect whether the physical trackpad monitor is running, the last physical touch frame, action results, and failure messages.
+- Failure modes include missing or changed private symbols, unsupported hardware, permission or sandbox restrictions, no touch frames reported, and macOS updates that alter private API behavior. These failures should be reported in Debug and should not crash the app.
+
 ## Toggles
 
-All features can be enabled or disabled individually from the menu bar settings panel.
+All features can be enabled or disabled individually from the menu bar settings panel. The edge gesture settings are specifically for physical trackpad edge gestures and include an experimental/private API warning.
 
 ## Permissions
 
@@ -86,6 +94,7 @@ The packaging script produces `release/Slidr-Free.app.zip` containing a self-con
 ## Known limitations
 
 - **External display brightness** — v0.1.0 controls brightness on the built-in display only. External display brightness support is planned for a future release.
+- **Private MultitouchSupport API** — Physical trackpad edge gestures depend on an undocumented Apple framework and may stop working on some devices or macOS releases. Check **Debug…** for diagnostics.
 
 ## License
 

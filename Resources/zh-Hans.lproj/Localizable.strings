@@ -11,7 +11,7 @@
 
 /* Sections */
 "section_general" = "通用";
-"section_edge_gestures" = "边缘手势";
+"section_edge_gestures" = "物理触控板边缘手势";
 "section_clicks" = "点击";
 "section_safety" = "安全";
 "section_permissions" = "权限";
@@ -21,8 +21,9 @@
 "launch_at_login" = "登录时启动";
 
 /* Edge Gestures */
-"volume_edge_gesture" = "音量边缘手势";
-"brightness_edge_gesture" = "亮度边缘手势";
+"physical_trackpad_experimental_warning" = "实验性功能：物理触控板边缘手势使用 Apple 私有 MultitouchSupport API。若不可用，Slidr-Free 会在调试面板记录失败原因，且不会回退为屏幕边缘光标手势。";
+"volume_edge_gesture" = "物理触控板音量边缘手势";
+"brightness_edge_gesture" = "物理触控板亮度边缘手势";
 "swap_sides" = "左右互换";
 "bottom_quarter_only" = "仅底部四分之一区域";
 "edge_width" = "边缘宽度";

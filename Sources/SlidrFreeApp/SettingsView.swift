@@ -19,6 +19,9 @@ struct SettingsView: View {
             }
 
             Section(NSLocalizedString("section_edge_gestures", comment: "")) {
+                Text(NSLocalizedString("physical_trackpad_experimental_warning", comment: ""))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Toggle(NSLocalizedString("volume_edge_gesture", comment: ""), isOn: binding(\.features.volumeEdgeGesture))
                 Toggle(NSLocalizedString("brightness_edge_gesture", comment: ""), isOn: binding(\.features.brightnessEdgeGesture))
                 Toggle(NSLocalizedString("swap_sides", comment: ""), isOn: binding(\.features.swapSides))

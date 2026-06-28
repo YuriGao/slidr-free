@@ -11,7 +11,7 @@
 
 /* Sections */
 "section_general" = "General";
-"section_edge_gestures" = "Edge Gestures";
+"section_edge_gestures" = "Physical Trackpad Edge Gestures";
 "section_clicks" = "Clicks";
 "section_safety" = "Safety";
 "section_permissions" = "Permissions";
@@ -21,8 +21,9 @@
 "launch_at_login" = "Launch at login";
 
 /* Edge Gestures */
-"volume_edge_gesture" = "Volume edge gesture";
-"brightness_edge_gesture" = "Brightness edge gesture";
+"physical_trackpad_experimental_warning" = "Experimental: physical trackpad edge gestures use Apple's private MultitouchSupport API. If unavailable, Slidr-Free records the failure in Debug and does not fall back to screen-edge cursor gestures.";
+"volume_edge_gesture" = "Physical trackpad volume edge gesture";
+"brightness_edge_gesture" = "Physical trackpad brightness edge gesture";
 "swap_sides" = "Swap sides";
 "bottom_quarter_only" = "Bottom quarter only";
 "edge_width" = "Edge width";
