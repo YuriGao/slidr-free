@@ -7,7 +7,6 @@ import SlidrFreeCore
 public protocol SystemControlling: AnyObject {
     func adjustVolume(delta: Double) -> SystemActionResult
     func adjustBrightness(delta: Double) -> SystemActionResult
-    func showFeedback(kind: FeedbackKind, message: String?) -> SystemActionResult
 }
 
 public enum SystemActionResult: Equatable {
@@ -16,27 +15,16 @@ public enum SystemActionResult: Equatable {
     case unsupported(String)
 }
 
-public enum FeedbackKind: String {
-    case volumeUp
-    case volumeDown
-    case brightnessUp
-    case brightnessDown
-}
-
 // MARK: - Concrete Implementation
 
 final class SystemControl: SystemControlling {
-    private var feedbackWindow: NSWindow?
-
     func adjustVolume(delta: Double) -> SystemActionResult {
         let isUp = delta > 0
         guard postMediaKey(isUp ? .volumeUp : .volumeDown) else {
             let message = "Failed to create media key events"
             logWarning(message)
-            _ = showFeedback(kind: isUp ? .volumeUp : .volumeDown, message: message)
             return .failed(message)
         }
-        _ = showFeedback(kind: isUp ? .volumeUp : .volumeDown, message: nil)
         return .success
     }
 
@@ -45,16 +33,7 @@ final class SystemControl: SystemControlling {
         guard postMediaKey(isUp ? .brightnessUp : .brightnessDown) else {
             let message = "Failed to create media key events"
             logWarning(message)
-            _ = showFeedback(kind: isUp ? .brightnessUp : .brightnessDown, message: message)
             return .failed(message)
-        }
-        _ = showFeedback(kind: isUp ? .brightnessUp : .brightnessDown, message: nil)
-        return .success
-    }
-
-    func showFeedback(kind: FeedbackKind, message: String? = nil) -> SystemActionResult {
-        DispatchQueue.main.async { [weak self] in
-            self?.showFeedbackOverlay(kind: kind, message: message)
         }
         return .success
     }
@@ -67,48 +46,6 @@ final class SystemControl: SystemControlling {
             event.cgEvent?.post(tap: .cghidEventTap)
         }
         return true
-    }
-
-    private func showFeedbackOverlay(kind: FeedbackKind, message: String?) {
-        // Dismiss existing overlay
-        feedbackWindow?.orderOut(nil)
-        feedbackWindow = nil
-
-        let label: String = {
-            switch kind {
-            case .volumeUp: return "Vol +"
-            case .volumeDown: return "Vol -"
-            case .brightnessUp: return "Bright +"
-            case .brightnessDown: return "Bright -"
-            }
-        }()
-
-        let textField = NSTextField(labelWithString: message.map { "\(label)\n\($0)" } ?? label)
-        textField.font = NSFont.systemFont(ofSize: 24, weight: .medium)
-        textField.textColor = .white
-        textField.alignment = .center
-
-        let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 140, height: 50),
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-        panel.backgroundColor = NSColor.black.withAlphaComponent(0.65)
-        panel.isOpaque = false
-        panel.hasShadow = true
-        panel.level = .floating
-        panel.center()
-        panel.contentView = textField
-        panel.orderFront(nil)
-
-        feedbackWindow = panel
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self, weak panel] in
-            guard let self, let panel, self.feedbackWindow === panel else { return }
-            self.feedbackWindow?.orderOut(nil)
-            self.feedbackWindow = nil
-        }
     }
 
     private func logWarning(_ message: String) {
