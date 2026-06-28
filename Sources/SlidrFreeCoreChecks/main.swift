@@ -66,9 +66,7 @@ private func testDefaultSettingsEnableAllFirstVersionFeaturesIndividually() thro
     try check(settings.features.volumeEdgeGesture, "Volume edge gesture should be enabled by default")
     try check(settings.features.brightnessEdgeGesture, "Brightness edge gesture should be enabled by default")
     try check(settings.features.middleClick, "Middle click should be enabled by default")
-    try check(settings.features.fineControl, "Fine control should be enabled by default")
     try check(!settings.features.swapSides, "Swap sides should be disabled by default")
-    try check(!settings.features.bottomQuarterOnly, "Bottom quarter only should be disabled by default")
     try check(settings.features.smartTypingDetection, "Smart typing detection should be enabled by default")
     try check(!settings.launchAtLogin, "Launch at login should be disabled by default")
     try checkEqual(settings.gesture.physicalStepDistance, 0.10, accuracy: 0.0001, "Physical step distance should default to 0.10")
@@ -78,7 +76,6 @@ private func testDefaultSettingsEnableAllFirstVersionFeaturesIndividually() thro
 private func testValidationClampsGestureSettings() throws {
     var settings = AppSettings.default
     settings.gesture.edgeWidthPercent = 0.50
-    settings.gesture.sensitivity = -2.0
     settings.gesture.typingCooldownSeconds = 5.0
     settings.gesture.physicalStepDistance = 2.0
     settings.gesture.physicalStepIntervalSeconds = -1.0
@@ -86,7 +83,6 @@ private func testValidationClampsGestureSettings() throws {
     let validated = settings.validated()
 
     try checkEqual(validated.gesture.edgeWidthPercent, 0.20, accuracy: 0.0001, "Edge width percent should clamp")
-    try checkEqual(validated.gesture.sensitivity, 0.10, accuracy: 0.0001, "Sensitivity should clamp")
     try checkEqual(validated.gesture.typingCooldownSeconds, 2.0, accuracy: 0.0001, "Typing cooldown should clamp")
     try checkEqual(validated.gesture.physicalStepDistance, 0.50, accuracy: 0.0001, "Physical step distance should clamp")
     try checkEqual(validated.gesture.physicalStepIntervalSeconds, 0.0, accuracy: 0.0001, "Physical step interval should clamp")
@@ -101,18 +97,12 @@ private func testSettingsDecodeMigratesMissingPhysicalStepFields() throws {
         "volumeEdgeGesture": true,
         "brightnessEdgeGesture": false,
         "middleClick": true,
-        "fineControl": false,
         "swapSides": true,
-        "bottomQuarterOnly": true,
         "smartTypingDetection": false
       },
       "gesture": {
         "edgeWidthPercent": 0.12,
-        "sensitivity": 1.5,
-        "normalStep": 2.0,
-        "fineStep": 0.5,
-        "typingCooldownSeconds": 0.7,
-        "continuousWindowSeconds": 0.25
+        "typingCooldownSeconds": 0.7
       }
     }
     """.data(using: .utf8)!
@@ -166,22 +156,6 @@ private func testGestureRecognition() throws {
         recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 3, x: 0.95, y: 0.32)], timestamp: 12.1)),
         .brightness(direction: .increase, magnitude: 1.0),
         "Swap sides should move physical brightness to right edge"
-    )
-
-    var bottomQuarterSettings = AppSettings.default
-    bottomQuarterSettings.features.bottomQuarterOnly = true
-    recognizer = GestureRecognizer(settings: bottomQuarterSettings)
-    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 4, x: 0.05, y: 0.50)], timestamp: 13.0))
-    try checkEqual(
-        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 4, x: 0.05, y: 0.62)], timestamp: 13.1)),
-        nil,
-        "Bottom-quarter filtering should suppress upper physical touches"
-    )
-    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 4, x: 0.05, y: 0.76)], timestamp: 14.0))
-    try checkEqual(
-        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 4, x: 0.05, y: 0.88)], timestamp: 14.1)),
-        .brightness(direction: .increase, magnitude: 1.0),
-        "Bottom-quarter filtering should allow lower physical touches"
     )
 
     recognizer = GestureRecognizer(settings: .default)
@@ -264,24 +238,6 @@ private func testGestureRecognition() throws {
         "Movement after direct physical edge change baseline should emit"
     )
 
-    recognizer = GestureRecognizer(settings: bottomQuarterSettings)
-    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 10, x: 0.05, y: 0.76)], timestamp: 62.0))
-    try checkEqual(
-        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 10, x: 0.05, y: 0.60)], timestamp: 62.1)),
-        nil,
-        "Leaving the bottom quarter should reset accumulated movement"
-    )
-    try checkEqual(
-        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 10, x: 0.05, y: 0.76)], timestamp: 62.2)),
-        nil,
-        "Re-entering the bottom quarter should establish a fresh baseline"
-    )
-    try checkEqual(
-        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 10, x: 0.05, y: 0.87)], timestamp: 62.3)),
-        .brightness(direction: .increase, magnitude: 1.0),
-        "Movement after bottom-quarter re-entry baseline should emit"
-    )
-
     recognizer = GestureRecognizer(settings: .default)
     _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 11, x: 0.05, y: 0.20)], timestamp: 63.0))
     try checkEqual(
@@ -313,22 +269,17 @@ private func testGestureRecognition() throws {
 }
 
 private func testActionDispatcher() throws {
-    var dispatcher = ActionDispatcher(settings: .default)
+    let dispatcher = ActionDispatcher(settings: .default)
     try checkEqual(
-        dispatcher.actions(for: .brightness(direction: .increase, magnitude: 2.0)),
-        [.adjustBrightness(delta: 0.70)],
-        "Fine control should use fine step"
+        dispatcher.actions(for: .brightness(direction: .increase, magnitude: 1.0)),
+        [.adjustBrightness(delta: 1.0)],
+        "Brightness step should dispatch delta 1.0"
     )
-
-    var normalSettings = AppSettings.default
-    normalSettings.features.fineControl = false
-    dispatcher = ActionDispatcher(settings: normalSettings)
     try checkEqual(
-        dispatcher.actions(for: .volume(direction: .decrease, magnitude: 2.0)),
-        [.adjustVolume(delta: -2.0)],
-        "Normal control should use normal step when fine control is disabled"
+        dispatcher.actions(for: .volume(direction: .decrease, magnitude: 1.0)),
+        [.adjustVolume(delta: -1.0)],
+        "Volume step should dispatch delta -1.0"
     )
-
     try checkEqual(
         dispatcher.actions(for: .middleClick(x: 250, y: 125)),
         [.middleClick(x: 250, y: 125)],

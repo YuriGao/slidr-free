@@ -25,22 +25,16 @@ struct SettingsView: View {
                 Toggle(NSLocalizedString("volume_edge_gesture", comment: ""), isOn: binding(\.features.volumeEdgeGesture))
                 Toggle(NSLocalizedString("brightness_edge_gesture", comment: ""), isOn: binding(\.features.brightnessEdgeGesture))
                 Toggle(NSLocalizedString("swap_sides", comment: ""), isOn: binding(\.features.swapSides))
-                Toggle(NSLocalizedString("bottom_quarter_only", comment: ""), isOn: binding(\.features.bottomQuarterOnly))
                 labeledSlider(NSLocalizedString("edge_width", comment: ""), value: binding(\.gesture.edgeWidthPercent), range: 0.04...0.20, isPercent: true)
-                labeledSlider(NSLocalizedString("sensitivity", comment: ""), value: binding(\.gesture.sensitivity), range: 0.10...4.0)
-                labeledSlider(NSLocalizedString("normal_step", comment: ""), value: binding(\.gesture.normalStep), range: 0.10...10.0)
-                labeledSlider(NSLocalizedString("fine_step", comment: ""), value: binding(\.gesture.fineStep), range: 0.05...store.settings.gesture.normalStep)
             }
 
             Section(NSLocalizedString("section_clicks", comment: "")) {
                 Toggle(NSLocalizedString("middle_click", comment: ""), isOn: binding(\.features.middleClick))
-                Toggle(NSLocalizedString("fine_control", comment: ""), isOn: binding(\.features.fineControl))
             }
 
             Section(NSLocalizedString("section_safety", comment: "")) {
                 Toggle(NSLocalizedString("smart_typing_detection", comment: ""), isOn: binding(\.features.smartTypingDetection))
                 labeledSlider(NSLocalizedString("typing_cooldown", comment: ""), value: binding(\.gesture.typingCooldownSeconds), range: 0.0...2.0, suffix: "s")
-                labeledSlider(NSLocalizedString("continuous_window", comment: ""), value: binding(\.gesture.continuousWindowSeconds), range: 0.05...1.0, suffix: "s")
             }
 
             Section(NSLocalizedString("section_permissions", comment: "")) {

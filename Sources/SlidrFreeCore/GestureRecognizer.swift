@@ -49,10 +49,6 @@ public struct GestureRecognizer: Sendable {
                 resetPhysicalContinuity()
                 return nil
             }
-            guard !settings.features.bottomQuarterOnly || current.y >= 0.75 else {
-                resetPhysicalContinuity()
-                return nil
-            }
 
             let edgeHit = physicalEdgeHit(for: current.x)
             guard let edgeHit else {

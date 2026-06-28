@@ -27,7 +27,6 @@ public struct ActionDispatcher: Sendable {
 
     private func signedDelta(direction: GestureDirection, magnitude: Double) -> Double {
         let sign = direction == .increase ? 1.0 : -1.0
-        let step = settings.features.fineControl ? settings.gesture.fineStep : settings.gesture.normalStep
-        return sign * magnitude * step * settings.gesture.sensitivity
+        return sign * magnitude
     }
 }
