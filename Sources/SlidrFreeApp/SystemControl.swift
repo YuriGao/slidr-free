@@ -66,6 +66,7 @@ final class SystemControl: SystemControlling {
             mouseCursorPosition: point,
             mouseButton: .center
         ) {
+            downEvent.setIntegerValueField(.eventSourceUserData, value: 0x53464D43)
             downEvent.post(tap: .cghidEventTap)
         }
         if let upEvent = CGEvent(
@@ -74,6 +75,7 @@ final class SystemControl: SystemControlling {
             mouseCursorPosition: point,
             mouseButton: .center
         ) {
+            upEvent.setIntegerValueField(.eventSourceUserData, value: 0x53464D43)
             upEvent.post(tap: .cghidEventTap)
         }
         _ = showFeedback(kind: .middleClick, message: nil)

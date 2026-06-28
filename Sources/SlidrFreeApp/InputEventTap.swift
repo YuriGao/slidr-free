@@ -81,6 +81,8 @@ final class InputEventTap {
     private func handleEvent(type: CGEventType, event: CGEvent) {
         switch type {
         case .otherMouseDown:
+            let userData = event.getIntegerValueField(.eventSourceUserData)
+            if userData == 0x53464D43 { return }
             let location = event.location
             let normalized = NormalizedInputEvent.middleClick(
                 x: location.x,
