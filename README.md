@@ -18,7 +18,7 @@ This project is independent and non-affiliated with any similarly named commerci
 - **Middle click** — Trigger middle click via gesture or keyboard shortcut.
 - **Fine control** — Hold a modifier key for slower, more precise adjustments.
 - **Side swapping option** — Swap left and right edge gesture zones.
-- **Bottom-quarter-only option** — Restrict edge gesture activation to the bottom quarter of the screen edges.
+- **Bottom-quarter-only option** — Restrict edge gesture activation to the bottom quarter of the physical trackpad edge.
 - **Smart typing detection** — Automatically suppress gestures while typing to avoid interference.
 - **Cursor freeze** — Hold a modifier key to freeze the cursor during gesture input.
 
@@ -43,9 +43,9 @@ Slidr Free requires the following permissions:
 
 The app will display a permissions guide on first launch if either permission is missing.
 
-## Unsigned build warning
+## Developer ID signing warning
 
-This app is **not code-signed**. When you download the zip from GitHub and extract it, macOS will mark it as "damaged" due to the quarantine attribute. To fix this, run the following command in Terminal:
+This app is **ad-hoc signed, but not Developer ID signed or notarized**. When you download the zip from GitHub and extract it, macOS may mark it as "damaged" due to the quarantine attribute. To fix this, run the following command in Terminal:
 
 ```bash
 xattr -cr /path/to/Slidr-Free.app
