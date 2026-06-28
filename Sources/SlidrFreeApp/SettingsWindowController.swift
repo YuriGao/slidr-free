@@ -4,10 +4,14 @@ import SwiftUI
 final class SettingsWindowController: NSWindowController {
     init(store: SettingsStore, permissionManager: PermissionManager) {
         let view = SettingsView(store: store, permissionManager: permissionManager)
-        let window = NSWindow(contentViewController: NSHostingController(rootView: view))
+        let hostingController = NSHostingController(rootView: view)
+        let window = NSWindow(contentViewController: hostingController)
         window.title = "Slidr-Free Settings"
-        window.styleMask = [.titled, .closable, .miniaturizable]
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.isReleasedWhenClosed = false
+        // Size window to fit SwiftUI content
+        let fittingSize = hostingController.view.fittingSize
+        window.setContentSize(NSSize(width: max(fittingSize.width, 480), height: max(fittingSize.height, 600)))
         window.center()
         super.init(window: window)
     }
