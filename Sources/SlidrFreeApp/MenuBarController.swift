@@ -3,13 +3,11 @@ import AppKit
 final class MenuBarController: NSObject {
     private let statusItem: NSStatusItem
     private let settingsStore: SettingsStore
-    private let permissionManager: PermissionManager
     private let showSettings: () -> Void
     private let showDebug: () -> Void
 
-    init(settingsStore: SettingsStore, permissionManager: PermissionManager, showSettings: @escaping () -> Void, showDebug: @escaping () -> Void) {
+    init(settingsStore: SettingsStore, showSettings: @escaping () -> Void, showDebug: @escaping () -> Void) {
         self.settingsStore = settingsStore
-        self.permissionManager = permissionManager
         self.showSettings = showSettings
         self.showDebug = showDebug
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -28,7 +26,6 @@ final class MenuBarController: NSObject {
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: NSLocalizedString("settings", comment: ""), action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(NSMenuItem(title: NSLocalizedString("debug", comment: ""), action: #selector(openDebug), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: NSLocalizedString("permissions", comment: ""), action: #selector(openPermissions), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: NSLocalizedString("quit", comment: ""), action: #selector(quit), keyEquivalent: "q"))
 
@@ -52,10 +49,6 @@ final class MenuBarController: NSObject {
 
     @objc private func openDebug() {
         showDebug()
-    }
-
-    @objc private func openPermissions() {
-        permissionManager.openPrivacySettings()
     }
 
     @objc private func quit() {

@@ -23,7 +23,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         debugWindowController = DebugWindowController(state: debugState)
         menuBarController = MenuBarController(
             settingsStore: settingsStore,
-            permissionManager: permissionManager,
             showSettings: { [weak self] in self?.settingsWindowController?.show() },
             showDebug: { [weak self] in self?.debugWindowController?.show() }
         )
