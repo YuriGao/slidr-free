@@ -7,11 +7,6 @@ final class TrackpadCursorLock {
     private var origin: CGPoint = .zero
     private var locked = false
 
-    private var lockThread: Thread?
-    private var lockRunLoop: CFRunLoop?
-    private let stateLock = NSLock()
-    private let readySemaphore = DispatchSemaphore(value: 0)
-
     func beginLock() {
         guard !locked else { return }
         locked = true
@@ -24,23 +19,22 @@ final class TrackpadCursorLock {
 
         CGWarpMouseCursorPosition(origin)
 
-        ensureLockThread()
-
-        // Wait for lock thread to be ready
-        readySemaphore.wait()
-        readySemaphore.signal() // Re-signal for future use
-
-        performOnLockThread { [weak self] in
-            self?.installTapOnCurrentThread()
-        }
+        installTap()
     }
 
     func endLock() {
         guard locked else { return }
         locked = false
 
-        performOnLockThread { [weak self] in
-            self?.removeTapFromCurrentThread()
+        if let existingTap = tap {
+            CGEvent.tapEnable(tap: existingTap, enable: false)
+            CFMachPortInvalidate(existingTap)
+            tap = nil
+        }
+
+        if let source = runLoopSource {
+            CFRunLoopRemoveSource(CFRunLoopGetCurrent(), source, .commonModes)
+            runLoopSource = nil
         }
 
         if let src = CGEventSource(stateID: .combinedSessionState) {
@@ -48,49 +42,25 @@ final class TrackpadCursorLock {
         }
     }
 
-    // MARK: - Lock Thread
+    private static let eventTapCallback: CGEventTapCallBack = { _, type, event, userInfo in
+        guard let userInfo else { return Unmanaged.passUnretained(event) }
+        let lock = Unmanaged<TrackpadCursorLock>.fromOpaque(userInfo).takeUnretainedValue()
 
-    private func ensureLockThread() {
-        stateLock.lock()
-        defer { stateLock.unlock() }
-
-        guard lockThread == nil else { return }
-
-        let thread = Thread { [weak self] in
-            // Store the run loop reference for cross-thread scheduling
-            let rl = CFRunLoopGetCurrent()
-            self?.lockRunLoop = rl
-
-            // Add a dummy port to keep the run loop alive
-            let port = Port()
-            RunLoop.current.add(port, forMode: .common)
-
-            // Signal that the thread is ready
-            self?.readySemaphore.signal()
-
-            RunLoop.current.run()
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            if let t = lock.tap {
+                CGEvent.tapEnable(tap: t, enable: true)
+            }
+            return Unmanaged.passUnretained(event)
         }
-        thread.name = "SlidrFree.CursorLock"
-        thread.qualityOfService = .userInteractive
-        thread.start()
-        lockThread = thread
+
+        if lock.locked {
+            CGWarpMouseCursorPosition(lock.origin)
+            return nil
+        }
+        return Unmanaged.passUnretained(event)
     }
 
-    private func performOnLockThread(_ block: @escaping () -> Void) {
-        guard let rl = lockRunLoop else {
-            block()
-            return
-        }
-
-        CFRunLoopPerformBlock(rl, CFRunLoopMode.commonModes as CFTypeRef) {
-            block()
-        }
-        CFRunLoopWakeUp(rl)
-    }
-
-    private func installTapOnCurrentThread() {
-        removeTapFromCurrentThread()
-
+    private func installTap() {
         let mask: CGEventMask =
             (1 << CGEventType.mouseMoved.rawValue)
             | (1 << CGEventType.leftMouseDragged.rawValue)
@@ -116,39 +86,5 @@ final class TrackpadCursorLock {
         CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
         runLoopSource = source
         CGEvent.tapEnable(tap: newTap, enable: true)
-    }
-
-    private func removeTapFromCurrentThread() {
-        guard let existingTap = tap else { return }
-
-        CGEvent.tapEnable(tap: existingTap, enable: false)
-        CFMachPortInvalidate(existingTap)
-
-        if let source = runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetCurrent(), source, .commonModes)
-            runLoopSource = nil
-        }
-
-        tap = nil
-    }
-
-    // MARK: - Event Tap Callback
-
-    private static let eventTapCallback: CGEventTapCallBack = { _, type, event, userInfo in
-        guard let userInfo else { return Unmanaged.passUnretained(event) }
-        let lock = Unmanaged<TrackpadCursorLock>.fromOpaque(userInfo).takeUnretainedValue()
-
-        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            if let t = lock.tap {
-                CGEvent.tapEnable(tap: t, enable: true)
-            }
-            return Unmanaged.passUnretained(event)
-        }
-
-        if lock.locked {
-            CGWarpMouseCursorPosition(lock.origin)
-            return nil
-        }
-        return Unmanaged.passUnretained(event)
     }
 }
