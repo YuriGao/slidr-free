@@ -1,18 +1,21 @@
 import AppKit
 import CoreGraphics
+import QuartzCore
 
 final class TrackpadCursorLock {
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
-    private var pinTimer: DispatchSourceTimer?
     private var origin: CGPoint = .zero
     private var locked = false
+    private var lastWarpTime: Double = 0
+    private let warpInterval: Double = 0.03
 
     func beginLock() {
         guard !locked else { return }
         locked = true
 
         origin = NSEvent.mouseLocation
+        lastWarpTime = 0
 
         if let src = CGEventSource(stateID: .combinedSessionState) {
             src.localEventsSuppressionInterval = 0.07
@@ -21,15 +24,11 @@ final class TrackpadCursorLock {
         CGWarpMouseCursorPosition(origin)
 
         installTap()
-        startPinTimer()
     }
 
     func endLock() {
         guard locked else { return }
         locked = false
-
-        pinTimer?.cancel()
-        pinTimer = nil
 
         if let existingTap = tap {
             CGEvent.tapEnable(tap: existingTap, enable: false)
@@ -59,7 +58,11 @@ final class TrackpadCursorLock {
         }
 
         if lock.locked {
-            CGWarpMouseCursorPosition(lock.origin)
+            let now = CACurrentMediaTime()
+            if now - lock.lastWarpTime > lock.warpInterval {
+                CGWarpMouseCursorPosition(lock.origin)
+                lock.lastWarpTime = now
+            }
             return nil
         }
         return Unmanaged.passUnretained(event)
@@ -91,16 +94,5 @@ final class TrackpadCursorLock {
         CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
         runLoopSource = source
         CGEvent.tapEnable(tap: newTap, enable: true)
-    }
-
-    private func startPinTimer() {
-        let timer = DispatchSource.makeTimerSource(queue: .global(qos: .userInteractive))
-        timer.schedule(deadline: .now() + .milliseconds(10), repeating: .milliseconds(10))
-        timer.setEventHandler { [weak self] in
-            guard let self, self.locked else { return }
-            CGWarpMouseCursorPosition(self.origin)
-        }
-        timer.resume()
-        pinTimer = timer
     }
 }
