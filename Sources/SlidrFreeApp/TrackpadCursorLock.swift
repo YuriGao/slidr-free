@@ -1,21 +1,17 @@
 import AppKit
 import CoreGraphics
-import QuartzCore
 
 final class TrackpadCursorLock {
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var origin: CGPoint = .zero
     private var locked = false
-    private var lastWarpTime: Double = 0
-    private let warpInterval: Double = 0.03
 
     func beginLock() {
         guard !locked else { return }
         locked = true
 
         origin = NSEvent.mouseLocation
-        lastWarpTime = 0
 
         if let src = CGEventSource(stateID: .combinedSessionState) {
             src.localEventsSuppressionInterval = 0.07
@@ -58,11 +54,7 @@ final class TrackpadCursorLock {
         }
 
         if lock.locked {
-            let now = CACurrentMediaTime()
-            if now - lock.lastWarpTime > lock.warpInterval {
-                CGWarpMouseCursorPosition(lock.origin)
-                lock.lastWarpTime = now
-            }
+            CGWarpMouseCursorPosition(lock.origin)
             return nil
         }
         return Unmanaged.passUnretained(event)
