@@ -13,7 +13,9 @@ final class MenuBarController: NSObject {
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         super.init()
 
-        statusItem.button?.title = "SF"
+        statusItem.button?.image = NSImage(named: "AppIcon")
+        statusItem.button?.image?.size = NSSize(width: 18, height: 18)
+        statusItem.button?.image?.isTemplate = true
         refresh()
     }
 
