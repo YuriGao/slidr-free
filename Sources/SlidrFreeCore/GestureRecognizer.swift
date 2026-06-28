@@ -38,7 +38,10 @@ public struct GestureRecognizer: Sendable {
             return nil
 
         case .physicalTouchFrame(let touches, let timestamp):
-            guard !settings.features.smartTypingDetection || !isInTypingCooldown(timestamp: timestamp) else { return nil }
+            guard !settings.features.smartTypingDetection || !isInTypingCooldown(timestamp: timestamp) else {
+                updatePreviousPrimaryPhysicalTouch(from: touches)
+                return nil
+            }
             guard let current = touches.first else {
                 previousPrimaryPhysicalTouch = nil
                 return nil
@@ -99,5 +102,9 @@ public struct GestureRecognizer: Sendable {
             return .right
         }
         return nil
+    }
+
+    private mutating func updatePreviousPrimaryPhysicalTouch(from touches: [PhysicalTouch]) {
+        previousPrimaryPhysicalTouch = touches.first
     }
 }

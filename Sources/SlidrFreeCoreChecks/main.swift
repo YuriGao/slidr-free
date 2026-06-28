@@ -157,6 +157,19 @@ private func testGestureRecognition() throws {
         "Typing cooldown should suppress physical gestures"
     )
 
+    recognizer = GestureRecognizer(settings: .default)
+    try checkEqual(recognizer.process(.keyDown(timestamp: 50)), nil, "Key down should not produce a gesture")
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 6, x: 0.05, y: 0.10)], timestamp: 50.5)),
+        nil,
+        "Typing cooldown should suppress but record physical touch state"
+    )
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 6, x: 0.05, y: 0.11)], timestamp: 51.1)),
+        .brightness(direction: .increase, magnitude: 0.25),
+        "Physical touch state should stay fresh during typing cooldown"
+    )
+
     var disabledSettings = AppSettings.default
     disabledSettings.isAppEnabled = false
     recognizer = GestureRecognizer(settings: disabledSettings)
