@@ -18,8 +18,8 @@ echo "==> Copying icon..."
 cp "AppIcon.icns" "release/Slidr-Free.app/Contents/Resources/AppIcon.icns"
 
 echo "==> Copying localizations..."
-cp -R Resources/en.lproj "release/Slidr-Free.app/Contents/Resources/en.lproj"
-cp -R Resources/zh-Hans.lproj "release/Slidr-Free.app/Contents/Resources/zh-Hans.lproj"
+cp -R Resources/en.lproj "release/Slidr-Free.app/Contents/Resources/"
+cp -R Resources/zh-Hans.lproj "release/Slidr-Free.app/Contents/Resources/"
 
 echo "==> Writing Info.plist..."
 cat > "release/Slidr-Free.app/Contents/Info.plist" <<EOF
