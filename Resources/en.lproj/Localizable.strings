@@ -43,10 +43,13 @@
 "accessibility" = "Accessibility";
 "input_monitoring" = "Input Monitoring";
 "can_listen" = "Can listen";
-"prompt_accessibility" = "Prompt for Accessibility";
+"prompt_accessibility" = "Request Accessibility";
+"prompt_input_monitoring" = "Request Input Monitoring";
+"open_accessibility_settings" = "Open Accessibility Settings";
+"open_input_monitoring_settings" = "Open Input Monitoring Settings";
 "open_privacy_settings" = "Open Privacy Settings";
 "refresh" = "Refresh";
-"input_monitoring_hint" = "Input Monitoring may require enabling Slidr-Free in System Settings before event listening can start.";
+"input_monitoring_hint" = "After granting permissions in System Settings, return to Slidr-Free or click Refresh. Some macOS versions may require restarting the app.";
 
 /* Errors */
 "launch_at_login_error" = "Could not update launch at login: %@";

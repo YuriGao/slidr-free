@@ -34,6 +34,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.updateEventTap()
         }.store(in: &cancellables)
 
+        // Refresh permission status when returning from System Settings.
+        NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification).sink { [weak self] _ in
+            self?.permissionManager.currentSnapshot()
+        }.store(in: &cancellables)
+
         // Initial setup
         gestureRecognizer = GestureRecognizer(settings: settingsStore.settings)
         updateEventTap()

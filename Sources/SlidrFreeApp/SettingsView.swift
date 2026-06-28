@@ -49,8 +49,16 @@ struct SettingsView: View {
                     Button(NSLocalizedString("prompt_accessibility", comment: "")) {
                         permissionManager.promptForAccessibility()
                     }
-                    Button(NSLocalizedString("open_privacy_settings", comment: "")) {
-                        permissionManager.openPrivacySettings()
+                    Button(NSLocalizedString("open_accessibility_settings", comment: "")) {
+                        permissionManager.openAccessibilitySettings()
+                    }
+                }
+                HStack {
+                    Button(NSLocalizedString("prompt_input_monitoring", comment: "")) {
+                        permissionManager.promptForInputMonitoring()
+                    }
+                    Button(NSLocalizedString("open_input_monitoring_settings", comment: "")) {
+                        permissionManager.openInputMonitoringSettings()
                     }
                     Button(NSLocalizedString("refresh", comment: "")) {
                         permissionManager.currentSnapshot()

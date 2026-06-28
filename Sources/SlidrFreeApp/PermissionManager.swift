@@ -31,8 +31,22 @@ final class PermissionManager: ObservableObject {
         currentSnapshot()
     }
 
+    func promptForInputMonitoring() {
+        _ = CGRequestListenEventAccess()
+        currentSnapshot()
+    }
+
     func openPrivacySettings() {
+        openAccessibilitySettings()
+    }
+
+    func openAccessibilitySettings() {
         let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
+        NSWorkspace.shared.open(url)
+    }
+
+    func openInputMonitoringSettings() {
+        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!
         NSWorkspace.shared.open(url)
     }
 
