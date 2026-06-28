@@ -16,11 +16,8 @@ This project is independent and non-affiliated with any similarly named commerci
 - **Physical trackpad volume edge gesture** — Slide along the physical trackpad edge to adjust volume.
 - **Physical trackpad brightness edge gesture** — Slide along the physical trackpad edge to adjust brightness.
 - **Middle click** — Trigger middle click via gesture or keyboard shortcut.
-- **Fine control** — Hold a modifier key for slower, more precise adjustments.
 - **Side swapping option** — Swap left and right edge gesture zones.
-- **Bottom-quarter-only option** — Restrict edge gesture activation to the bottom quarter of the physical trackpad edge.
 - **Smart typing detection** — Automatically suppress gestures while typing to avoid interference.
-- **Cursor freeze** — Hold a modifier key to freeze the cursor during gesture input.
 
 ## Experimental physical trackpad support
 
@@ -43,31 +40,18 @@ Slidr Free requires the following permissions:
 
 The app will display a permissions guide on first launch if either permission is missing.
 
-## Developer ID signing warning
+## Installation
 
-This app is **ad-hoc signed, but not Developer ID signed or notarized**. When you download the zip from GitHub and extract it, macOS may mark it as "damaged" due to the quarantine attribute. To fix this, run the following command in Terminal:
-
-```bash
-xattr -cr /path/to/Slidr-Free.app
-```
-
-Replace `/path/to/` with the actual path where you extracted the app. For example, if you extracted it to your Downloads folder:
-
-```bash
-xattr -cr ~/Downloads/Slidr-Free.app
-```
-
-After removing the quarantine attribute, double-click the app to launch it. On first launch, grant **Accessibility** and **Input Monitoring** permissions in **System Settings → Privacy & Security**.
-
-Alternatively, build from source to avoid Gatekeeper entirely:
+Slidr-Free is distributed as source code only. Build it locally:
 
 ```bash
 git clone https://github.com/YuriGao/slidr-free.git
 cd slidr-free
 swift build -c release
 bash scripts/package-release.sh
-open release/Slidr-Free.app
 ```
+
+Then drag `release/Slidr-Free.app` to your Applications folder.
 
 ## Build, test, and package
 
@@ -82,7 +66,7 @@ swift run SlidrFreeCoreChecks
 bash scripts/package-release.sh
 ```
 
-The packaging script produces `release/Slidr-Free.app.zip` containing a self-contained `.app` bundle with `LSUIElement=true` (no Dock icon or menu bar).
+The packaging script produces `release/Slidr-Free.app` containing a self-contained `.app` bundle with `LSUIElement=true` (no Dock icon or menu bar).
 
 ## Roadmap
 
