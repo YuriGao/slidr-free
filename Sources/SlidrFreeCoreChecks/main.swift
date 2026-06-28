@@ -70,7 +70,6 @@ private func testDefaultSettingsEnableAllFirstVersionFeaturesIndividually() thro
     try check(!settings.features.swapSides, "Swap sides should be disabled by default")
     try check(!settings.features.bottomQuarterOnly, "Bottom quarter only should be disabled by default")
     try check(settings.features.smartTypingDetection, "Smart typing detection should be enabled by default")
-    try check(settings.features.cursorFreeze, "Cursor freeze should be enabled by default")
     try check(!settings.launchAtLogin, "Launch at login should be disabled by default")
     try checkEqual(settings.gesture.physicalStepDistance, 0.10, accuracy: 0.0001, "Physical step distance should default to 0.10")
     try checkEqual(settings.gesture.physicalStepIntervalSeconds, 0.08, accuracy: 0.0001, "Physical step interval should default to 0.08s")
@@ -105,8 +104,7 @@ private func testSettingsDecodeMigratesMissingPhysicalStepFields() throws {
         "fineControl": false,
         "swapSides": true,
         "bottomQuarterOnly": true,
-        "smartTypingDetection": false,
-        "cursorFreeze": true
+        "smartTypingDetection": false
       },
       "gesture": {
         "edgeWidthPercent": 0.12,

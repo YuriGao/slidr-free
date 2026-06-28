@@ -8,7 +8,6 @@ public struct FeatureToggles: Codable, Equatable, Sendable {
     public var swapSides: Bool
     public var bottomQuarterOnly: Bool
     public var smartTypingDetection: Bool
-    public var cursorFreeze: Bool
 }
 
 public struct GestureSettings: Codable, Equatable, Sendable {
@@ -81,8 +80,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
             fineControl: true,
             swapSides: false,
             bottomQuarterOnly: false,
-            smartTypingDetection: true,
-            cursorFreeze: true
+            smartTypingDetection: true
         ),
         gesture: GestureSettings(
             edgeWidthPercent: 0.10,

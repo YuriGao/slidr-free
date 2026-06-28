@@ -39,7 +39,6 @@ struct SettingsView: View {
 
             Section(NSLocalizedString("section_safety", comment: "")) {
                 Toggle(NSLocalizedString("smart_typing_detection", comment: ""), isOn: binding(\.features.smartTypingDetection))
-                Toggle(NSLocalizedString("cursor_freeze", comment: ""), isOn: binding(\.features.cursorFreeze))
                 labeledSlider(NSLocalizedString("typing_cooldown", comment: ""), value: binding(\.gesture.typingCooldownSeconds), range: 0.0...2.0, suffix: "s")
                 labeledSlider(NSLocalizedString("continuous_window", comment: ""), value: binding(\.gesture.continuousWindowSeconds), range: 0.05...1.0, suffix: "s")
             }

@@ -8,8 +8,6 @@ public protocol SystemControlling: AnyObject {
     func adjustVolume(delta: Double) -> SystemActionResult
     func adjustBrightness(delta: Double) -> SystemActionResult
     func middleClick(x: Double, y: Double) -> SystemActionResult
-    func freezeCursor(at point: CGPoint)
-    func unfreezeCursor()
     func showFeedback(kind: FeedbackKind, message: String?) -> SystemActionResult
 }
 
@@ -30,7 +28,6 @@ public enum FeedbackKind: String {
 // MARK: - Concrete Implementation
 
 final class SystemControl: SystemControlling {
-    private var frozenPosition: CGPoint?
     private var feedbackWindow: NSWindow?
 
     func adjustVolume(delta: Double) -> SystemActionResult {
@@ -81,23 +78,6 @@ final class SystemControl: SystemControlling {
         }
         _ = showFeedback(kind: .middleClick, message: nil)
         return .success
-    }
-
-    func freezeCursor(at point: CGPoint) {
-        frozenPosition = point
-        CGAssociateMouseAndMouseCursorPosition(Int32(0))
-        CGWarpMouseCursorPosition(point)
-        DispatchQueue.main.async {
-            NSCursor.hide()
-        }
-    }
-
-    func unfreezeCursor() {
-        CGAssociateMouseAndMouseCursorPosition(Int32(1))
-        DispatchQueue.main.async {
-            NSCursor.unhide()
-        }
-        frozenPosition = nil
     }
 
     func showFeedback(kind: FeedbackKind, message: String? = nil) -> SystemActionResult {
