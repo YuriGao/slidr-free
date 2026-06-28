@@ -6,12 +6,18 @@ import SlidrFreeCore
 // MARK: - Protocol
 
 public protocol SystemControlling: AnyObject {
-    func adjustVolume(delta: Double)
-    func adjustBrightness(delta: Double)
-    func middleClick(x: Double, y: Double)
+    func adjustVolume(delta: Double) -> SystemActionResult
+    func adjustBrightness(delta: Double) -> SystemActionResult
+    func middleClick(x: Double, y: Double) -> SystemActionResult
     func freezeCursor(at point: CGPoint)
     func unfreezeCursor()
-    func showFeedback(kind: FeedbackKind)
+    func showFeedback(kind: FeedbackKind, message: String?) -> SystemActionResult
+}
+
+public enum SystemActionResult: Equatable {
+    case success
+    case failed(String)
+    case unsupported(String)
 }
 
 public enum FeedbackKind: String {
@@ -28,26 +34,29 @@ final class SystemControl: SystemControlling {
     private var frozenPosition: CGPoint?
     private var feedbackWindow: NSWindow?
 
-    func adjustVolume(delta: Double) {
+    func adjustVolume(delta: Double) -> SystemActionResult {
         let isUp = delta > 0
         postMediaKey(keyCode: isUp ? UInt16(0x48) : UInt16(0x49))
-        showFeedback(kind: isUp ? .volumeUp : .volumeDown)
+        _ = showFeedback(kind: isUp ? .volumeUp : .volumeDown, message: nil)
+        return .success
     }
 
-    func adjustBrightness(delta: Double) {
+    func adjustBrightness(delta: Double) -> SystemActionResult {
         guard let service = displayService() else {
-            logWarning("Failed to get display service for brightness adjustment")
-            showFeedback(kind: delta > 0 ? .brightnessUp : .brightnessDown)
-            return
+            let message = "No built-in display service"
+            logWarning(message)
+            _ = showFeedback(kind: delta > 0 ? .brightnessUp : .brightnessDown, message: message)
+            return .failed(message)
         }
         defer { IOObjectRelease(service) }
 
         var current: Float = 0.5
         let readResult = IODisplayGetFloatParameter(service, 0, "brightness" as CFString, &current)
         guard readResult == KERN_SUCCESS else {
-            logWarning("Failed to read brightness: \(readResult)")
-            showFeedback(kind: delta > 0 ? .brightnessUp : .brightnessDown)
-            return
+            let message = "Failed to read brightness: \(readResult)"
+            logWarning(message)
+            _ = showFeedback(kind: delta > 0 ? .brightnessUp : .brightnessDown, message: message)
+            return .failed(message)
         }
 
         let newBrightness = min(max(current + Float(delta) * 0.05, 0.0), 1.0)
@@ -55,12 +64,15 @@ final class SystemControl: SystemControlling {
         if setResult != KERN_SUCCESS {
             logWarning("Failed to set brightness: \(setResult)")
         }
-        showFeedback(kind: delta > 0 ? .brightnessUp : .brightnessDown)
+        _ = showFeedback(kind: delta > 0 ? .brightnessUp : .brightnessDown, message: nil)
+        return .success
     }
 
-    func middleClick(x: Double, y: Double) {
+    func middleClick(x: Double, y: Double) -> SystemActionResult {
         let point = CGPoint(x: x, y: y)
-        guard let source = CGEventSource(stateID: .hidSystemState) else { return }
+        guard let source = CGEventSource(stateID: .hidSystemState) else {
+            return .failed("Failed to create HID event source")
+        }
 
         if let downEvent = CGEvent(
             mouseEventSource: source,
@@ -78,7 +90,8 @@ final class SystemControl: SystemControlling {
         ) {
             upEvent.post(tap: .cghidEventTap)
         }
-        showFeedback(kind: .middleClick)
+        _ = showFeedback(kind: .middleClick, message: nil)
+        return .success
     }
 
     func freezeCursor(at point: CGPoint) {
@@ -98,10 +111,11 @@ final class SystemControl: SystemControlling {
         frozenPosition = nil
     }
 
-    func showFeedback(kind: FeedbackKind) {
+    func showFeedback(kind: FeedbackKind, message: String? = nil) -> SystemActionResult {
         DispatchQueue.main.async { [weak self] in
-            self?.showFeedbackOverlay(kind: kind)
+            self?.showFeedbackOverlay(kind: kind, message: message)
         }
+        return .success
     }
 
     // MARK: - Private Helpers
@@ -127,7 +141,7 @@ final class SystemControl: SystemControlling {
         return service != 0 ? service : nil
     }
 
-    private func showFeedbackOverlay(kind: FeedbackKind) {
+    private func showFeedbackOverlay(kind: FeedbackKind, message: String?) {
         // Dismiss existing overlay
         feedbackWindow?.orderOut(nil)
         feedbackWindow = nil
@@ -142,7 +156,7 @@ final class SystemControl: SystemControlling {
             }
         }()
 
-        let textField = NSTextField(labelWithString: label)
+        let textField = NSTextField(labelWithString: message.map { "\(label)\n\($0)" } ?? label)
         textField.font = NSFont.systemFont(ofSize: 24, weight: .medium)
         textField.textColor = .white
         textField.alignment = .center
@@ -174,4 +188,3 @@ final class SystemControl: SystemControlling {
         print("[SlidrFree] SystemControl: \(message)")
     }
 }
-

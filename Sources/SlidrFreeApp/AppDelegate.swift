@@ -83,20 +83,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         debugState.log("Gesture: \(recognized)")
         let actions = ActionDispatcher(settings: settingsStore.settings).actions(for: recognized)
         for action in actions {
-            debugState.lastAction = String(describing: action)
             execute(action: action)
         }
     }
 
     private func execute(action: SystemAction) {
+        let result: SystemActionResult
         switch action {
         case .adjustVolume(let delta):
-            systemControl.adjustVolume(delta: delta)
+            result = systemControl.adjustVolume(delta: delta)
         case .adjustBrightness(let delta):
-            systemControl.adjustBrightness(delta: delta)
+            result = systemControl.adjustBrightness(delta: delta)
         case .middleClick(let x, let y):
-            systemControl.middleClick(x: x, y: y)
+            result = systemControl.middleClick(x: x, y: y)
         }
+        debugState.lastAction = String(describing: action)
+        debugState.lastActionResult = String(describing: result)
+        debugState.log("Action: \(action) -> \(result)")
     }
 
     private func updateDebugPermissions(_ snapshot: PermissionSnapshot) {
