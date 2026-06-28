@@ -54,6 +54,10 @@ cat > "release/Slidr-Free.app/Contents/Info.plist" <<EOF
 </plist>
 EOF
 
+echo "==> Ad-hoc signing app bundle..."
+codesign --force --deep --sign - "release/Slidr-Free.app"
+codesign --verify --verbose=2 "release/Slidr-Free.app"
+
 echo "==> Packaging zip..."
 cd release
 zip -r "Slidr-Free.app.zip" "Slidr-Free.app"

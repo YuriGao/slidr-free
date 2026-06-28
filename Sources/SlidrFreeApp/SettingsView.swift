@@ -46,16 +46,8 @@ struct SettingsView: View {
                 statusRow(NSLocalizedString("input_monitoring", comment: ""), value: localizedPermissionState(permissionManager.snapshot.inputMonitoring))
                 statusRow(NSLocalizedString("can_listen", comment: ""), value: permissionManager.snapshot.canListen ? NSLocalizedString("granted", comment: "") : NSLocalizedString("denied", comment: ""))
                 HStack {
-                    Button(NSLocalizedString("prompt_accessibility", comment: "")) {
-                        permissionManager.promptForAccessibility()
-                    }
                     Button(NSLocalizedString("open_accessibility_settings", comment: "")) {
                         permissionManager.openAccessibilitySettings()
-                    }
-                }
-                HStack {
-                    Button(NSLocalizedString("prompt_input_monitoring", comment: "")) {
-                        permissionManager.promptForInputMonitoring()
                     }
                     Button(NSLocalizedString("open_input_monitoring_settings", comment: "")) {
                         permissionManager.openInputMonitoringSettings()

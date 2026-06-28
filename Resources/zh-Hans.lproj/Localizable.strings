@@ -43,13 +43,11 @@
 "accessibility" = "辅助功能";
 "input_monitoring" = "输入监控";
 "can_listen" = "可监听";
-"prompt_accessibility" = "请求辅助功能权限";
-"prompt_input_monitoring" = "请求输入监控权限";
 "open_accessibility_settings" = "打开辅助功能设置";
 "open_input_monitoring_settings" = "打开输入监控设置";
 "open_privacy_settings" = "打开隐私设置";
 "refresh" = "刷新";
-"input_monitoring_hint" = "在系统设置中授权后，回到 Slidr-Free 或点击刷新。部分 macOS 版本可能需要重启应用。";
+"input_monitoring_hint" = "授权后回到 Slidr-Free 或点击刷新。如果辅助功能仍显示未授权，请在系统设置里删除旧的 Slidr-Free 条目，重新添加当前 app，然后重启 Slidr-Free。";
 
 /* Errors */
 "launch_at_login_error" = "无法更新登录启动：%@";

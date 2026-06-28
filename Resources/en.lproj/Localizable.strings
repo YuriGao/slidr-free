@@ -43,13 +43,11 @@
 "accessibility" = "Accessibility";
 "input_monitoring" = "Input Monitoring";
 "can_listen" = "Can listen";
-"prompt_accessibility" = "Request Accessibility";
-"prompt_input_monitoring" = "Request Input Monitoring";
 "open_accessibility_settings" = "Open Accessibility Settings";
 "open_input_monitoring_settings" = "Open Input Monitoring Settings";
 "open_privacy_settings" = "Open Privacy Settings";
 "refresh" = "Refresh";
-"input_monitoring_hint" = "After granting permissions in System Settings, return to Slidr-Free or click Refresh. Some macOS versions may require restarting the app.";
+"input_monitoring_hint" = "After granting permissions, return to Slidr-Free or click Refresh. If Accessibility still shows denied, remove the old Slidr-Free entry in System Settings, add this app again, then restart Slidr-Free.";
 
 /* Errors */
 "launch_at_login_error" = "Could not update launch at login: %@";
