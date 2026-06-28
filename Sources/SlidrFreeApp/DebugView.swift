@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DebugView: View {
     @ObservedObject var state: DebugState
+    var testMiddleClick: (() -> Void)?
 
     var body: some View {
         Form {
@@ -21,6 +22,11 @@ struct DebugView: View {
                 statusRow("Last Gesture", state.lastGesture)
                 statusRow("Last Action", state.lastAction)
                 statusRow("Last Action Result", state.lastActionResult)
+            }
+            Section("Test") {
+                Button("Test Middle Click") {
+                    testMiddleClick?()
+                }
             }
             Section {
                 ScrollView {

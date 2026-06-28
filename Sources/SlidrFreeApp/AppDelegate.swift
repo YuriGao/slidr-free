@@ -20,7 +20,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         settingsWindowController = SettingsWindowController(store: settingsStore, permissionManager: permissionManager)
-        debugWindowController = DebugWindowController(state: debugState)
+        debugWindowController = DebugWindowController(state: debugState) { [weak self] in
+            self?.testMiddleClick()
+        }
         menuBarController = MenuBarController(
             settingsStore: settingsStore,
             showSettings: { [weak self] in self?.settingsWindowController?.show() },
@@ -157,5 +159,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func optionalDescription<T>(_ value: T?) -> String {
         value.map { String(describing: $0) } ?? "nil"
+    }
+
+    private func testMiddleClick() {
+        let point = NSEvent.mouseLocation
+        debugState.log("Test: middle click at \(point)")
+        let result = systemControl.middleClick(x: Double(point.x), y: Double(point.y))
+        debugState.log("Test: middle click result -> \(result)")
     }
 }

@@ -2,8 +2,8 @@ import AppKit
 import SwiftUI
 
 final class DebugWindowController: NSWindowController {
-    init(state: DebugState) {
-        let hostingController = NSHostingController(rootView: DebugView(state: state))
+    init(state: DebugState, testMiddleClick: @escaping () -> Void) {
+        let hostingController = NSHostingController(rootView: DebugView(state: state, testMiddleClick: testMiddleClick))
         let window = NSWindow(contentViewController: hostingController)
         window.title = "Debug"
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
