@@ -36,7 +36,12 @@ final class SystemControl: SystemControlling {
 
     func adjustVolume(delta: Double) -> SystemActionResult {
         let isUp = delta > 0
-        postMediaKey(keyCode: isUp ? UInt16(0x48) : UInt16(0x49))
+        guard postMediaKey(isUp ? .volumeUp : .volumeDown) else {
+            let message = "Failed to create media key events"
+            logWarning(message)
+            _ = showFeedback(kind: isUp ? .volumeUp : .volumeDown, message: message)
+            return .failed(message)
+        }
         _ = showFeedback(kind: isUp ? .volumeUp : .volumeDown, message: nil)
         return .success
     }
@@ -120,17 +125,12 @@ final class SystemControl: SystemControlling {
 
     // MARK: - Private Helpers
 
-    private func postMediaKey(keyCode: UInt16) {
-        // Post key down event via CGEvent
-        if let downEvent = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true) {
-            downEvent.flags = CGEventFlags.maskNonCoalesced
-            downEvent.post(tap: .cghidEventTap)
+    private func postMediaKey(_ key: MediaKey) -> Bool {
+        guard let events = MediaKeyEventFactory.events(for: key) else { return false }
+        for event in events {
+            event.cgEvent?.post(tap: .cghidEventTap)
         }
-        // Post key up event
-        if let upEvent = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false) {
-            upEvent.flags = CGEventFlags.maskNonCoalesced
-            upEvent.post(tap: .cghidEventTap)
-        }
+        return true
     }
 
     private func displayService() -> io_service_t? {

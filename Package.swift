@@ -23,6 +23,7 @@ let package = Package(
                 .linkedFramework("IOKit")
             ]
         ),
-        .executableTarget(name: "SlidrFreeCoreChecks", dependencies: ["SlidrFreeCore"])
+        .executableTarget(name: "SlidrFreeCoreChecks", dependencies: ["SlidrFreeCore"]),
+        .testTarget(name: "SlidrFreeAppTests", dependencies: ["SlidrFreeApp"])
     ]
 )
