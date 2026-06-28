@@ -55,6 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         physicalTrackpadMonitor?.stop()
         inputEventTap?.stop()
+        CGAssociateMouseAndMouseCursorPosition(1)
     }
 
     // MARK: - Event Pipeline
@@ -82,6 +83,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             debugState.monitorStatus = settings.isAppEnabled ? "Stopped (permissions)" : "Stopped (disabled)"
             physicalTrackpadMonitor?.stop()
             inputEventTap?.stop()
+            CGAssociateMouseAndMouseCursorPosition(1)
         }
     }
 
@@ -94,7 +96,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func updateCursorAssociation(for event: NormalizedInputEvent) {
+        guard settingsStore.settings.isAppEnabled else {
+            CGAssociateMouseAndMouseCursorPosition(1)
+            return
+        }
+
+        if case .physicalTouchFrame(let touches, _) = event {
+            if let touch = touches.first {
+                let edgeWidth = settingsStore.settings.gesture.edgeWidthPercent
+                let isInEdge = touch.x <= edgeWidth || touch.x >= 1 - edgeWidth
+                CGAssociateMouseAndMouseCursorPosition(isInEdge ? 0 : 1)
+            } else {
+                CGAssociateMouseAndMouseCursorPosition(1)
+            }
+        }
+    }
+
     private func handleInputEvent(_ event: NormalizedInputEvent) {
+        updateCursorAssociation(for: event)
         updateDebugInput(event)
         guard let recognized = gestureRecognizer.process(event) else { return }
         debugState.lastGesture = String(describing: recognized)
