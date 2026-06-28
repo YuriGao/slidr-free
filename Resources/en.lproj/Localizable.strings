@@ -2,6 +2,7 @@
 "enable_app" = "Enable App";
 "disable_app" = "Disable App";
 "settings" = "Settings…";
+"debug" = "Debug…";
 "permissions" = "Permissions…";
 "quit" = "Quit";
 
