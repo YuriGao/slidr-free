@@ -1,0 +1,207 @@
+/* Menu */
+"enable_app" = "启用应用";
+"disable_app" = "禁用应用";
+"settings" = "设置…";
+"permissions" = "权限…";
+"quit" = "退出";
+
+/* Window */
+"settings_title" = "Slidr-Free 设置";
+
+/* Sections */
+"section_general" = "通用";
+"section_edge_gestures" = "边缘手势";
+"section_clicks" = "点击";
+"section_safety" = "安全";
+"section_permissions" = "权限";
+
+/* General */
+"enable_app_toggle" = "启用应用";
+"launch_at_login" = "登录时启动";
+
+/* Edge Gestures */
+"volume_edge_gesture" = "音量边缘手势";
+"brightness_edge_gesture" = "亮度边缘手势";
+"swap_sides" = "左右互换";
+"bottom_quarter_only" = "仅底部四分之一区域";
+"edge_width" = "边缘宽度";
+"sensitivity" = "灵敏度";
+"normal_step" = "普通步进";
+"fine_step" = "精细步进";
+
+/* Clicks */
+"middle_click" = "中键点击";
+"fine_control" = "精细控制";
+
+/* Safety */
+"smart_typing_detection" = "打字智能检测";
+"cursor_freeze" = "光标冻结";
+"typing_cooldown" = "打字冷却时间";
+"continuous_window" = "连续窗口";
+
+/* Permissions */
+"accessibility" = "辅助功能";
+"input_monitoring" = "输入监控";
+"can_listen" = "可监听";
+"prompt_accessibility" = "请求辅助功能权限";
+"open_privacy_settings" = "打开隐私设置";
+"refresh" = "刷新";
+"input_monitoring_hint" = "输入监控可能需要先在系统设置中启用 Slidr-Free 才能开始事件监听。";
+
+/* Errors */
+"launch_at_login_error" = "无法更新登录启动：%@";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";
+
+/* Status */
+"granted" = "已授权";
+"denied" = "未授权";
+"unknown" = "未知";

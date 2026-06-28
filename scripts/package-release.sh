@@ -17,6 +17,10 @@ cp ".build/release/SlidrFreeApp" "release/Slidr-Free.app/Contents/MacOS/SlidrFre
 echo "==> Copying icon..."
 cp "AppIcon.icns" "release/Slidr-Free.app/Contents/Resources/AppIcon.icns"
 
+echo "==> Copying localizations..."
+cp -R Resources/en.lproj "release/Slidr-Free.app/Contents/Resources/en.lproj"
+cp -R Resources/zh-Hans.lproj "release/Slidr-Free.app/Contents/Resources/zh-Hans.lproj"
+
 echo "==> Writing Info.plist..."
 cat > "release/Slidr-Free.app/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -37,6 +41,13 @@ cat > "release/Slidr-Free.app/Contents/Info.plist" <<EOF
     <string>APPL</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>en</string>
+        <string>zh-Hans</string>
+    </array>
     <key>LSUIElement</key>
     <true/>
 </dict>

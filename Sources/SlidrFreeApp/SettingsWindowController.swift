@@ -6,7 +6,7 @@ final class SettingsWindowController: NSWindowController {
         let view = SettingsView(store: store, permissionManager: permissionManager)
         let hostingController = NSHostingController(rootView: view)
         let window = NSWindow(contentViewController: hostingController)
-        window.title = "Slidr-Free Settings"
+        window.title = NSLocalizedString("settings_title", comment: "")
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.isReleasedWhenClosed = false
         // Size window to fit SwiftUI content

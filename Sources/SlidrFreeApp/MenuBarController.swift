@@ -19,13 +19,15 @@ final class MenuBarController: NSObject {
 
     func refresh() {
         let menu = NSMenu()
-        let enabledTitle = settingsStore.settings.isAppEnabled ? "Disable App" : "Enable App"
+        let enabledTitle = settingsStore.settings.isAppEnabled
+            ? NSLocalizedString("disable_app", comment: "")
+            : NSLocalizedString("enable_app", comment: "")
         menu.addItem(NSMenuItem(title: enabledTitle, action: #selector(toggleEnabled), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ","))
-        menu.addItem(NSMenuItem(title: "Permissions…", action: #selector(openPermissions), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: NSLocalizedString("settings", comment: ""), action: #selector(openSettings), keyEquivalent: ","))
+        menu.addItem(NSMenuItem(title: NSLocalizedString("permissions", comment: ""), action: #selector(openPermissions), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: NSLocalizedString("quit", comment: ""), action: #selector(quit), keyEquivalent: "q"))
 
         for item in menu.items {
             item.target = self

@@ -8,9 +8,9 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("General") {
-                Toggle("Enable app", isOn: binding(\.isAppEnabled))
-                Toggle("Launch at login", isOn: launchAtLoginBinding)
+            Section(NSLocalizedString("section_general", comment: "")) {
+                Toggle(NSLocalizedString("enable_app_toggle", comment: ""), isOn: binding(\.isAppEnabled))
+                Toggle(NSLocalizedString("launch_at_login", comment: ""), isOn: launchAtLoginBinding)
                 if let launchAtLoginError {
                     Text(launchAtLoginError)
                         .font(.caption)
@@ -18,45 +18,45 @@ struct SettingsView: View {
                 }
             }
 
-            Section("Edge Gestures") {
-                Toggle("Volume edge gesture", isOn: binding(\.features.volumeEdgeGesture))
-                Toggle("Brightness edge gesture", isOn: binding(\.features.brightnessEdgeGesture))
-                Toggle("Swap sides", isOn: binding(\.features.swapSides))
-                Toggle("Bottom quarter only", isOn: binding(\.features.bottomQuarterOnly))
-                labeledSlider("Edge width", value: binding(\.gesture.edgeWidthPercent), range: 0.04...0.20, isPercent: true)
-                labeledSlider("Sensitivity", value: binding(\.gesture.sensitivity), range: 0.10...4.0)
-                labeledSlider("Normal step", value: binding(\.gesture.normalStep), range: 0.10...10.0)
-                labeledSlider("Fine step", value: binding(\.gesture.fineStep), range: 0.05...store.settings.gesture.normalStep)
+            Section(NSLocalizedString("section_edge_gestures", comment: "")) {
+                Toggle(NSLocalizedString("volume_edge_gesture", comment: ""), isOn: binding(\.features.volumeEdgeGesture))
+                Toggle(NSLocalizedString("brightness_edge_gesture", comment: ""), isOn: binding(\.features.brightnessEdgeGesture))
+                Toggle(NSLocalizedString("swap_sides", comment: ""), isOn: binding(\.features.swapSides))
+                Toggle(NSLocalizedString("bottom_quarter_only", comment: ""), isOn: binding(\.features.bottomQuarterOnly))
+                labeledSlider(NSLocalizedString("edge_width", comment: ""), value: binding(\.gesture.edgeWidthPercent), range: 0.04...0.20, isPercent: true)
+                labeledSlider(NSLocalizedString("sensitivity", comment: ""), value: binding(\.gesture.sensitivity), range: 0.10...4.0)
+                labeledSlider(NSLocalizedString("normal_step", comment: ""), value: binding(\.gesture.normalStep), range: 0.10...10.0)
+                labeledSlider(NSLocalizedString("fine_step", comment: ""), value: binding(\.gesture.fineStep), range: 0.05...store.settings.gesture.normalStep)
             }
 
-            Section("Clicks") {
-                Toggle("Middle click", isOn: binding(\.features.middleClick))
-                Toggle("Fine control", isOn: binding(\.features.fineControl))
+            Section(NSLocalizedString("section_clicks", comment: "")) {
+                Toggle(NSLocalizedString("middle_click", comment: ""), isOn: binding(\.features.middleClick))
+                Toggle(NSLocalizedString("fine_control", comment: ""), isOn: binding(\.features.fineControl))
             }
 
-            Section("Safety") {
-                Toggle("Smart typing detection", isOn: binding(\.features.smartTypingDetection))
-                Toggle("Cursor freeze", isOn: binding(\.features.cursorFreeze))
-                labeledSlider("Typing cooldown", value: binding(\.gesture.typingCooldownSeconds), range: 0.0...2.0, suffix: "s")
-                labeledSlider("Continuous window", value: binding(\.gesture.continuousWindowSeconds), range: 0.05...1.0, suffix: "s")
+            Section(NSLocalizedString("section_safety", comment: "")) {
+                Toggle(NSLocalizedString("smart_typing_detection", comment: ""), isOn: binding(\.features.smartTypingDetection))
+                Toggle(NSLocalizedString("cursor_freeze", comment: ""), isOn: binding(\.features.cursorFreeze))
+                labeledSlider(NSLocalizedString("typing_cooldown", comment: ""), value: binding(\.gesture.typingCooldownSeconds), range: 0.0...2.0, suffix: "s")
+                labeledSlider(NSLocalizedString("continuous_window", comment: ""), value: binding(\.gesture.continuousWindowSeconds), range: 0.05...1.0, suffix: "s")
             }
 
-            Section("Permissions") {
-                statusRow("Accessibility", value: permissionManager.snapshot.accessibility.rawValue)
-                statusRow("Input Monitoring", value: permissionManager.snapshot.inputMonitoring.rawValue)
-                statusRow("Can listen", value: permissionManager.snapshot.canListen ? "granted" : "denied")
+            Section(NSLocalizedString("section_permissions", comment: "")) {
+                statusRow(NSLocalizedString("accessibility", comment: ""), value: localizedPermissionState(permissionManager.snapshot.accessibility))
+                statusRow(NSLocalizedString("input_monitoring", comment: ""), value: localizedPermissionState(permissionManager.snapshot.inputMonitoring))
+                statusRow(NSLocalizedString("can_listen", comment: ""), value: permissionManager.snapshot.canListen ? NSLocalizedString("granted", comment: "") : NSLocalizedString("denied", comment: ""))
                 HStack {
-                    Button("Prompt for Accessibility") {
+                    Button(NSLocalizedString("prompt_accessibility", comment: "")) {
                         permissionManager.promptForAccessibility()
                     }
-                    Button("Open Privacy Settings") {
+                    Button(NSLocalizedString("open_privacy_settings", comment: "")) {
                         permissionManager.openPrivacySettings()
                     }
-                    Button("Refresh") {
+                    Button(NSLocalizedString("refresh", comment: "")) {
                         permissionManager.currentSnapshot()
                     }
                 }
-                Text("Input Monitoring may require enabling Slidr-Free in System Settings before event listening can start.")
+                Text(NSLocalizedString("input_monitoring_hint", comment: ""))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -88,7 +88,7 @@ struct SettingsView: View {
                     store.save(updated)
                     launchAtLoginError = nil
                 } catch {
-                    launchAtLoginError = "Could not update launch at login: \(error.localizedDescription)"
+                    launchAtLoginError = String(format: NSLocalizedString("launch_at_login_error", comment: ""), error.localizedDescription)
                 }
             }
         )
@@ -121,5 +121,9 @@ struct SettingsView: View {
             Text(value)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private func localizedPermissionState(_ state: PermissionState) -> String {
+        NSLocalizedString(state.rawValue, comment: "")
     }
 }

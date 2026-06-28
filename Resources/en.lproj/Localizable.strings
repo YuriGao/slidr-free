@@ -1,0 +1,57 @@
+/* Menu */
+"enable_app" = "Enable App";
+"disable_app" = "Disable App";
+"settings" = "Settings…";
+"permissions" = "Permissions…";
+"quit" = "Quit";
+
+/* Window */
+"settings_title" = "Slidr-Free Settings";
+
+/* Sections */
+"section_general" = "General";
+"section_edge_gestures" = "Edge Gestures";
+"section_clicks" = "Clicks";
+"section_safety" = "Safety";
+"section_permissions" = "Permissions";
+
+/* General */
+"enable_app_toggle" = "Enable app";
+"launch_at_login" = "Launch at login";
+
+/* Edge Gestures */
+"volume_edge_gesture" = "Volume edge gesture";
+"brightness_edge_gesture" = "Brightness edge gesture";
+"swap_sides" = "Swap sides";
+"bottom_quarter_only" = "Bottom quarter only";
+"edge_width" = "Edge width";
+"sensitivity" = "Sensitivity";
+"normal_step" = "Normal step";
+"fine_step" = "Fine step";
+
+/* Clicks */
+"middle_click" = "Middle click";
+"fine_control" = "Fine control";
+
+/* Safety */
+"smart_typing_detection" = "Smart typing detection";
+"cursor_freeze" = "Cursor freeze";
+"typing_cooldown" = "Typing cooldown";
+"continuous_window" = "Continuous window";
+
+/* Permissions */
+"accessibility" = "Accessibility";
+"input_monitoring" = "Input Monitoring";
+"can_listen" = "Can listen";
+"prompt_accessibility" = "Prompt for Accessibility";
+"open_privacy_settings" = "Open Privacy Settings";
+"refresh" = "Refresh";
+"input_monitoring_hint" = "Input Monitoring may require enabling Slidr-Free in System Settings before event listening can start.";
+
+/* Errors */
+"launch_at_login_error" = "Could not update launch at login: %@";
+
+/* Status */
+"granted" = "granted";
+"denied" = "denied";
+"unknown" = "unknown";
