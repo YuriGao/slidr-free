@@ -32,11 +32,6 @@ struct SettingsView: View {
                 Toggle(NSLocalizedString("middle_click", comment: ""), isOn: binding(\.features.middleClick))
             }
 
-            Section(NSLocalizedString("section_safety", comment: "")) {
-                Toggle(NSLocalizedString("smart_typing_detection", comment: ""), isOn: binding(\.features.smartTypingDetection))
-                labeledSlider(NSLocalizedString("typing_cooldown", comment: ""), value: binding(\.gesture.typingCooldownSeconds), range: 0.0...2.0, suffix: "s")
-            }
-
             Section(NSLocalizedString("section_permissions", comment: "")) {
                 statusRow(NSLocalizedString("accessibility", comment: ""), value: localizedPermissionState(permissionManager.snapshot.accessibility))
                 statusRow(NSLocalizedString("input_monitoring", comment: ""), value: localizedPermissionState(permissionManager.snapshot.inputMonitoring))

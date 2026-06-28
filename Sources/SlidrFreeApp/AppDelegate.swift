@@ -87,9 +87,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func handleAuxiliaryInputEvent(_ event: NormalizedInputEvent) {
         switch event {
-        case .keyDown, .middleClick:
+        case .middleClick:
             handleInputEvent(event)
-        case .scroll, .physicalTouchFrame:
+        case .physicalTouchFrame:
             updateDebugInput(event)
         }
     }
@@ -150,10 +150,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 debugState.lastTouchDescription = "None"
                 debugState.lastEdgeHit = "None"
             }
-        case .scroll:
-            debugState.lastTouchDescription = "Scroll event"
-        case .keyDown:
-            debugState.lastTouchDescription = "Key down"
         case .middleClick(let x, let y, _):
             debugState.lastTouchDescription = String(format: "Middle click x=%.1f y=%.1f", x, y)
         }

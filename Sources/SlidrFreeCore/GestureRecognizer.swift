@@ -13,13 +13,11 @@ public enum GestureDirection: Equatable, Sendable {
 
 public struct GestureRecognizer: Sendable {
     public var settings: AppSettings
-    private var lastKeyDown: Double?
     private var previousPrimaryPhysicalTouch: PhysicalTouch?
     private var activePhysicalStep: PhysicalStepState?
 
     public init(settings: AppSettings = .default) {
         self.settings = settings.validated()
-        self.lastKeyDown = nil
         self.previousPrimaryPhysicalTouch = nil
         self.activePhysicalStep = nil
     }
@@ -28,23 +26,11 @@ public struct GestureRecognizer: Sendable {
         guard settings.isAppEnabled else { return nil }
 
         switch event {
-        case .keyDown(let timestamp):
-            lastKeyDown = timestamp
-            return nil
-
         case .middleClick(let x, let y, _):
             guard settings.features.middleClick else { return nil }
             return .middleClick(x: x, y: y)
 
-        case .scroll:
-            return nil
-
         case .physicalTouchFrame(let touches, let timestamp):
-            guard !settings.features.smartTypingDetection || !isInTypingCooldown(timestamp: timestamp) else {
-                updatePreviousPrimaryPhysicalTouch(from: touches)
-                resetPhysicalStepState()
-                return nil
-            }
             guard let current = touches.first else {
                 resetPhysicalContinuity()
                 return nil
@@ -106,11 +92,6 @@ public struct GestureRecognizer: Sendable {
         }
     }
 
-    private func isInTypingCooldown(timestamp: Double) -> Bool {
-        guard let lastKeyDown else { return false }
-        return timestamp - lastKeyDown <= settings.gesture.typingCooldownSeconds
-    }
-
     private func physicalEdgeHit(for normalizedX: Double) -> PhysicalEdgeHit? {
         if normalizedX <= settings.gesture.edgeWidthPercent {
             return .left
@@ -119,10 +100,6 @@ public struct GestureRecognizer: Sendable {
             return .right
         }
         return nil
-    }
-
-    private mutating func updatePreviousPrimaryPhysicalTouch(from touches: [PhysicalTouch]) {
-        previousPrimaryPhysicalTouch = touches.first
     }
 
     private mutating func resetPhysicalStepState() {

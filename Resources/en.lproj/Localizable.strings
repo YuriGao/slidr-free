@@ -12,7 +12,6 @@
 "section_general" = "General";
 "section_edge_gestures" = "Physical Trackpad Edge Gestures";
 "section_clicks" = "Clicks";
-"section_safety" = "Safety";
 "section_permissions" = "Permissions";
 
 /* General */
@@ -28,10 +27,6 @@
 
 /* Clicks */
 "middle_click" = "Middle click";
-
-/* Safety */
-"smart_typing_detection" = "Smart typing detection";
-"typing_cooldown" = "Typing cooldown";
 
 /* Permissions */
 "accessibility" = "Accessibility";

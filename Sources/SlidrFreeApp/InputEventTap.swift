@@ -26,16 +26,14 @@ final class InputEventTap {
         stop()
     }
 
-    /// Start listening for scroll, key-down, and middle-click events.
+    /// Start listening for middle-click events.
     /// Requires accessibility permissions; silently no-ops if already running.
     func start() {
         lock.withLock {
             guard _tap == nil else { return }
 
             let eventMask = CGEventMask(
-                (1 << CGEventType.scrollWheel.rawValue)
-                    | (1 << CGEventType.keyDown.rawValue)
-                    | (1 << CGEventType.otherMouseDown.rawValue)
+                (1 << CGEventType.otherMouseDown.rawValue)
             )
 
             guard let newTap = CGEvent.tapCreate(
@@ -82,28 +80,6 @@ final class InputEventTap {
 
     private func handleEvent(type: CGEventType, event: CGEvent) {
         switch type {
-        case .scrollWheel:
-            let location = event.location
-            let deltaY = event.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1)
-            let timestamp = Double(event.timestamp)
-            let screenSize = NSScreen.main?.frame.size ?? CGSize(width: 1920, height: 1080)
-            let normalized = NormalizedInputEvent.scroll(
-                x: location.x,
-                y: location.y,
-                deltaY: deltaY,
-                timestamp: timestamp,
-                screenSize: screenSize
-            )
-            DispatchQueue.main.async { [handler] in
-                handler(normalized)
-            }
-
-        case .keyDown:
-            let normalized = NormalizedInputEvent.keyDown(timestamp: Double(event.timestamp))
-            DispatchQueue.main.async { [handler] in
-                handler(normalized)
-            }
-
         case .otherMouseDown:
             let location = event.location
             let normalized = NormalizedInputEvent.middleClick(

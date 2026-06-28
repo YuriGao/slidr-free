@@ -12,7 +12,6 @@
 "section_general" = "通用";
 "section_edge_gestures" = "物理触控板边缘手势";
 "section_clicks" = "点击";
-"section_safety" = "安全";
 "section_permissions" = "权限";
 
 /* General */
@@ -28,10 +27,6 @@
 
 /* Clicks */
 "middle_click" = "中键点击";
-
-/* Safety */
-"smart_typing_detection" = "打字智能检测";
-"typing_cooldown" = "打字冷却时间";
 
 /* Permissions */
 "accessibility" = "辅助功能";

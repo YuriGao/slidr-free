@@ -67,7 +67,6 @@ private func testDefaultSettingsEnableAllFirstVersionFeaturesIndividually() thro
     try check(settings.features.brightnessEdgeGesture, "Brightness edge gesture should be enabled by default")
     try check(settings.features.middleClick, "Middle click should be enabled by default")
     try check(!settings.features.swapSides, "Swap sides should be disabled by default")
-    try check(settings.features.smartTypingDetection, "Smart typing detection should be enabled by default")
     try check(!settings.launchAtLogin, "Launch at login should be disabled by default")
     try checkEqual(settings.gesture.physicalStepDistance, 0.05, accuracy: 0.0001, "Physical step distance should default to 0.05")
     try checkEqual(settings.gesture.physicalStepIntervalSeconds, 0.08, accuracy: 0.0001, "Physical step interval should default to 0.08s")
@@ -76,14 +75,12 @@ private func testDefaultSettingsEnableAllFirstVersionFeaturesIndividually() thro
 private func testValidationClampsGestureSettings() throws {
     var settings = AppSettings.default
     settings.gesture.edgeWidthPercent = 0.50
-    settings.gesture.typingCooldownSeconds = 5.0
     settings.gesture.physicalStepDistance = 2.0
     settings.gesture.physicalStepIntervalSeconds = -1.0
 
     let validated = settings.validated()
 
     try checkEqual(validated.gesture.edgeWidthPercent, 0.20, accuracy: 0.0001, "Edge width percent should clamp")
-    try checkEqual(validated.gesture.typingCooldownSeconds, 2.0, accuracy: 0.0001, "Typing cooldown should clamp")
     try checkEqual(validated.gesture.physicalStepDistance, 0.50, accuracy: 0.0001, "Physical step distance should clamp")
     try checkEqual(validated.gesture.physicalStepIntervalSeconds, 0.0, accuracy: 0.0001, "Physical step interval should clamp")
 }
@@ -97,12 +94,10 @@ private func testSettingsDecodeMigratesMissingPhysicalStepFields() throws {
         "volumeEdgeGesture": true,
         "brightnessEdgeGesture": false,
         "middleClick": true,
-        "swapSides": true,
-        "smartTypingDetection": false
+        "swapSides": true
       },
       "gesture": {
-        "edgeWidthPercent": 0.12,
-        "typingCooldownSeconds": 0.7
+        "edgeWidthPercent": 0.12
       }
     }
     """.data(using: .utf8)!
@@ -118,26 +113,13 @@ private func testSettingsDecodeMigratesMissingPhysicalStepFields() throws {
 }
 
 private func testGestureRecognition() throws {
-    let screenSize = CGSize(width: 1000, height: 800)
     var recognizer = GestureRecognizer(settings: .default)
-
-    try checkEqual(
-        recognizer.process(.scroll(x: 50, y: 300, deltaY: 16, timestamp: 10, screenSize: screenSize)),
-        nil,
-        "Scroll events should not produce edge gestures"
-    )
 
     _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 1, x: 0.05, y: 0.30, pressure: 0.5, state: 4)], timestamp: 10.0))
     try checkEqual(
         recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 1, x: 0.05, y: 0.41, pressure: 0.5, state: 4)], timestamp: 10.1)),
         .brightness(direction: .increase, magnitude: 1.0),
         "Physical left edge brightness increase should emit one step"
-    )
-
-    try checkEqual(
-        recognizer.process(.scroll(x: 950, y: 300, deltaY: -8, timestamp: 11, screenSize: screenSize)),
-        nil,
-        "Right edge scroll should not control volume"
     )
 
     recognizer = GestureRecognizer(settings: .default)
@@ -156,32 +138,6 @@ private func testGestureRecognition() throws {
         recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 3, x: 0.95, y: 0.32)], timestamp: 12.1)),
         .brightness(direction: .increase, magnitude: 1.0),
         "Swap sides should move physical brightness to right edge"
-    )
-
-    recognizer = GestureRecognizer(settings: .default)
-    try checkEqual(recognizer.process(.keyDown(timestamp: 20)), nil, "Key down should not produce a gesture")
-    try checkEqual(
-        recognizer.process(.scroll(x: 50, y: 300, deltaY: 16, timestamp: 20.5, screenSize: screenSize)),
-        nil,
-        "Scroll gestures should remain suppressed during typing cooldown"
-    )
-    try checkEqual(
-        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 5, x: 0.05, y: 0.30)], timestamp: 20.5)),
-        nil,
-        "Typing cooldown should suppress physical gestures"
-    )
-
-    recognizer = GestureRecognizer(settings: .default)
-    try checkEqual(recognizer.process(.keyDown(timestamp: 50)), nil, "Key down should not produce a gesture")
-    try checkEqual(
-        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 6, x: 0.05, y: 0.10)], timestamp: 50.5)),
-        nil,
-        "Typing cooldown should suppress but record physical touch state"
-    )
-    try checkEqual(
-        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 6, x: 0.05, y: 0.11)], timestamp: 51.1)),
-        nil,
-        "Physical touch state should stay fresh during typing cooldown"
     )
 
     recognizer = GestureRecognizer(settings: .default)
@@ -255,7 +211,7 @@ private func testGestureRecognition() throws {
     disabledSettings.isAppEnabled = false
     recognizer = GestureRecognizer(settings: disabledSettings)
     try checkEqual(
-        recognizer.process(.scroll(x: 50, y: 300, deltaY: 16, timestamp: 30, screenSize: screenSize)),
+        recognizer.process(.middleClick(x: 400, y: 300, timestamp: 30)),
         nil,
         "Disabled app should suppress gestures"
     )
