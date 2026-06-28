@@ -61,7 +61,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         gesture: GestureSettings(
             edgeWidthPercent: 0.10,
             typingCooldownSeconds: 1.0,
-            physicalStepDistance: 0.10,
+            physicalStepDistance: 0.05,
             physicalStepIntervalSeconds: 0.08
         )
     )
