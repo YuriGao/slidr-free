@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let systemControl = SystemControl()
     private var inputEventTap: InputEventTap?
+    private var physicalTrackpadMonitor: PhysicalTrackpadMonitor?
     private var gestureRecognizer = GestureRecognizer(settings: .default.validated())
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -53,6 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        physicalTrackpadMonitor?.stop()
         inputEventTap?.stop()
     }
 
@@ -64,15 +66,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if settings.isAppEnabled && permissions.canListen {
             debugState.monitorStatus = "Running"
+            if physicalTrackpadMonitor == nil {
+                physicalTrackpadMonitor = PhysicalTrackpadMonitor(debugState: debugState) { [weak self] event in
+                    self?.handleInputEvent(event)
+                }
+            }
+            physicalTrackpadMonitor?.start()
+
             if inputEventTap == nil {
                 inputEventTap = InputEventTap { [weak self] event in
-                    self?.handleInputEvent(event)
+                    self?.handleAuxiliaryInputEvent(event)
                 }
             }
             inputEventTap?.start()
         } else {
             debugState.monitorStatus = settings.isAppEnabled ? "Stopped (permissions)" : "Stopped (disabled)"
+            physicalTrackpadMonitor?.stop()
             inputEventTap?.stop()
+        }
+    }
+
+    private func handleAuxiliaryInputEvent(_ event: NormalizedInputEvent) {
+        switch event {
+        case .keyDown, .middleClick:
+            handleInputEvent(event)
+        case .scroll, .physicalTouchFrame:
+            updateDebugInput(event)
         }
     }
 

@@ -22,4 +22,9 @@ final class DebugState: ObservableObject {
             logs.removeFirst(logs.count - 50)
         }
     }
+
+    func setMultitouchStatus(_ status: String, deviceStatus: String) {
+        multitouchStatus = status
+        self.deviceStatus = deviceStatus
+    }
 }
