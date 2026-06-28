@@ -93,37 +93,55 @@ private func testGestureRecognition() throws {
 
     try checkEqual(
         recognizer.process(.scroll(x: 50, y: 300, deltaY: 16, timestamp: 10, screenSize: screenSize)),
-        .brightness(direction: .increase, magnitude: 2.0),
-        "Left edge should control brightness"
+        nil,
+        "Scroll events should not produce edge gestures"
+    )
+
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 1, x: 0.05, y: 0.30, pressure: 0.5, state: 4)], timestamp: 10.0))
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 1, x: 0.05, y: 0.55, pressure: 0.5, state: 4)], timestamp: 10.1)),
+        .brightness(direction: .increase, magnitude: min(max(abs(0.55 - 0.30) / 0.12, 0.25), 3.0)),
+        "Physical left edge brightness increase"
     )
 
     try checkEqual(
         recognizer.process(.scroll(x: 950, y: 300, deltaY: -8, timestamp: 11, screenSize: screenSize)),
+        nil,
+        "Right edge scroll should not control volume"
+    )
+
+    recognizer = GestureRecognizer(settings: .default)
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 2, x: 0.95, y: 0.70)], timestamp: 11.0))
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 2, x: 0.95, y: 0.58)], timestamp: 11.1)),
         .volume(direction: .decrease, magnitude: 1.0),
-        "Right edge should control volume"
+        "Physical right edge volume decrease"
     )
 
     var swappedSettings = AppSettings.default
     swappedSettings.features.swapSides = true
     recognizer = GestureRecognizer(settings: swappedSettings)
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 3, x: 0.95, y: 0.20)], timestamp: 12.0))
     try checkEqual(
-        recognizer.process(.scroll(x: 950, y: 300, deltaY: 2, timestamp: 12, screenSize: screenSize)),
-        .brightness(direction: .increase, magnitude: 0.25),
-        "Swap sides should move brightness to right edge"
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 3, x: 0.95, y: 0.32)], timestamp: 12.1)),
+        .brightness(direction: .increase, magnitude: 1.0),
+        "Swap sides should move physical brightness to right edge"
     )
 
     var bottomQuarterSettings = AppSettings.default
     bottomQuarterSettings.features.bottomQuarterOnly = true
     recognizer = GestureRecognizer(settings: bottomQuarterSettings)
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 4, x: 0.05, y: 0.50)], timestamp: 13.0))
     try checkEqual(
-        recognizer.process(.scroll(x: 50, y: 500, deltaY: 16, timestamp: 13, screenSize: screenSize)),
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 4, x: 0.05, y: 0.62)], timestamp: 13.1)),
         nil,
-        "Bottom-quarter filtering should suppress upper scrolls"
+        "Bottom-quarter filtering should suppress upper physical touches"
     )
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 4, x: 0.05, y: 0.76)], timestamp: 14.0))
     try checkEqual(
-        recognizer.process(.scroll(x: 50, y: 700, deltaY: 16, timestamp: 14, screenSize: screenSize)),
-        .brightness(direction: .increase, magnitude: 2.0),
-        "Bottom-quarter filtering should allow lower scrolls"
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 4, x: 0.05, y: 0.88)], timestamp: 14.1)),
+        .brightness(direction: .increase, magnitude: 1.0),
+        "Bottom-quarter filtering should allow lower physical touches"
     )
 
     recognizer = GestureRecognizer(settings: .default)
@@ -131,7 +149,12 @@ private func testGestureRecognition() throws {
     try checkEqual(
         recognizer.process(.scroll(x: 50, y: 300, deltaY: 16, timestamp: 20.5, screenSize: screenSize)),
         nil,
-        "Typing cooldown should suppress scroll gestures"
+        "Scroll gestures should remain suppressed during typing cooldown"
+    )
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 5, x: 0.05, y: 0.30)], timestamp: 20.5)),
+        nil,
+        "Typing cooldown should suppress physical gestures"
     )
 
     var disabledSettings = AppSettings.default
@@ -190,6 +213,6 @@ do {
     }
     print("All SlidrFreeCore checks passed")
 } catch {
-    print("FAIL: \(error)")
+    FileHandle.standardError.write("FAIL: \(error)\n".data(using: .utf8)!)
     preconditionFailure("SlidrFreeCoreChecks failed")
 }
