@@ -69,6 +69,13 @@ final class PhysicalTrackpadMonitor {
     private var running = false
     private var generation: UInt64 = 0
 
+    private struct PreparedDeviceStart {
+        let device: MTDeviceRef
+        let startDevice: MTDeviceStartFunction
+        let stopDevice: MTDeviceStopFunction
+        let generation: UInt64
+    }
+
     var isRunning: Bool {
         lock.withLock { running }
     }
@@ -86,47 +93,73 @@ final class PhysicalTrackpadMonitor {
     }
 
     func start() {
-        lock.withLock {
-            guard !running else { return }
+        let preparedStart = lock.withLock { () -> PreparedDeviceStart? in
+            guard !running else { return nil }
             generation &+= 1
 
-            guard loadAndStartLocked() else { return }
+            return prepareStartLocked(generation: generation)
+        }
+
+        guard let preparedStart else { return }
+
+        guard preparedStart.startDevice(preparedStart.device, 0) == 0 else {
+            _ = preparedStart.stopDevice(preparedStart.device)
+            Self.registryLock.withLock {
+                _ = Self.monitorsByDevice.removeValue(forKey: UInt(bitPattern: preparedStart.device))
+            }
+            lock.withLock {
+                if device == preparedStart.device {
+                    device = nil
+                    deviceStop = nil
+                }
+                failLocked("MTDeviceStart failed")
+            }
+            return
+        }
+
+        lock.withLock {
+            guard device == preparedStart.device, generation == preparedStart.generation else { return }
             running = true
             updateDebug(multitouch: "Running", device: "Physical trackpad monitor")
         }
     }
 
     func stop() {
-        lock.withLock {
-            guard running || device != nil else { return }
+        let deviceToStop = lock.withLock { () -> (device: MTDeviceRef, stop: MTDeviceStopFunction)? in
+            guard running || device != nil else { return nil }
 
             running = false
             generation &+= 1
 
-            if let device, let deviceStop {
-                _ = deviceStop(device)
-                Self.registryLock.withLock {
-                    _ = Self.monitorsByDevice.removeValue(forKey: UInt(bitPattern: device))
-                }
-            }
+            let deviceToStop = device.flatMap { device in deviceStop.map { (device, $0) } }
 
             device = nil
+            deviceStop = nil
             updateDebug(multitouch: "Stopped", device: "Physical trackpad unavailable")
+
+            return deviceToStop
+        }
+
+        if let deviceToStop {
+            _ = deviceToStop.stop(deviceToStop.device)
+            Self.registryLock.withLock {
+                _ = Self.monitorsByDevice.removeValue(forKey: UInt(bitPattern: deviceToStop.device))
+            }
         }
     }
 
-    private func loadAndStartLocked() -> Bool {
+    private func prepareStartLocked(generation: UInt64) -> PreparedDeviceStart? {
         if libraryHandle == nil {
             guard let handle = dlopen(Self.frameworkPath, RTLD_NOW) else {
                 failLocked("MultitouchSupport unavailable: \(dlerrorString())")
-                return false
+                return nil
             }
             libraryHandle = handle
         }
 
         guard let handle = libraryHandle else {
             failLocked("MultitouchSupport unavailable")
-            return false
+            return nil
         }
 
         guard
@@ -136,12 +169,12 @@ final class PhysicalTrackpadMonitor {
             let stopDevice: MTDeviceStopFunction = loadSymbol("MTDeviceStop", from: handle)
         else {
             failLocked("MultitouchSupport missing required symbols")
-            return false
+            return nil
         }
 
         guard let newDevice = create() else {
             failLocked("MTDeviceCreateDefault returned nil")
-            return false
+            return nil
         }
 
         device = newDevice
@@ -151,17 +184,7 @@ final class PhysicalTrackpadMonitor {
         }
         registerCallback(newDevice, Self.contactFrameCallback)
 
-        guard startDevice(newDevice, 0) == 0 else {
-            _ = stopDevice(newDevice)
-            Self.registryLock.withLock {
-                _ = Self.monitorsByDevice.removeValue(forKey: UInt(bitPattern: newDevice))
-            }
-            device = nil
-            failLocked("MTDeviceStart failed")
-            return false
-        }
-
-        return true
+        return PreparedDeviceStart(device: newDevice, startDevice: startDevice, stopDevice: stopDevice, generation: generation)
     }
 
     private func loadSymbol<T>(_ name: String, from handle: UnsafeMutableRawPointer) -> T? {
