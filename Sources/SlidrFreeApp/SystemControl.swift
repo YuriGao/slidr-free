@@ -1,6 +1,5 @@
 import AppKit
 import CoreGraphics
-import IOKit
 import SlidrFreeCore
 
 // MARK: - Protocol
@@ -47,29 +46,14 @@ final class SystemControl: SystemControlling {
     }
 
     func adjustBrightness(delta: Double) -> SystemActionResult {
-        guard let service = displayService() else {
-            let message = "No built-in display service"
+        let isUp = delta > 0
+        guard postMediaKey(isUp ? .brightnessUp : .brightnessDown) else {
+            let message = "Failed to create media key events"
             logWarning(message)
-            _ = showFeedback(kind: delta > 0 ? .brightnessUp : .brightnessDown, message: message)
+            _ = showFeedback(kind: isUp ? .brightnessUp : .brightnessDown, message: message)
             return .failed(message)
         }
-        defer { IOObjectRelease(service) }
-
-        var current: Float = 0.5
-        let readResult = IODisplayGetFloatParameter(service, 0, "brightness" as CFString, &current)
-        guard readResult == KERN_SUCCESS else {
-            let message = "Failed to read brightness: \(readResult)"
-            logWarning(message)
-            _ = showFeedback(kind: delta > 0 ? .brightnessUp : .brightnessDown, message: message)
-            return .failed(message)
-        }
-
-        let newBrightness = min(max(current + Float(delta) * 0.05, 0.0), 1.0)
-        let setResult = IODisplaySetFloatParameter(service, 0, "brightness" as CFString, newBrightness)
-        if setResult != KERN_SUCCESS {
-            logWarning("Failed to set brightness: \(setResult)")
-        }
-        _ = showFeedback(kind: delta > 0 ? .brightnessUp : .brightnessDown, message: nil)
+        _ = showFeedback(kind: isUp ? .brightnessUp : .brightnessDown, message: nil)
         return .success
     }
 
@@ -131,14 +115,6 @@ final class SystemControl: SystemControlling {
             event.cgEvent?.post(tap: .cghidEventTap)
         }
         return true
-    }
-
-    private func displayService() -> io_service_t? {
-        let service = IOServiceGetMatchingService(
-            kIOMainPortDefault,
-            IOServiceMatching("IODisplayConnect")
-        )
-        return service != 0 ? service : nil
     }
 
     private func showFeedbackOverlay(kind: FeedbackKind, message: String?) {

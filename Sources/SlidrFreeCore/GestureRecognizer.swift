@@ -15,11 +15,13 @@ public struct GestureRecognizer: Sendable {
     public var settings: AppSettings
     private var lastKeyDown: Double?
     private var previousPrimaryPhysicalTouch: PhysicalTouch?
+    private var activePhysicalStep: PhysicalStepState?
 
     public init(settings: AppSettings = .default) {
         self.settings = settings.validated()
         self.lastKeyDown = nil
         self.previousPrimaryPhysicalTouch = nil
+        self.activePhysicalStep = nil
     }
 
     public mutating func process(_ event: NormalizedInputEvent) -> RecognizedGesture? {
@@ -40,24 +42,32 @@ public struct GestureRecognizer: Sendable {
         case .physicalTouchFrame(let touches, let timestamp):
             guard !settings.features.smartTypingDetection || !isInTypingCooldown(timestamp: timestamp) else {
                 updatePreviousPrimaryPhysicalTouch(from: touches)
+                resetPhysicalStepState()
                 return nil
             }
             guard let current = touches.first else {
-                previousPrimaryPhysicalTouch = nil
+                resetPhysicalContinuity()
                 return nil
             }
             guard !settings.features.bottomQuarterOnly || current.y >= 0.75 else {
-                previousPrimaryPhysicalTouch = current
+                resetPhysicalContinuity()
                 return nil
             }
 
             let edgeHit = physicalEdgeHit(for: current.x)
             guard let edgeHit else {
-                previousPrimaryPhysicalTouch = current
+                resetPhysicalContinuity()
                 return nil
             }
 
             guard let previous = previousPrimaryPhysicalTouch, previous.id == current.id else {
+                resetPhysicalStepState()
+                previousPrimaryPhysicalTouch = current
+                return nil
+            }
+
+            guard physicalEdgeHit(for: previous.x) == edgeHit else {
+                resetPhysicalStepState()
                 previousPrimaryPhysicalTouch = current
                 return nil
             }
@@ -74,18 +84,29 @@ public struct GestureRecognizer: Sendable {
             let rightEdge = edgeHit == .right
             let controlsBrightness = settings.features.swapSides ? rightEdge : leftEdge
             let controlsVolume = settings.features.swapSides ? leftEdge : rightEdge
-            let direction: GestureDirection = deltaY > 0 ? .increase : .decrease
-            let magnitude = min(max(abs(deltaY) / 0.12, 0.25), 3.0)
 
+            let recognizedKind: PhysicalStepKind?
             if controlsBrightness && settings.features.brightnessEdgeGesture {
-                return .brightness(direction: direction, magnitude: magnitude)
+                recognizedKind = .brightness
+            } else if controlsVolume && settings.features.volumeEdgeGesture {
+                recognizedKind = .volume
+            } else {
+                resetPhysicalStepState()
+                return nil
             }
 
-            if controlsVolume && settings.features.volumeEdgeGesture {
-                return .volume(direction: direction, magnitude: magnitude)
+            guard let step = physicalStep(deltaY: deltaY, touchID: current.id, edge: edgeHit, timestamp: timestamp) else {
+                return nil
             }
 
-            return nil
+            switch recognizedKind {
+            case .brightness:
+                return .brightness(direction: step, magnitude: 1.0)
+            case .volume:
+                return .volume(direction: step, magnitude: 1.0)
+            case .none:
+                return nil
+            }
         }
     }
 
@@ -107,4 +128,54 @@ public struct GestureRecognizer: Sendable {
     private mutating func updatePreviousPrimaryPhysicalTouch(from touches: [PhysicalTouch]) {
         previousPrimaryPhysicalTouch = touches.first
     }
+
+    private mutating func resetPhysicalStepState() {
+        activePhysicalStep = nil
+    }
+
+    private mutating func resetPhysicalContinuity() {
+        previousPrimaryPhysicalTouch = nil
+        resetPhysicalStepState()
+    }
+
+    private mutating func physicalStep(deltaY: Double, touchID: Int, edge: PhysicalEdgeHit, timestamp: Double) -> GestureDirection? {
+        let stepDistance = settings.gesture.physicalStepDistance
+        if activePhysicalStep?.touchID != touchID || activePhysicalStep?.edge != edge {
+            activePhysicalStep = PhysicalStepState(touchID: touchID, edge: edge, accumulatedY: 0, lastEmitTimestamp: nil)
+        }
+
+        activePhysicalStep?.accumulatedY += deltaY
+        guard let state = activePhysicalStep else { return nil }
+
+        let direction: GestureDirection
+        if state.accumulatedY >= stepDistance {
+            direction = .increase
+        } else if state.accumulatedY <= -stepDistance {
+            direction = .decrease
+        } else {
+            return nil
+        }
+
+        if let lastEmitTimestamp = state.lastEmitTimestamp,
+           timestamp - lastEmitTimestamp < settings.gesture.physicalStepIntervalSeconds {
+            return nil
+        }
+
+        let consumed = direction == .increase ? stepDistance : -stepDistance
+        activePhysicalStep?.accumulatedY -= consumed
+        activePhysicalStep?.lastEmitTimestamp = timestamp
+        return direction
+    }
+}
+
+private struct PhysicalStepState: Sendable {
+    var touchID: Int
+    var edge: PhysicalEdgeHit
+    var accumulatedY: Double
+    var lastEmitTimestamp: Double?
+}
+
+private enum PhysicalStepKind: Sendable {
+    case brightness
+    case volume
 }

@@ -3,11 +3,15 @@ import AppKit
 enum MediaKey {
     case volumeUp
     case volumeDown
+    case brightnessUp
+    case brightnessDown
 
     fileprivate var nxKeyType: Int32 {
         switch self {
         case .volumeUp: return 0
         case .volumeDown: return 1
+        case .brightnessUp: return 2
+        case .brightnessDown: return 3
         }
     }
 }

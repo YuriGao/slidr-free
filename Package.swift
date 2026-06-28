@@ -19,8 +19,7 @@ let package = Package(
                 .linkedFramework("SwiftUI"),
                 .linkedFramework("CoreGraphics"),
                 .linkedFramework("ApplicationServices"),
-                .linkedFramework("ServiceManagement"),
-                .linkedFramework("IOKit")
+                .linkedFramework("ServiceManagement")
             ]
         ),
         .executableTarget(name: "SlidrFreeCoreChecks", dependencies: ["SlidrFreeCore"]),

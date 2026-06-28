@@ -23,4 +23,26 @@ final class MediaKeyEventFactoryTests: XCTestCase {
         XCTAssertEqual(events.map(\.data2), [-1, -1])
         XCTAssertEqual(events.map { $0.cgEvent != nil }, [true, true])
     }
+
+    func testBrightnessUpUsesSystemDefinedAuxControlMediaKeyEvents() throws {
+        let events = try XCTUnwrap(MediaKeyEventFactory.events(for: .brightnessUp))
+
+        XCTAssertEqual(events.count, 2)
+        XCTAssertEqual(events.map(\.type), [.systemDefined, .systemDefined])
+        XCTAssertEqual(events.map(\.subtype.rawValue), [8, 8])
+        XCTAssertEqual(events.map(\.data1), [0x0002_0A00, 0x0002_0B00])
+        XCTAssertEqual(events.map(\.data2), [-1, -1])
+        XCTAssertEqual(events.map { $0.cgEvent != nil }, [true, true])
+    }
+
+    func testBrightnessDownUsesSystemDefinedAuxControlMediaKeyEvents() throws {
+        let events = try XCTUnwrap(MediaKeyEventFactory.events(for: .brightnessDown))
+
+        XCTAssertEqual(events.count, 2)
+        XCTAssertEqual(events.map(\.type), [.systemDefined, .systemDefined])
+        XCTAssertEqual(events.map(\.subtype.rawValue), [8, 8])
+        XCTAssertEqual(events.map(\.data1), [0x0003_0A00, 0x0003_0B00])
+        XCTAssertEqual(events.map(\.data2), [-1, -1])
+        XCTAssertEqual(events.map { $0.cgEvent != nil }, [true, true])
+    }
 }

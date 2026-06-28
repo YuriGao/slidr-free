@@ -72,6 +72,8 @@ private func testDefaultSettingsEnableAllFirstVersionFeaturesIndividually() thro
     try check(settings.features.smartTypingDetection, "Smart typing detection should be enabled by default")
     try check(settings.features.cursorFreeze, "Cursor freeze should be enabled by default")
     try check(!settings.launchAtLogin, "Launch at login should be disabled by default")
+    try checkEqual(settings.gesture.physicalStepDistance, 0.10, accuracy: 0.0001, "Physical step distance should default to 0.10")
+    try checkEqual(settings.gesture.physicalStepIntervalSeconds, 0.08, accuracy: 0.0001, "Physical step interval should default to 0.08s")
 }
 
 private func testValidationClampsGestureSettings() throws {
@@ -79,12 +81,52 @@ private func testValidationClampsGestureSettings() throws {
     settings.gesture.edgeWidthPercent = 0.50
     settings.gesture.sensitivity = -2.0
     settings.gesture.typingCooldownSeconds = 5.0
+    settings.gesture.physicalStepDistance = 2.0
+    settings.gesture.physicalStepIntervalSeconds = -1.0
 
     let validated = settings.validated()
 
     try checkEqual(validated.gesture.edgeWidthPercent, 0.20, accuracy: 0.0001, "Edge width percent should clamp")
     try checkEqual(validated.gesture.sensitivity, 0.10, accuracy: 0.0001, "Sensitivity should clamp")
     try checkEqual(validated.gesture.typingCooldownSeconds, 2.0, accuracy: 0.0001, "Typing cooldown should clamp")
+    try checkEqual(validated.gesture.physicalStepDistance, 0.50, accuracy: 0.0001, "Physical step distance should clamp")
+    try checkEqual(validated.gesture.physicalStepIntervalSeconds, 0.0, accuracy: 0.0001, "Physical step interval should clamp")
+}
+
+private func testSettingsDecodeMigratesMissingPhysicalStepFields() throws {
+    let legacyJSON = """
+    {
+      "isAppEnabled": false,
+      "launchAtLogin": true,
+      "features": {
+        "volumeEdgeGesture": true,
+        "brightnessEdgeGesture": false,
+        "middleClick": true,
+        "fineControl": false,
+        "swapSides": true,
+        "bottomQuarterOnly": true,
+        "smartTypingDetection": false,
+        "cursorFreeze": true
+      },
+      "gesture": {
+        "edgeWidthPercent": 0.12,
+        "sensitivity": 1.5,
+        "normalStep": 2.0,
+        "fineStep": 0.5,
+        "typingCooldownSeconds": 0.7,
+        "continuousWindowSeconds": 0.25
+      }
+    }
+    """.data(using: .utf8)!
+
+    let decoded = try JSONDecoder().decode(AppSettings.self, from: legacyJSON)
+
+    try check(!decoded.isAppEnabled, "Legacy settings should preserve isAppEnabled")
+    try check(decoded.launchAtLogin, "Legacy settings should preserve launchAtLogin")
+    try check(!decoded.features.brightnessEdgeGesture, "Legacy settings should preserve feature toggles")
+    try checkEqual(decoded.gesture.edgeWidthPercent, 0.12, accuracy: 0.0001, "Legacy gesture settings should preserve existing fields")
+    try checkEqual(decoded.gesture.physicalStepDistance, AppSettings.default.gesture.physicalStepDistance, accuracy: 0.0001, "Missing physical step distance should decode to default")
+    try checkEqual(decoded.gesture.physicalStepIntervalSeconds, AppSettings.default.gesture.physicalStepIntervalSeconds, accuracy: 0.0001, "Missing physical step interval should decode to default")
 }
 
 private func testGestureRecognition() throws {
@@ -99,9 +141,9 @@ private func testGestureRecognition() throws {
 
     _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 1, x: 0.05, y: 0.30, pressure: 0.5, state: 4)], timestamp: 10.0))
     try checkEqual(
-        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 1, x: 0.05, y: 0.55, pressure: 0.5, state: 4)], timestamp: 10.1)),
-        .brightness(direction: .increase, magnitude: min(max(abs(0.55 - 0.30) / 0.12, 0.25), 3.0)),
-        "Physical left edge brightness increase"
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 1, x: 0.05, y: 0.41, pressure: 0.5, state: 4)], timestamp: 10.1)),
+        .brightness(direction: .increase, magnitude: 1.0),
+        "Physical left edge brightness increase should emit one step"
     )
 
     try checkEqual(
@@ -166,8 +208,93 @@ private func testGestureRecognition() throws {
     )
     try checkEqual(
         recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 6, x: 0.05, y: 0.11)], timestamp: 51.1)),
-        .brightness(direction: .increase, magnitude: 0.25),
+        nil,
         "Physical touch state should stay fresh during typing cooldown"
+    )
+
+    recognizer = GestureRecognizer(settings: .default)
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 7, x: 0.05, y: 0.20)], timestamp: 60.0))
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 7, x: 0.05, y: 0.25)], timestamp: 60.1)),
+        nil,
+        "Physical movement below step threshold should not emit"
+    )
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 7, x: 0.05, y: 0.31)], timestamp: 60.2)),
+        .brightness(direction: .increase, magnitude: 1.0),
+        "Crossing physical step threshold should emit one brightness step"
+    )
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 7, x: 0.05, y: 0.42)], timestamp: 60.23)),
+        nil,
+        "Physical step interval should suppress immediate repeated steps"
+    )
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 7, x: 0.05, y: 0.53)], timestamp: 60.32)),
+        .brightness(direction: .increase, magnitude: 1.0),
+        "Physical movement after interval should emit another step"
+    )
+
+    recognizer = GestureRecognizer(settings: .default)
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 8, x: 0.05, y: 0.20)], timestamp: 61.0))
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 8, x: 0.30, y: 0.40)], timestamp: 61.1)),
+        nil,
+        "Leaving the physical edge should reset accumulated movement"
+    )
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 8, x: 0.05, y: 0.51)], timestamp: 61.2)),
+        nil,
+        "Re-entering the physical edge should establish a fresh baseline"
+    )
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 8, x: 0.05, y: 0.62)], timestamp: 61.3)),
+        .brightness(direction: .increase, magnitude: 1.0),
+        "Movement after physical edge re-entry baseline should emit"
+    )
+
+    recognizer = GestureRecognizer(settings: .default)
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 13, x: 0.05, y: 0.20)], timestamp: 61.4))
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 13, x: 0.95, y: 0.35)], timestamp: 61.5)),
+        nil,
+        "Direct physical edge change should establish a fresh baseline"
+    )
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 13, x: 0.95, y: 0.23)], timestamp: 61.6)),
+        .volume(direction: .decrease, magnitude: 1.0),
+        "Movement after direct physical edge change baseline should emit"
+    )
+
+    recognizer = GestureRecognizer(settings: bottomQuarterSettings)
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 10, x: 0.05, y: 0.76)], timestamp: 62.0))
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 10, x: 0.05, y: 0.60)], timestamp: 62.1)),
+        nil,
+        "Leaving the bottom quarter should reset accumulated movement"
+    )
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 10, x: 0.05, y: 0.76)], timestamp: 62.2)),
+        nil,
+        "Re-entering the bottom quarter should establish a fresh baseline"
+    )
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 10, x: 0.05, y: 0.87)], timestamp: 62.3)),
+        .brightness(direction: .increase, magnitude: 1.0),
+        "Movement after bottom-quarter re-entry baseline should emit"
+    )
+
+    recognizer = GestureRecognizer(settings: .default)
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 11, x: 0.05, y: 0.20)], timestamp: 63.0))
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 12, x: 0.05, y: 0.35)], timestamp: 63.1)),
+        nil,
+        "Changing physical touch ID should reset accumulated movement"
+    )
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 12, x: 0.05, y: 0.46)], timestamp: 63.2)),
+        .brightness(direction: .increase, magnitude: 1.0),
+        "Movement after physical touch ID baseline should emit"
     )
 
     var disabledSettings = AppSettings.default
@@ -214,6 +341,7 @@ private func testActionDispatcher() throws {
 let checks: [(String, () throws -> Void)] = [
     ("default settings", testDefaultSettingsEnableAllFirstVersionFeaturesIndividually),
     ("gesture validation", testValidationClampsGestureSettings),
+    ("settings migration", testSettingsDecodeMigratesMissingPhysicalStepFields),
     ("gesture recognition", testGestureRecognition),
     ("action dispatch", testActionDispatcher),
     ("permission snapshot", testPermissionSnapshotCanListenRequiresBothPermissions)
