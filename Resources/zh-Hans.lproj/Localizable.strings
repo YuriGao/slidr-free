@@ -2,7 +2,6 @@
 "enable_app" = "启用应用";
 "disable_app" = "禁用应用";
 "settings" = "设置…";
-"debug" = "调试…";
 "quit" = "退出";
 
 /* Window */

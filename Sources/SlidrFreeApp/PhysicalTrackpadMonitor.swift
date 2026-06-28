@@ -60,7 +60,6 @@ final class PhysicalTrackpadMonitor {
     private static var monitorsByDevice: [UInt: WeakMonitor] = [:]
 
     private let handler: (NormalizedInputEvent) -> Void
-    private weak var debugState: DebugState?
     private let lock = NSLock()
 
     private var libraryHandle: UnsafeMutableRawPointer?
@@ -80,8 +79,7 @@ final class PhysicalTrackpadMonitor {
         lock.withLock { running }
     }
 
-    init(debugState: DebugState, handler: @escaping (NormalizedInputEvent) -> Void) {
-        self.debugState = debugState
+    init(handler: @escaping (NormalizedInputEvent) -> Void) {
         self.handler = handler
     }
 
@@ -120,7 +118,6 @@ final class PhysicalTrackpadMonitor {
         lock.withLock {
             guard device == preparedStart.device, generation == preparedStart.generation else { return }
             running = true
-            updateDebug(multitouch: "Running", device: "Physical trackpad monitor")
         }
     }
 
@@ -135,7 +132,6 @@ final class PhysicalTrackpadMonitor {
 
             device = nil
             deviceStop = nil
-            updateDebug(multitouch: "Stopped", device: "Physical trackpad unavailable")
 
             return deviceToStop
         }
@@ -230,10 +226,8 @@ final class PhysicalTrackpadMonitor {
             )
         }
 
-        DispatchQueue.main.async { [weak self, handler, weak debugState] in
+        DispatchQueue.main.async { [weak self, handler] in
             guard self?.isCurrentFrameGeneration(frameGeneration) == true else { return }
-            debugState?.multitouchStatus = "Receiving frames"
-            debugState?.deviceStatus = "Physical trackpad"
             handler(.physicalTouchFrame(touches: physicalTouches, timestamp: timestamp))
         }
     }
@@ -243,24 +237,12 @@ final class PhysicalTrackpadMonitor {
     }
 
     private func dropFrame(reason: String) {
-        DispatchQueue.main.async { [weak self, weak debugState] in
-            guard self?.isRunning == true else { return }
-            debugState?.log("Multitouch: dropped frame (\(reason))")
-        }
     }
 
     private func failLocked(_ reason: String) {
         running = false
         generation &+= 1
         device = nil
-        updateDebug(multitouch: "Failed: \(reason)", device: "Physical trackpad unavailable")
-    }
-
-    private func updateDebug(multitouch: String, device: String) {
-        DispatchQueue.main.async { [weak debugState] in
-            debugState?.setMultitouchStatus(multitouch, deviceStatus: device)
-            debugState?.log("Multitouch: \(multitouch)")
-        }
     }
 
     private func dlerrorString() -> String {
