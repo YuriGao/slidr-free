@@ -162,9 +162,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func testMiddleClick() {
-        let point = NSEvent.mouseLocation
-        debugState.log("Test: middle click at \(point)")
-        let result = systemControl.middleClick(x: Double(point.x), y: Double(point.y))
+        let cocoaPoint = NSEvent.mouseLocation
+        let screenHeight = NSScreen.main?.frame.height ?? 1080
+        let cgPoint = CGPoint(x: cocoaPoint.x, y: screenHeight - cocoaPoint.y)
+        debugState.log("Test: middle click at cocoa=\(cocoaPoint) cg=\(cgPoint)")
+        let result = systemControl.middleClick(x: Double(cgPoint.x), y: Double(cgPoint.y))
         debugState.log("Test: middle click result -> \(result)")
     }
 }
