@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var cancellables = Set<AnyCancellable>()
 
     private let systemControl = SystemControl()
+    private let cursorLock = TrackpadCursorLock()
     private var inputEventTap: InputEventTap?
     private var physicalTrackpadMonitor: PhysicalTrackpadMonitor?
     private var gestureRecognizer = GestureRecognizer(settings: .default.validated())
@@ -55,7 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         physicalTrackpadMonitor?.stop()
         inputEventTap?.stop()
-        CGAssociateMouseAndMouseCursorPosition(1)
+        cursorLock.endLock()
     }
 
     // MARK: - Event Pipeline
@@ -83,7 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             debugState.monitorStatus = settings.isAppEnabled ? "Stopped (permissions)" : "Stopped (disabled)"
             physicalTrackpadMonitor?.stop()
             inputEventTap?.stop()
-            CGAssociateMouseAndMouseCursorPosition(1)
+            cursorLock.endLock()
         }
     }
 
@@ -96,25 +97,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func updateCursorAssociation(for event: NormalizedInputEvent) {
-        guard settingsStore.settings.isAppEnabled else {
-            CGAssociateMouseAndMouseCursorPosition(1)
-            return
-        }
-
-        if case .physicalTouchFrame(let touches, _) = event {
-            if let touch = touches.first {
-                let edgeWidth = settingsStore.settings.gesture.edgeWidthPercent
-                let isInEdge = touch.x <= edgeWidth || touch.x >= 1 - edgeWidth
-                CGAssociateMouseAndMouseCursorPosition(isInEdge ? 0 : 1)
-            } else {
-                CGAssociateMouseAndMouseCursorPosition(1)
-            }
-        }
-    }
-
     private func handleInputEvent(_ event: NormalizedInputEvent) {
-        updateCursorAssociation(for: event)
+        updateCursorLock(for: event)
         updateDebugInput(event)
         guard let recognized = gestureRecognizer.process(event) else { return }
         debugState.lastGesture = String(describing: recognized)
@@ -122,6 +106,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let actions = ActionDispatcher(settings: settingsStore.settings).actions(for: recognized)
         for action in actions {
             execute(action: action)
+        }
+    }
+
+    private func updateCursorLock(for event: NormalizedInputEvent) {
+        guard settingsStore.settings.isAppEnabled else {
+            cursorLock.endLock()
+            return
+        }
+
+        if case .physicalTouchFrame(let touches, _) = event {
+            if let touch = touches.first {
+                let edgeWidth = settingsStore.settings.gesture.edgeWidthPercent
+                let isInEdge = touch.x <= edgeWidth || touch.x >= 1 - edgeWidth
+                if isInEdge {
+                    cursorLock.beginLock()
+                } else {
+                    cursorLock.endLock()
+                }
+            } else {
+                cursorLock.endLock()
+            }
         }
     }
 
