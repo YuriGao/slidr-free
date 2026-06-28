@@ -115,6 +115,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .middleClick(let x, let y):
             result = systemControl.middleClick(x: x, y: y)
         }
+        if case .success = result, case .adjustVolume = action {
+            NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
+        }
+        if case .success = result, case .adjustBrightness = action {
+            NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
+        }
         debugState.lastAction = String(describing: action)
         debugState.lastActionResult = String(describing: result)
         debugState.log("Action: \(action) -> \(result)")
