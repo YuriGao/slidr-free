@@ -16,6 +16,7 @@ cp ".build/release/SlidrFreeApp" "release/Slidr-Free.app/Contents/MacOS/SlidrFre
 
 echo "==> Copying icon..."
 cp "AppIcon.icns" "release/Slidr-Free.app/Contents/Resources/AppIcon.icns"
+cp "Resources/MenuBarIcon.png" "release/Slidr-Free.app/Contents/Resources/MenuBarIcon.png"
 
 echo "==> Copying localizations..."
 cp -R Resources/en.lproj "release/Slidr-Free.app/Contents/Resources/"

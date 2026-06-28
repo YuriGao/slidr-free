@@ -13,9 +13,14 @@ final class MenuBarController: NSObject {
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         super.init()
 
-        statusItem.button?.image = NSImage(named: "AppIcon")
-        statusItem.button?.image?.size = NSSize(width: 18, height: 18)
-        statusItem.button?.image?.isTemplate = true
+        if let url = Bundle.main.url(forResource: "MenuBarIcon", withExtension: "png"),
+           let icon = NSImage(contentsOf: url) {
+            icon.size = NSSize(width: 18, height: 18)
+            icon.isTemplate = true
+            statusItem.button?.image = icon
+        } else {
+            statusItem.button?.title = "SF"
+        }
         refresh()
     }
 
