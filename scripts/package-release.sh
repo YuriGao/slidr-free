@@ -36,9 +36,9 @@ cat > "release/Slidr-Free.app/Contents/Info.plist" <<EOF
     <key>CFBundleName</key>
     <string>Slidr Free</string>
     <key>CFBundleVersion</key>
-    <string>0.1.0</string>
+    <string>0.2.0</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>0.2.0</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleIconFile</key>
