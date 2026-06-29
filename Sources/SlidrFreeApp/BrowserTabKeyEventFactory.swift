@@ -4,7 +4,8 @@ import SlidrFreeCore
 enum BrowserTabKeyEventFactory {
     private static let supportedBrowserBundleIdentifiers: Set<String> = [
         "com.apple.Safari",
-        "com.google.Chrome"
+        "com.google.Chrome",
+        "com.microsoft.edgemac"
     ]
 
     private static let rightBracketKeyCode: CGKeyCode = 30

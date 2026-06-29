@@ -42,7 +42,7 @@ final class SystemControl: SystemControlling {
     func switchBrowserTab(direction: BrowserTabDirection) -> SystemActionResult {
         let bundleIdentifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         guard BrowserTabKeyEventFactory.isSupportedBrowser(bundleIdentifier: bundleIdentifier) else {
-            return .unsupported("Frontmost app is not Safari or Chrome")
+            return .unsupported("Frontmost app is not Safari, Chrome, or Edge")
         }
 
         guard let events = BrowserTabKeyEventFactory.events(for: direction) else {

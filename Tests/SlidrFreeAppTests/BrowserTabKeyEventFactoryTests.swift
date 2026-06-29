@@ -3,9 +3,10 @@ import SlidrFreeCore
 @testable import SlidrFreeApp
 
 final class BrowserTabKeyEventFactoryTests: XCTestCase {
-    func testAllowsSafariAndChromeBundleIdentifiers() {
+    func testAllowsSafariChromeAndEdgeBundleIdentifiers() {
         XCTAssertTrue(BrowserTabKeyEventFactory.isSupportedBrowser(bundleIdentifier: "com.apple.Safari"))
         XCTAssertTrue(BrowserTabKeyEventFactory.isSupportedBrowser(bundleIdentifier: "com.google.Chrome"))
+        XCTAssertTrue(BrowserTabKeyEventFactory.isSupportedBrowser(bundleIdentifier: "com.microsoft.edgemac"))
         XCTAssertFalse(BrowserTabKeyEventFactory.isSupportedBrowser(bundleIdentifier: "com.apple.finder"))
         XCTAssertFalse(BrowserTabKeyEventFactory.isSupportedBrowser(bundleIdentifier: nil))
     }
@@ -15,7 +16,7 @@ final class BrowserTabKeyEventFactoryTests: XCTestCase {
 
         XCTAssertEqual(events.count, 2)
         XCTAssertEqual(events.map(\.type), [.keyDown, .keyUp])
-        XCTAssertEqual(events.map(\.getIntegerValueField(.keyboardEventKeycode)), [30, 30])
+        XCTAssertEqual(events.map { $0.getIntegerValueField(.keyboardEventKeycode) }, [30, 30])
         XCTAssertTrue(events.allSatisfy { $0.flags.contains(.maskCommand) })
         XCTAssertTrue(events.allSatisfy { $0.flags.contains(.maskShift) })
     }
@@ -25,7 +26,7 @@ final class BrowserTabKeyEventFactoryTests: XCTestCase {
 
         XCTAssertEqual(events.count, 2)
         XCTAssertEqual(events.map(\.type), [.keyDown, .keyUp])
-        XCTAssertEqual(events.map(\.getIntegerValueField(.keyboardEventKeycode)), [33, 33])
+        XCTAssertEqual(events.map { $0.getIntegerValueField(.keyboardEventKeycode) }, [33, 33])
         XCTAssertTrue(events.allSatisfy { $0.flags.contains(.maskCommand) })
         XCTAssertTrue(events.allSatisfy { $0.flags.contains(.maskShift) })
     }
