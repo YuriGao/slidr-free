@@ -24,6 +24,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                 Toggle(NSLocalizedString("volume_edge_gesture", comment: ""), isOn: binding(\.features.volumeEdgeGesture))
                 Toggle(NSLocalizedString("brightness_edge_gesture", comment: ""), isOn: binding(\.features.brightnessEdgeGesture))
+                Toggle(NSLocalizedString("browser_tab_edge_gesture", comment: ""), isOn: binding(\.features.browserTabEdgeGesture))
                 Toggle(NSLocalizedString("swap_sides", comment: ""), isOn: binding(\.features.swapSides))
                 labeledSlider(NSLocalizedString("edge_width", comment: ""), value: binding(\.gesture.edgeWidthPercent), range: 0.04...0.20, isPercent: true)
             }

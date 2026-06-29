@@ -3,6 +3,7 @@ import Foundation
 public enum SystemAction: Equatable, Sendable {
     case adjustBrightness(delta: Double)
     case adjustVolume(delta: Double)
+    case switchBrowserTab(direction: BrowserTabDirection)
 }
 
 public struct ActionDispatcher: Sendable {
@@ -18,6 +19,8 @@ public struct ActionDispatcher: Sendable {
             return [.adjustBrightness(delta: signedDelta(direction: direction, magnitude: magnitude))]
         case .volume(let direction, let magnitude):
             return [.adjustVolume(delta: signedDelta(direction: direction, magnitude: magnitude))]
+        case .browserTab(let direction):
+            return [.switchBrowserTab(direction: direction)]
         }
     }
 

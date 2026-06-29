@@ -204,6 +204,77 @@ private func testGestureRecognition() throws {
 
 }
 
+private func testTopEdgeBrowserTabGestureRecognition() throws {
+    var recognizer = GestureRecognizer(settings: .default)
+
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 21, x: 0.30, y: 0.95)], timestamp: 70.0))
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 21, x: 0.37, y: 0.95)], timestamp: 70.21)),
+        .browserTab(direction: .next),
+        "Top edge rightward movement should switch to next tab"
+    )
+
+    recognizer = GestureRecognizer(settings: .default)
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 22, x: 0.70, y: 0.95)], timestamp: 71.0))
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 22, x: 0.62, y: 0.95)], timestamp: 71.21)),
+        .browserTab(direction: .previous),
+        "Top edge leftward movement should switch to previous tab"
+    )
+
+    recognizer = GestureRecognizer(settings: .default)
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 23, x: 0.20, y: 0.95)], timestamp: 72.0))
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 23, x: 0.27, y: 0.95)], timestamp: 72.21)),
+        .browserTab(direction: .next),
+        "First sustained rightward top-edge step should switch to next tab"
+    )
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 23, x: 0.34, y: 0.95)], timestamp: 72.42)),
+        .browserTab(direction: .next),
+        "Second sustained rightward top-edge step should switch to next tab"
+    )
+
+    recognizer = GestureRecognizer(settings: .default)
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 24, x: 0.50, y: 0.95)], timestamp: 73.0))
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 24, x: 0.53, y: 0.95)], timestamp: 73.21)),
+        nil,
+        "Top-edge movement below the step threshold should not emit"
+    )
+
+    recognizer = GestureRecognizer(settings: .default)
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 25, x: 0.50, y: 0.95)], timestamp: 74.0))
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 25, x: 0.57, y: 0.88)], timestamp: 74.21)),
+        nil,
+        "Vertically dominant movement should not switch tabs"
+    )
+
+    recognizer = GestureRecognizer(settings: .default)
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 26, x: 0.40, y: 0.95)], timestamp: 75.0))
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 26, x: 0.46, y: 0.70)], timestamp: 75.21)),
+        nil,
+        "Leaving the top edge should reset top-edge tab movement"
+    )
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 26, x: 0.53, y: 0.95)], timestamp: 75.42)),
+        nil,
+        "Re-entering the top edge should establish a fresh baseline"
+    )
+
+    var disabledSettings = AppSettings.default
+    disabledSettings.features.browserTabEdgeGesture = false
+    recognizer = GestureRecognizer(settings: disabledSettings)
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 27, x: 0.30, y: 0.95)], timestamp: 76.0))
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 27, x: 0.38, y: 0.95)], timestamp: 76.21)),
+        nil,
+        "Disabled browser tab edge gesture should not emit"
+    )
+}
+
 private func testActionDispatcher() throws {
     let dispatcher = ActionDispatcher(settings: .default)
     try checkEqual(
@@ -216,6 +287,16 @@ private func testActionDispatcher() throws {
         [.adjustVolume(delta: -1.0)],
         "Volume step should dispatch delta -1.0"
     )
+    try checkEqual(
+        dispatcher.actions(for: .browserTab(direction: .next)),
+        [.switchBrowserTab(direction: .next)],
+        "Next browser tab gesture should dispatch a tab switch action"
+    )
+    try checkEqual(
+        dispatcher.actions(for: .browserTab(direction: .previous)),
+        [.switchBrowserTab(direction: .previous)],
+        "Previous browser tab gesture should dispatch a tab switch action"
+    )
 }
 
 let checks: [(String, () throws -> Void)] = [
@@ -223,6 +304,7 @@ let checks: [(String, () throws -> Void)] = [
     ("gesture validation", testValidationClampsGestureSettings),
     ("settings migration", testSettingsDecodeMigratesMissingPhysicalStepFields),
     ("gesture recognition", testGestureRecognition),
+    ("top edge browser tab gesture", testTopEdgeBrowserTabGestureRecognition),
     ("action dispatch", testActionDispatcher),
     ("permission snapshot", testPermissionSnapshotCanListenRequiresAccessibility)
 ]

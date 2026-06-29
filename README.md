@@ -15,6 +15,7 @@ This project is independent and non-affiliated with any similarly named commerci
 
 - **Physical trackpad volume edge gesture** — Slide along the physical trackpad edge to adjust volume.
 - **Physical trackpad brightness edge gesture** — Slide along the physical trackpad edge to adjust brightness.
+- **Physical trackpad top-edge browser tab gesture** — Slide along the physical trackpad top edge to switch Safari and Chrome tabs, with haptic feedback for each switch.
 - **Middle click** — Trigger middle click via gesture or keyboard shortcut.
 - **Side swapping option** — Swap left and right edge gesture zones.
 - **Smart typing detection** — Automatically suppress gestures while typing to avoid interference.
@@ -79,6 +80,7 @@ The packaging script produces `release/Slidr-Free.app` containing a self-contain
 
 - **External display brightness** — v0.1.0 controls brightness on the built-in display only. External display brightness support is planned for a future release.
 - **Private MultitouchSupport API** — Physical trackpad edge gestures depend on an undocumented Apple framework and may stop working on some devices or macOS releases. Check **Debug…** for diagnostics.
+- **Browser tab switching scope** — Top-edge tab switching only runs when Safari or Google Chrome is the frontmost app.
 
 ## Support
 

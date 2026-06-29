@@ -20,6 +20,7 @@
 "physical_trackpad_experimental_warning" = "实验性功能：物理触控板边缘手势使用 Apple 私有 MultitouchSupport API。若不可用，Slidr-Free 会在调试面板记录失败原因，且不会回退为屏幕边缘光标手势。";
 "volume_edge_gesture" = "物理触控板音量边缘手势";
 "brightness_edge_gesture" = "物理触控板亮度边缘手势";
+"browser_tab_edge_gesture" = "上边缘切换浏览器标签页";
 "swap_sides" = "左右互换";
 "edge_width" = "边缘宽度";
 

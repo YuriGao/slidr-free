@@ -8,6 +8,7 @@ echo "==> Building release binary..."
 swift build -c release
 
 echo "==> Creating app bundle structure..."
+rm -rf "release/Slidr-Free.app"
 mkdir -p "release/Slidr-Free.app/Contents/MacOS"
 mkdir -p "release/Slidr-Free.app/Contents/Resources"
 
@@ -56,11 +57,13 @@ cat > "release/Slidr-Free.app/Contents/Info.plist" <<EOF
 EOF
 
 echo "==> Ad-hoc signing app bundle..."
+xattr -cr "release/Slidr-Free.app"
 codesign --force --deep --sign - "release/Slidr-Free.app"
 codesign --verify --verbose=2 "release/Slidr-Free.app"
 
 echo "==> Packaging zip..."
 cd release
+rm -f "Slidr-Free.app.zip"
 zip -r "Slidr-Free.app.zip" "Slidr-Free.app"
 cd "$PROJECT_ROOT"
 

@@ -20,6 +20,7 @@
 "physical_trackpad_experimental_warning" = "Experimental: physical trackpad edge gestures use Apple's private MultitouchSupport API. If unavailable, Slidr-Free records the failure in Debug and does not fall back to screen-edge cursor gestures.";
 "volume_edge_gesture" = "Physical trackpad volume edge gesture";
 "brightness_edge_gesture" = "Physical trackpad brightness edge gesture";
+"browser_tab_edge_gesture" = "Top edge browser tab switching";
 "swap_sides" = "Swap sides";
 "edge_width" = "Edge width";
 

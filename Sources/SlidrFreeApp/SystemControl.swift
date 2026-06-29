@@ -7,6 +7,7 @@ import SlidrFreeCore
 public protocol SystemControlling: AnyObject {
     func adjustVolume(delta: Double) -> SystemActionResult
     func adjustBrightness(delta: Double) -> SystemActionResult
+    func switchBrowserTab(direction: BrowserTabDirection) -> SystemActionResult
 }
 
 public enum SystemActionResult: Equatable {
@@ -34,6 +35,24 @@ final class SystemControl: SystemControlling {
             let message = "Failed to create media key events"
             logWarning(message)
             return .failed(message)
+        }
+        return .success
+    }
+
+    func switchBrowserTab(direction: BrowserTabDirection) -> SystemActionResult {
+        let bundleIdentifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        guard BrowserTabKeyEventFactory.isSupportedBrowser(bundleIdentifier: bundleIdentifier) else {
+            return .unsupported("Frontmost app is not Safari or Chrome")
+        }
+
+        guard let events = BrowserTabKeyEventFactory.events(for: direction) else {
+            let message = "Failed to create browser tab key events"
+            logWarning(message)
+            return .failed(message)
+        }
+
+        for event in events {
+            event.post(tap: .cghidEventTap)
         }
         return .success
     }
