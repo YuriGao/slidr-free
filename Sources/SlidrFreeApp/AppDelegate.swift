@@ -82,11 +82,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             result = systemControl.adjustVolume(delta: delta)
         case .adjustBrightness(let delta):
             result = systemControl.adjustBrightness(delta: delta)
+        case .switchBrowserTab(let direction):
+            result = systemControl.switchBrowserTab(direction: direction)
         }
         if case .success = result, case .adjustVolume = action {
             NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
         }
         if case .success = result, case .adjustBrightness = action {
+            NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
+        }
+        if case .success = result, case .switchBrowserTab = action {
             NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
         }
     }

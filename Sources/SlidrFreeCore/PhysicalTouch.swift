@@ -19,4 +19,5 @@ public struct PhysicalTouch: Equatable, Sendable {
 public enum PhysicalEdgeHit: Equatable, Sendable {
     case left
     case right
+    case top
 }
