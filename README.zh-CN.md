@@ -80,6 +80,12 @@ bash scripts/package-release.sh
 - **外接显示器亮度** — v0.1.0 仅控制内置显示器亮度。外接显示器亮度支持计划在未来版本中实现。
 - **私有 MultitouchSupport API** — 物理触控板边缘手势依赖未公开的 Apple 框架，可能在部分设备或 macOS 版本上停止工作。请查看 **调试…** 获取诊断信息。
 
+## 支持项目
+
+Slidr Free 是开源免费项目。如果它对你有帮助，欢迎通过支付宝支持项目维护：
+
+<img src="docs/assets/alipay-qr.jpg" alt="支付宝收款二维码" width="220">
+
 ## 许可证
 
 本项目基于 MIT 许可证开源。详见 [LICENSE](LICENSE) 文件。

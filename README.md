@@ -80,6 +80,12 @@ The packaging script produces `release/Slidr-Free.app` containing a self-contain
 - **External display brightness** — v0.1.0 controls brightness on the built-in display only. External display brightness support is planned for a future release.
 - **Private MultitouchSupport API** — Physical trackpad edge gestures depend on an undocumented Apple framework and may stop working on some devices or macOS releases. Check **Debug…** for diagnostics.
 
+## Support
+
+Slidr Free is open source and free to use. If it helps you, you can support the project via Alipay:
+
+<img src="docs/assets/alipay-qr.jpg" alt="Alipay donation QR code" width="220">
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
