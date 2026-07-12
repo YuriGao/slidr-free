@@ -176,7 +176,7 @@ final class MouseButtonEventTapTests: XCTestCase {
 
     func testStopCompletionCanReleaseLastReferenceWithoutDeadlock() {
         var tap: MouseButtonEventTap? = makeUnstartedTap(generation: 20)
-        weak let releasedTap = tap
+        let releasedTap = WeakReference(tap)
         let stopped = expectation(description: "stop completion")
 
         tap?.stop {
@@ -185,7 +185,7 @@ final class MouseButtonEventTapTests: XCTestCase {
         }
 
         wait(for: [stopped], timeout: 1)
-        XCTAssertNil(releasedTap)
+        XCTAssertNil(releasedTap.value)
     }
 
     private func makeUnstartedTap(generation: UInt64) -> MouseButtonEventTap {
@@ -196,5 +196,13 @@ final class MouseButtonEventTapTests: XCTestCase {
             ownMarker: MiddleClickEventIdentity.marker
         )
         return MouseButtonEventTap(reducer: reducer)
+    }
+}
+
+private final class WeakReference<Object: AnyObject> {
+    weak var value: Object?
+
+    init(_ value: Object?) {
+        self.value = value
     }
 }
