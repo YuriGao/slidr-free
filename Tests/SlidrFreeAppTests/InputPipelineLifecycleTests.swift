@@ -84,6 +84,21 @@ final class InputPipelineLifecycleTests: XCTestCase {
         XCTAssertEqual(harness.factory.instances.map(\.generation), [1, 2])
     }
 
+    func testWakeIsIgnoredWhileAwakeAndCoalescedWhilePending() {
+        let harness = Harness()
+        harness.coordinator.update(settings: enabledSettings(), permission: .granted)
+
+        harness.coordinator.didWake()
+        XCTAssertTrue(harness.scheduledDelays.isEmpty)
+
+        harness.coordinator.willSleep()
+        harness.coordinator.didWake()
+        harness.coordinator.didWake()
+        XCTAssertEqual(harness.scheduledDelays, [2.0])
+        harness.runScheduled()
+        XCTAssertEqual(harness.factory.instances.map(\.generation), [1, 2])
+    }
+
     func testStaleWakeTimerCannotRestartAfterAnotherWillSleep() {
         let harness = Harness()
         harness.coordinator.update(settings: enabledSettings(), permission: .granted)
@@ -178,6 +193,42 @@ final class InputPipelineLifecycleTests: XCTestCase {
         oldFrame()
         XCTAssertEqual(status.generation, 2)
         XCTAssertNil(status.lastFrameReceivedAt)
+    }
+
+    func testQueuedOldMonitorStatusCannotOverwriteFreshGeneration() {
+        var queued: [() -> Void] = []
+        let status = InputPipelineStatus(deliverOnMain: { queued.append($0) })
+        status.update(generation: 1)
+        queued.removeFirst()()
+        status.update(frameworkAvailable: true, deviceAvailable: true, touchMonitor: .running, sourceGeneration: 1)
+        queued.removeFirst()()
+        status.update(
+            frameworkAvailable: false,
+            deviceAvailable: false,
+            touchMonitor: .unavailable,
+            failure: "old failure",
+            sourceGeneration: 1
+        )
+        status.update(generation: 2)
+        let oldMonitorStatus = queued.removeFirst()
+        queued.removeFirst()()
+        oldMonitorStatus()
+
+        XCTAssertEqual(status.generation, 2)
+        XCTAssertNil(status.frameworkAvailable)
+        XCTAssertNil(status.deviceAvailable)
+        XCTAssertEqual(status.touchMonitor, .stopped)
+        XCTAssertNil(status.lastFailureReason)
+
+        status.update(frameworkAvailable: true, deviceAvailable: true, touchMonitor: .running, sourceGeneration: 2)
+        queued.removeFirst()()
+        XCTAssertEqual(status.frameworkAvailable, true)
+        XCTAssertEqual(status.deviceAvailable, true)
+        XCTAssertEqual(status.touchMonitor, .running)
+
+        status.update(touchMonitor: .stopped)
+        queued.removeFirst()()
+        XCTAssertEqual(status.touchMonitor, .stopped)
     }
 }
 

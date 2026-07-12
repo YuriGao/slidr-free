@@ -38,19 +38,29 @@ final class InputPipelineStatus: ObservableObject {
         generation: UInt64? = nil,
         failure: String? = nil,
         frameReceivedAt: Double? = nil,
-        frameGeneration: UInt64? = nil
+        frameGeneration: UInt64? = nil,
+        sourceGeneration: UInt64? = nil
     ) {
         let apply = { [weak self] in
             guard let self else { return }
-            if let frameworkAvailable { self.frameworkAvailable = frameworkAvailable }
-            if let deviceAvailable { self.deviceAvailable = deviceAvailable }
-            if let touchMonitor { self.touchMonitor = touchMonitor }
-            if let eventTap { self.eventTap = eventTap }
             if let generation {
-                if generation != self.generation { self.lastFrameReceivedAt = nil }
+                if generation != self.generation {
+                    self.frameworkAvailable = nil
+                    self.deviceAvailable = nil
+                    self.touchMonitor = .stopped
+                    self.lastFailureReason = nil
+                    self.lastFrameReceivedAt = nil
+                }
                 self.generation = generation
             }
-            if let failure { self.lastFailureReason = String(failure.prefix(160)) }
+            let acceptsSource = sourceGeneration.map { $0 == self.generation } ?? true
+            if acceptsSource {
+                if let frameworkAvailable { self.frameworkAvailable = frameworkAvailable }
+                if let deviceAvailable { self.deviceAvailable = deviceAvailable }
+                if let touchMonitor { self.touchMonitor = touchMonitor }
+                if let failure { self.lastFailureReason = String(failure.prefix(160)) }
+            }
+            if let eventTap { self.eventTap = eventTap }
             if let frameReceivedAt,
                let frameGeneration,
                frameGeneration == self.generation {
@@ -116,6 +126,8 @@ final class InputPipelineCoordinator {
     private var restartRequested = false
     private var stopCompletions: [() -> Void] = []
     private var lifecycleEpoch: UInt64 = 0
+    private var nextWakeToken: UInt64 = 0
+    private var pendingWakeToken: UInt64?
 
     var activeGeneration: UInt64? { withLock { pipeline?.generation } }
 
@@ -162,6 +174,7 @@ final class InputPipelineCoordinator {
     func willSleep() {
         withLock {
             lifecycleEpoch &+= 1
+            pendingWakeToken = nil
             sleeping = true
             stopActive(completion: {})
         }
@@ -169,13 +182,18 @@ final class InputPipelineCoordinator {
 
     func didWake() {
         withLock {
-            guard !terminated else { return }
+            guard !terminated, sleeping, pendingWakeToken == nil else { return }
             let wakeEpoch = lifecycleEpoch
+            nextWakeToken &+= 1
+            let wakeToken = nextWakeToken
+            pendingWakeToken = wakeToken
             schedule(2.0) { [weak self] in
                 self?.withLock {
                     guard let self,
                           !self.terminated,
-                          self.lifecycleEpoch == wakeEpoch else { return }
+                          self.lifecycleEpoch == wakeEpoch,
+                          self.pendingWakeToken == wakeToken else { return }
+                    self.pendingWakeToken = nil
                     self.sleeping = false
                     self.restartIfEligible()
                 }
@@ -186,6 +204,7 @@ final class InputPipelineCoordinator {
     func terminate(completion: @escaping () -> Void) {
         withLock {
             lifecycleEpoch &+= 1
+            pendingWakeToken = nil
             terminated = true
             stopActive(completion: completion)
         }
@@ -490,7 +509,13 @@ final class ProductionInputPipeline: InputPipelineInstance {
     }
 
     private func handleMonitorStatus(_ runtime: PhysicalTrackpadMonitorStatus) {
-        status.update(frameworkAvailable: runtime.frameworkAvailable, deviceAvailable: runtime.deviceAvailable, touchMonitor: runtime.state, failure: runtime.failure)
+        status.update(
+            frameworkAvailable: runtime.frameworkAvailable,
+            deviceAvailable: runtime.deviceAvailable,
+            touchMonitor: runtime.state,
+            failure: runtime.failure,
+            sourceGeneration: generation
+        )
     }
 
     private func withLock<Result>(_ body: () -> Result) -> Result {
