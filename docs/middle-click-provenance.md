@@ -10,6 +10,8 @@ This record documents the engineering controls used for Slidr Free's middle-clic
 - The implementation is an independent behavior-level reimplementation. MiddleClick is not a source or binary dependency of Slidr Free.
 - If GPL source, resources, or build artifacts enter the deliverable, the MIT publication flow must stop until the licensing decision is reassessed.
 
+The configurable 2–4-finger extension is specified by `docs/superpowers/specs/2026-07-12-configurable-middle-click-finger-count-design.md` (design commit `5189a4b`). It supersedes only the original fixed-three-finger product scope; the original concurrency, fail-open, lifecycle, and licensing controls remain in force.
+
 ## Permitted implementation inputs
 
 Implementers were limited to:
@@ -19,7 +21,11 @@ Implementers were limited to:
 3. Apple platform documentation.
 4. Existing Slidr Free code and tests.
 
+For the configurable-count extension, public behavior inputs were limited to the upstream public README's “Number of Fingers” section, the public 3.2.0 release note, and the public three-finger-drag guidance. Those materials establish a single exact-count preference, the two-finger conflict warning, and four fingers as a documented way to avoid three-finger-drag conflicts. Slidr Free deliberately narrows the offered range to 2–4 fingers and independently defaults it to 4 for this product.
+
 Implementation agents received the approved specification and the Slidr Free repository. They did not receive a MiddleClick checkout or upstream source-analysis context.
+
+The public-behavior reviewer for the configurable extension inspected only those public documentation pages. No MiddleClick source, resources, project files, or build artifacts were opened, downloaded, or supplied to implementation work.
 
 ## Prohibited implementation inputs
 
@@ -42,6 +48,7 @@ Implementation was split into bounded workstreams:
 - atomic session bridge and pure mouse reducer;
 - Event Tap, emitter, and middle-button system action;
 - lifecycle, Settings integration, and diagnostics.
+- configurable-count settings migration, recognition, lifecycle propagation, UI, and bilingual documentation.
 
 Each workstream was reviewed by a separate review-only role before the next workstream proceeded. Those reviews checked specification compliance, ordinary-input fail-open behavior, concurrency/lifecycle safety, test coverage, and the no-source-reuse constraint. Critical and Important findings were fixed and re-reviewed before later work began. A final whole-branch provenance/copying review remains a required pull-request and release gate.
 

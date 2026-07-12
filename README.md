@@ -2,7 +2,7 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Slidr Free is an open-source macOS menu bar utility for physical trackpad edge gestures and an optional three-finger middle-click beta.
+Slidr Free is an open-source macOS menu bar utility for physical trackpad edge gestures and an optional configurable middle-click beta.
 
 This project is independent and non-affiliated with any similarly named commercial products or vendors.
 
@@ -16,17 +16,17 @@ This project is independent and non-affiliated with any similarly named commerci
 - **Left and right edge gestures** — Slide vertically along the physical trackpad left or right edge to adjust brightness and volume. By default, the left edge controls brightness and the right edge controls volume.
 - **Side swapping option** — Swap the left and right edge actions in Settings.
 - **Top-edge browser tab gesture** — Slide horizontally along the physical trackpad top edge to switch Safari, Google Chrome, and Microsoft Edge tabs, with haptic feedback for each switch.
-- **Three-finger middle click (beta)** — Use exactly three fingers to produce a middle click by Tap or physical Click.
+- **Configurable middle click (beta)** — Use exactly 2, 3, or 4 fingers to produce a middle click by Tap or physical Click. The default is 4.
 
-## Three-finger middle-click beta
+## Configurable middle-click beta
 
-Middle click is **disabled by default**. Enable it from the menu bar item under **Settings… → Middle Click**. The gesture is fixed to exactly three fingers; finger count and movement/duration thresholds are not configurable in this beta.
+Middle click is **disabled by default**. Enable it from the menu bar item under **Settings… → Middle Click**, then select 2, 3, or 4 fingers. New and migrated settings default to exactly 4 fingers. Tap and physical Click share this selection; movement and duration thresholds remain fixed in this beta.
 
-- **Tap** emits one middle-button Down/Up pair after a qualifying three-finger placement is released. The separate **Enable three-finger Tap** preference is on by default, but it only takes effect while the main middle-click feature is enabled.
-- **Physical Click** converts the matching left- or right-button Down/Dragged/Up stream to a balanced middle-button stream while a fresh three-finger chord is active. Tap and physical Click are mutually exclusive for one touch session.
+- **Tap** emits one middle-button Down/Up pair after a qualifying exact-count placement is released. The separate **Enable Tap** preference is on by default, but it only takes effect while the main middle-click feature is enabled.
+- **Physical Click** converts the matching left- or right-button Down/Dragged/Up stream to a balanced middle-button stream while a fresh exact-count chord is active. Tap and physical Click are mutually exclusive for one touch session.
 - Settings reports the bounded runtime state of the touch monitor and physical-Click Event Tap. A degraded state passes ordinary mouse input through rather than guessing.
 
-If macOS **three-finger drag** or **Look up & data detectors** uses the same gesture, disable or change that macOS gesture in Trackpad settings to avoid conflicts.
+Use 4 fingers when macOS **three-finger drag** is enabled. The 2-finger option may conflict with macOS secondary click and common two-finger gestures.
 
 ## Experimental physical trackpad support
 
@@ -34,7 +34,7 @@ Physical trackpad gestures use Apple's private `MultitouchSupport` framework bec
 
 - There is no public API or screen-edge cursor fallback. If the private framework is unavailable or changes, the touch pipeline is disabled and Settings shows its status.
 - Slidr Free opens only the default physical touch device exposed by `MTDeviceCreateDefault`. It does not enumerate, classify, or route multiple devices, so the selected built-in or external trackpad source is not guaranteed.
-- Physical Click conversion uses a global mouse Event Tap. macOS does not provide reliable source-device identity for those left/right mouse events. If another mouse is clicked while a qualifying three-finger chord is active, that event may be converted to a middle click.
+- Physical Click conversion uses a global mouse Event Tap. macOS does not provide reliable source-device identity for those left/right mouse events. If another mouse is clicked while a qualifying middle-click chord is active, that event may be converted to a middle click.
 - Private API behavior can change across hardware or macOS releases. Missing symbols, unavailable devices, permission loss, and absent touch frames should degrade without crashing the app.
 
 ## Settings and permissions
@@ -60,7 +60,7 @@ Packaging produces `release/Slidr-Free.app` and `release/Slidr-Free.app.zip`. Th
 
 ## Known limitations
 
-- Middle click supports exactly three fingers on the default physical touch device only. Configurable finger counts, multi-device routing, and per-application exclusions are not included.
+- Middle click supports exact 2–4-finger gestures on the default physical touch device only. Higher counts, “at least N” matching, multi-device routing, and per-application exclusions are not included.
 - The global mouse-source limitation described above means an external mouse click can be converted while the chord is active.
 - Top-edge tab switching only runs when Safari, Google Chrome, or Microsoft Edge is frontmost.
 - Automated tests do not require live Accessibility/TCC or physical hardware. Hardware behavior still needs the manual beta matrix described in the approved design.
