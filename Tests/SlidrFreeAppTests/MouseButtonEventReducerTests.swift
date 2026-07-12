@@ -97,6 +97,18 @@ final class MouseButtonEventReducerTests: XCTestCase {
         )
     }
 
+    func testExplicitQuiesceExtractsPendingReleaseWithoutRequestingRecovery() {
+        let (reducer, bridge) = makeReducer()
+        bridge.applyTouchUpdate(active(session: 21))
+        _ = reducer.reduce(event(.down, button: 1, number: 201))
+
+        XCTAssertEqual(
+            reducer.quiesce(),
+            MiddleClickPendingRelease(sourceButton: 1, eventNumber: 201, generation: 4)
+        )
+        XCTAssertNil(reducer.quiesce())
+    }
+
     func testFailedReenableAttemptsEnterDegradedStateAfterThirdTry() {
         XCTAssertEqual(MouseButtonEventReducer.decision(afterFailedReenableAttempt: 1), .reenableEventTap)
         XCTAssertEqual(MouseButtonEventReducer.decision(afterFailedReenableAttempt: 2), .reenableEventTap)

@@ -104,6 +104,10 @@ struct MouseButtonEventReducer: Sendable {
         }
     }
 
+    func quiesce() -> MiddleClickPendingRelease? {
+        bridge.quiesce()
+    }
+
     static func decision(afterFailedReenableAttempt attempt: Int) -> MouseButtonEventDecision {
         attempt < maximumReenableAttempts ? .reenableEventTap : .enterDegradedState
     }

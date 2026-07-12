@@ -84,6 +84,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             result = systemControl.adjustBrightness(delta: delta)
         case .switchBrowserTab(let direction):
             result = systemControl.switchBrowserTab(direction: direction)
+        case .middleClick:
+            result = systemControl.middleClick()
         }
         if case .success = result, case .adjustVolume = action {
             NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)

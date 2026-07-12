@@ -4,6 +4,7 @@ public enum RecognizedGesture: Equatable, Sendable {
     case brightness(direction: GestureDirection, magnitude: Double)
     case volume(direction: GestureDirection, magnitude: Double)
     case browserTab(direction: BrowserTabDirection)
+    case middleClickTap
 }
 
 public enum GestureDirection: Equatable, Sendable {

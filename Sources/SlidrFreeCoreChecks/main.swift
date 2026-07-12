@@ -327,6 +327,11 @@ private func testActionDispatcher() throws {
         [.switchBrowserTab(direction: .previous)],
         "Previous browser tab gesture should dispatch a tab switch action"
     )
+    try checkEqual(
+        dispatcher.actions(for: .middleClickTap),
+        [.middleClick],
+        "Middle-click Tap should dispatch one middle click"
+    )
 }
 
 let checks: [(String, () throws -> Void)] = [
