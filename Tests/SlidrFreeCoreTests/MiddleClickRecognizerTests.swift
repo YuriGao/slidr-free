@@ -2,8 +2,37 @@ import XCTest
 @testable import SlidrFreeCore
 
 final class MiddleClickRecognizerTests: XCTestCase {
+    func testEachSupportedConfigurationAcceptsItsExactTouchCount() {
+        for fingerCount in MiddleClickSettings.supportedFingerCounts {
+            XCTAssertTrue(
+                tapResult(configuredFingerCount: fingerCount, touchCount: fingerCount).tapCandidate,
+                "Expected exact \(fingerCount)-finger Tap to qualify"
+            )
+        }
+    }
+
+    func testFourFingerConfigurationRejectsThreeAndFiveTouches() {
+        XCTAssertFalse(tapResult(configuredFingerCount: 4, touchCount: 3).tapCandidate)
+        XCTAssertFalse(tapResult(configuredFingerCount: 4, touchCount: 5).tapCandidate)
+    }
+
+    func testTapDisabledStillTracksConfiguredFourFingerChord() {
+        var recognizer = MiddleClickRecognizer(tapEnabled: false, fingerCount: 4)
+
+        let qualified = recognizer.process(frame(
+            sequence: 1,
+            timestamp: 0.00,
+            touches: touches(count: 4)
+        ))
+        let finished = recognizer.process(empty(sequence: 2, timestamp: 0.20))
+
+        XCTAssertTrue(qualified.chordActive)
+        XCTAssertFalse(finished.tapCandidate)
+        XCTAssertEqual(finished.terminalReason, MiddleClickTerminalReason.completed)
+    }
+
     func testExactThreePlacementQualificationAndReleaseProducesOneTapCandidate() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         let first = recognizer.process(.frame(
             generation: 1,
@@ -50,7 +79,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testPlacementEndingBeforeQualificationDoesNotProduceTap() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         _ = recognizer.process(frame(sequence: 1, timestamp: 0.00, touches: [touch(1)]))
         _ = recognizer.process(frame(sequence: 2, timestamp: 0.05, touches: [touch(1), touch(2)]))
@@ -61,7 +90,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testCountAboveThreeInvalidatesSessionAndDeactivatesChord() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         let qualified = recognizer.process(frame(
             sequence: 1,
@@ -88,7 +117,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testLaterIncreaseAfterReleaseInvalidatesTap() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         _ = recognizer.process(frame(sequence: 1, timestamp: 0.00, touches: [touch(1), touch(2), touch(3)]))
         _ = recognizer.process(frame(sequence: 2, timestamp: 0.05, touches: [touch(1), touch(2)]))
@@ -101,7 +130,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testLaterIncreaseBelowThreeAfterReleaseAlsoInvalidatesTap() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         _ = recognizer.process(frame(sequence: 1, timestamp: 0.00, touches: [touch(1), touch(2), touch(3)]))
         _ = recognizer.process(frame(sequence: 2, timestamp: 0.05, touches: [touch(1), touch(2)]))
@@ -114,7 +143,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testDurationAtInclusiveBoundaryProducesTap() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         _ = recognizer.process(frame(sequence: 1, timestamp: 0.00, touches: [touch(1), touch(2), touch(3)]))
         let finished = recognizer.process(empty(sequence: 2, timestamp: 0.30))
@@ -123,7 +152,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testDurationAboveBoundaryDoesNotProduceTap() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         _ = recognizer.process(frame(sequence: 1, timestamp: 0.00, touches: [touch(1), touch(2), touch(3)]))
         let finished = recognizer.process(empty(sequence: 2, timestamp: 0.300_001))
@@ -133,7 +162,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testDurationAtNextRepresentableValueAboveBoundaryDoesNotProduceTap() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         _ = recognizer.process(frame(sequence: 1, timestamp: 0.00, touches: [touch(1), touch(2), touch(3)]))
         let finished = recognizer.process(empty(sequence: 2, timestamp: Double(0.30).nextUp))
@@ -143,7 +172,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testDurationStartsAtFirstPlacementFrame() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         _ = recognizer.process(frame(sequence: 1, timestamp: 0.00, touches: [touch(1)]))
         _ = recognizer.process(frame(sequence: 2, timestamp: 0.25, touches: [touch(1), touch(2), touch(3)]))
@@ -153,7 +182,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testCentroidMovementAtInclusiveBoundaryProducesTap() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         _ = recognizer.process(frame(sequence: 1, timestamp: 0.00, touches: coincidentTouches(x: 0.00)))
         _ = recognizer.process(frame(sequence: 2, timestamp: 0.10, touches: coincidentTouches(x: 0.05)))
@@ -163,7 +192,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testMaximumCentroidMovementAboveBoundaryInvalidatesEvenAfterReturning() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         _ = recognizer.process(frame(sequence: 1, timestamp: 0.00, touches: coincidentTouches(x: 0.00)))
         _ = recognizer.process(frame(sequence: 2, timestamp: 0.05, touches: coincidentTouches(x: 0.050_001)))
@@ -175,7 +204,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testCentroidMovementAtNextRepresentableValueAboveBoundaryDoesNotProduceTap() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         _ = recognizer.process(frame(sequence: 1, timestamp: 0.00, touches: coincidentTouches(x: 0.00)))
         _ = recognizer.process(frame(sequence: 2, timestamp: 0.10, touches: coincidentTouches(x: Double(0.05).nextUp)))
@@ -186,7 +215,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testTouchIDReorderingKeepsQualifiedChordActive() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         _ = recognizer.process(frame(
             sequence: 1,
@@ -205,7 +234,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testTouchIDReplacementInvalidatesTapAndChord() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         _ = recognizer.process(frame(sequence: 1, timestamp: 0.00, touches: [touch(1), touch(2), touch(3)]))
         let replaced = recognizer.process(frame(sequence: 2, timestamp: 0.10, touches: [touch(1), touch(2), touch(4)]))
@@ -217,7 +246,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testNonIncreasingTimestampInvalidatesTapButKeepsStableChordActive() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         _ = recognizer.process(frame(sequence: 1, timestamp: 1.00, touches: [touch(1), touch(2), touch(3)]))
         let repeatedTimestamp = recognizer.process(frame(sequence: 2, timestamp: 1.00, touches: [touch(1), touch(2), touch(3)]))
@@ -229,7 +258,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testEmptyAtEqualTimestampInvalidatesTap() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         _ = recognizer.process(frame(sequence: 1, timestamp: 1.00, touches: [touch(1), touch(2), touch(3)]))
         let finished = recognizer.process(empty(sequence: 2, timestamp: 1.00))
@@ -239,7 +268,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testCancellationClosesSessionWithoutTapAndClearsState() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         let opened = recognizer.process(frame(sequence: 1, timestamp: 0.00, touches: [touch(1), touch(2), touch(3)]))
         let cancelled = recognizer.process(.cancel(
@@ -259,7 +288,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testTapDisabledStillTracksChordButNeverProducesCandidate() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: false)
+        var recognizer = MiddleClickRecognizer(tapEnabled: false, fingerCount: 3)
 
         let qualified = recognizer.process(frame(sequence: 1, timestamp: 0.00, touches: [touch(1), touch(2), touch(3)]))
         let finished = recognizer.process(empty(sequence: 2, timestamp: 0.20))
@@ -270,7 +299,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testSessionIDIncrementsOnlyWhenNewNonEmptySessionOpens() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         let idleEmpty = recognizer.process(empty(sequence: 1, timestamp: 0.00))
         let first = recognizer.process(frame(sequence: 2, timestamp: 0.10, touches: [touch(1)]))
@@ -285,7 +314,7 @@ final class MiddleClickRecognizerTests: XCTestCase {
     }
 
     func testOutputCarriesInputSequencingMetadata() {
-        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 3)
 
         let output = recognizer.process(.frame(
             generation: 42,
@@ -325,6 +354,16 @@ final class MiddleClickRecognizerTests: XCTestCase {
 
     private func touch(_ id: Int, x: Double = 0.20, y: Double = 0.20) -> PhysicalTouch {
         PhysicalTouch(id: id, x: x, y: y)
+    }
+
+    private func touches(count: Int) -> [PhysicalTouch] {
+        (1...count).map { touch($0) }
+    }
+
+    private func tapResult(configuredFingerCount: Int, touchCount: Int) -> MiddleClickTouchUpdate {
+        var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: configuredFingerCount)
+        _ = recognizer.process(frame(sequence: 1, timestamp: 0.00, touches: touches(count: touchCount)))
+        return recognizer.process(empty(sequence: 2, timestamp: 0.20))
     }
 
     private func coincidentTouches(x: Double) -> [PhysicalTouch] {

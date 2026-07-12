@@ -66,7 +66,6 @@ public struct MiddleClickTouchUpdate: Equatable, Sendable {
 }
 
 public struct MiddleClickRecognizer: Sendable {
-    private static let exactTouchCount = 3
     private static let maximumDuration = 0.30
     private static let maximumCentroidMovement = 0.05
 
@@ -93,11 +92,13 @@ public struct MiddleClickRecognizer: Sendable {
     }
 
     private let tapEnabled: Bool
+    private let exactTouchCount: Int
     private var nextSessionID: UInt64 = 1
     private var session: Session?
 
-    public init(tapEnabled: Bool) {
+    public init(tapEnabled: Bool, fingerCount: Int = MiddleClickSettings.default.fingerCount) {
         self.tapEnabled = tapEnabled
+        self.exactTouchCount = MiddleClickSettings.validatedFingerCount(fingerCount)
     }
 
     public mutating func process(_ update: MiddleClickInputUpdate) -> MiddleClickTouchUpdate {
@@ -174,13 +175,13 @@ public struct MiddleClickRecognizer: Sendable {
     private mutating func updateSession(with touches: [PhysicalTouch]) {
         defer { session!.lastTouchCount = touches.count }
 
-        guard touches.count <= Self.exactTouchCount else {
+        guard touches.count <= exactTouchCount else {
             session!.tapInvalidated = true
             session!.chordInvalidated = true
             return
         }
 
-        guard touches.count == Self.exactTouchCount else {
+        guard touches.count == exactTouchCount else {
             if session!.qualifiedIDs != nil {
                 if session!.releaseStarted && touches.count > session!.lastTouchCount {
                     session!.tapInvalidated = true
@@ -197,7 +198,7 @@ public struct MiddleClickRecognizer: Sendable {
         }
 
         let ids = Set(touches.map(\.id))
-        guard ids.count == Self.exactTouchCount else {
+        guard ids.count == exactTouchCount else {
             session!.tapInvalidated = true
             session!.chordInvalidated = true
             return
