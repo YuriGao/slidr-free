@@ -10,6 +10,7 @@ enum TouchMonitorRuntimeState: String, Equatable, Sendable {
 }
 
 final class InputPipelineStatus: ObservableObject {
+    private let deliverOnMain: (@escaping () -> Void) -> Void
     @Published private(set) var frameworkAvailable: Bool?
     @Published private(set) var deviceAvailable: Bool?
     @Published private(set) var touchMonitor: TouchMonitorRuntimeState = .stopped
@@ -17,6 +18,12 @@ final class InputPipelineStatus: ObservableObject {
     @Published private(set) var generation: UInt64 = 0
     @Published private(set) var lastFailureReason: String?
     @Published private(set) var lastFrameReceivedAt: Double?
+
+    init(deliverOnMain: @escaping (@escaping () -> Void) -> Void = { work in
+        if Thread.isMainThread { work() } else { DispatchQueue.main.async(execute: work) }
+    }) {
+        self.deliverOnMain = deliverOnMain
+    }
 
     var lastFrameAge: Double? {
         guard let lastFrameReceivedAt else { return nil }
@@ -30,7 +37,8 @@ final class InputPipelineStatus: ObservableObject {
         eventTap: MouseButtonEventTapStatus? = nil,
         generation: UInt64? = nil,
         failure: String? = nil,
-        frameReceivedAt: Double? = nil
+        frameReceivedAt: Double? = nil,
+        frameGeneration: UInt64? = nil
     ) {
         let apply = { [weak self] in
             guard let self else { return }
@@ -38,11 +46,39 @@ final class InputPipelineStatus: ObservableObject {
             if let deviceAvailable { self.deviceAvailable = deviceAvailable }
             if let touchMonitor { self.touchMonitor = touchMonitor }
             if let eventTap { self.eventTap = eventTap }
-            if let generation { self.generation = generation }
+            if let generation {
+                if generation != self.generation { self.lastFrameReceivedAt = nil }
+                self.generation = generation
+            }
             if let failure { self.lastFailureReason = String(failure.prefix(160)) }
-            if let frameReceivedAt { self.lastFrameReceivedAt = frameReceivedAt }
+            if let frameReceivedAt,
+               let frameGeneration,
+               frameGeneration == self.generation {
+                self.lastFrameReceivedAt = frameReceivedAt
+            }
         }
-        if Thread.isMainThread { apply() } else { DispatchQueue.main.async(execute: apply) }
+        deliverOnMain(apply)
+    }
+}
+
+struct PipelineTerminationWaiter {
+    let timeout: TimeInterval
+    private let wait: (DispatchSemaphore, TimeInterval) -> Bool
+
+    init(
+        timeout: TimeInterval = 2,
+        wait: @escaping (DispatchSemaphore, TimeInterval) -> Bool = { semaphore, seconds in
+            semaphore.wait(timeout: .now() + seconds) == .success
+        }
+    ) {
+        self.timeout = timeout
+        self.wait = wait
+    }
+
+    func waitForStop(_ beginStop: (@escaping () -> Void) -> Void) -> Bool {
+        let semaphore = DispatchSemaphore(value: 0)
+        beginStop { semaphore.signal() }
+        return wait(semaphore, timeout)
     }
 }
 
@@ -67,7 +103,7 @@ final class InputPipelineCoordinator {
     private let lock = NSRecursiveLock()
     private let factory: any InputPipelineFactory
     private let status: InputPipelineStatus
-    private let refreshPermission: () -> Void
+    private let refreshPermission: () -> PermissionState
     private let schedule: (TimeInterval, @escaping () -> Void) -> Void
     private var nextGeneration: UInt64 = 0
     private var pipeline: (any InputPipelineInstance)?
@@ -75,17 +111,18 @@ final class InputPipelineCoordinator {
     private var permission: PermissionState = .unknown
     private var sleeping = false
     private var terminated = false
-    private var isRefreshingForStart = false
+    private var isStarting = false
     private var isQuiescing = false
     private var restartRequested = false
     private var stopCompletions: [() -> Void] = []
+    private var lifecycleEpoch: UInt64 = 0
 
     var activeGeneration: UInt64? { withLock { pipeline?.generation } }
 
     init(
         factory: any InputPipelineFactory,
         status: InputPipelineStatus,
-        refreshPermission: @escaping () -> Void,
+        refreshPermission: @escaping () -> PermissionState,
         schedule: @escaping (TimeInterval, @escaping () -> Void) -> Void
     ) {
         self.factory = factory
@@ -103,7 +140,7 @@ final class InputPipelineCoordinator {
         settings = newSettings.validated()
         permission = newPermission
 
-        if isRefreshingForStart { return }
+        if isStarting { return }
 
         guard !terminated, !sleeping else { return }
         let semanticChange = previous.map {
@@ -124,6 +161,7 @@ final class InputPipelineCoordinator {
 
     func willSleep() {
         withLock {
+            lifecycleEpoch &+= 1
             sleeping = true
             stopActive(completion: {})
         }
@@ -132,9 +170,12 @@ final class InputPipelineCoordinator {
     func didWake() {
         withLock {
             guard !terminated else { return }
+            let wakeEpoch = lifecycleEpoch
             schedule(2.0) { [weak self] in
                 self?.withLock {
-                    guard let self, !self.terminated else { return }
+                    guard let self,
+                          !self.terminated,
+                          self.lifecycleEpoch == wakeEpoch else { return }
                     self.sleeping = false
                     self.restartIfEligible()
                 }
@@ -144,6 +185,7 @@ final class InputPipelineCoordinator {
 
     func terminate(completion: @escaping () -> Void) {
         withLock {
+            lifecycleEpoch &+= 1
             terminated = true
             stopActive(completion: completion)
         }
@@ -163,13 +205,16 @@ final class InputPipelineCoordinator {
     }
 
     private func startFresh() {
-        guard !terminated, !sleeping, let settings,
-              settings.isAppEnabled, permission == .granted,
+        guard !terminated, !sleeping, let initialSettings = settings,
+              initialSettings.isAppEnabled, permission == .granted,
+              hasPhysicalGesture(initialSettings) else { return }
+        isStarting = true
+        permission = refreshPermission()
+        isStarting = false
+        guard permission == .granted,
+              let settings,
+              settings.isAppEnabled,
               hasPhysicalGesture(settings) else { return }
-        isRefreshingForStart = true
-        refreshPermission()
-        isRefreshingForStart = false
-        guard permission == .granted else { return }
         nextGeneration &+= 1
         let generation = nextGeneration
         status.update(generation: generation)
@@ -193,7 +238,8 @@ final class InputPipelineCoordinator {
                     guard let self, let instance, self.pipeline === instance else { return }
                     if !success {
                         self.status.update(eventTap: .degraded, failure: "Middle-click Event Tap could not start.")
-                        self.refreshPermission()
+                        self.permission = self.refreshPermission()
+                        if self.permission != .granted { self.stopActive(completion: {}) }
                     }
                 }
             }
@@ -205,11 +251,12 @@ final class InputPipelineCoordinator {
         status.update(eventTap: eventStatus)
         switch eventStatus {
         case .recoveryRequiresPipelineRestart:
-            refreshPermission()
-            restart()
+            permission = refreshPermission()
+            if permission == .granted { restart() } else { stopActive(completion: {}) }
         case .degraded:
-            refreshPermission()
+            permission = refreshPermission()
             status.update(failure: "Middle-click Event Tap entered degraded mode.")
+            if permission != .granted { stopActive(completion: {}) }
         case .stopped, .starting, .running:
             break
         }
@@ -274,51 +321,131 @@ final class ProductionInputPipelineFactory: InputPipelineFactory {
     }
 }
 
-private final class ProductionInputPipeline: InputPipelineInstance {
+protocol InputTouchMonitoring: AnyObject {
+    func start() -> Bool
+    func stop()
+}
+
+protocol InputEventTapLifecycle: AnyObject {
+    func start(completion: @escaping (Bool) -> Void)
+    func stop(completion: @escaping () -> Void)
+}
+
+extension PhysicalTrackpadMonitor: InputTouchMonitoring {}
+extension MouseButtonEventTap: InputEventTapLifecycle {}
+
+typealias InputTouchMonitorFactory = (
+    @escaping (PhysicalTrackpadMonitorStatus) -> Void,
+    @escaping (MiddleClickInputUpdate) -> Void,
+    @escaping (NormalizedInputEvent) -> Void
+) -> any InputTouchMonitoring
+
+typealias InputEventTapFactory = (
+    MouseButtonEventReducer,
+    any MiddleClickReleaseEmitting,
+    @escaping (MouseButtonEventTapStatus) -> Void
+) -> any InputEventTapLifecycle
+
+final class ProductionInputPipeline: InputPipelineInstance {
     let generation: UInt64
+    // The touch callback, settings updates, and quiesce linearize here. Event
+    // creation, emission, monitor/tap teardown, and action delivery stay outside.
+    private let lock = NSRecursiveLock()
     private let status: InputPipelineStatus
     private let bridge: MiddleClickSessionBridge
-    private let emitter = MiddleClickEmitter()
+    private let releaseEmitter: any MiddleClickReleaseEmitting
     private let actionHandler: (RecognizedGesture) -> Void
     private let eventTapStatus: (MouseButtonEventTapStatus) -> Void
+    private let monitorFactory: InputTouchMonitorFactory
+    private let eventTapFactory: InputEventTapFactory
+    private let deliverAction: (@escaping () -> Void) -> Void
     private var middleRecognizer: MiddleClickRecognizer
     private var edgeRecognizer: GestureRecognizer
-    private var didQuiesce = false
-    private var eventTapInstance: MouseButtonEventTap?
+    private var isActive = true
+    private var activeToken: UInt64 = 1
+    private var eventTapInstance: (any InputEventTapLifecycle)?
 
-    private lazy var monitor = PhysicalTrackpadMonitor(
-        generation: generation,
-        statusHandler: { [weak self] runtime in self?.handleMonitorStatus(runtime) },
-        middleClickUpdateHandler: { [weak self] update in self?.processMiddleClick(update) },
-        handler: { [weak self] event in self?.processEdge(event) }
+    private lazy var monitor = monitorFactory(
+        { [weak self] runtime in self?.handleMonitorStatus(runtime) },
+        { [weak self] update in self?.receiveMiddleClick(update) },
+        { [weak self] event in self?.receiveEdge(event) }
     )
-    init(generation: UInt64, settings: AppSettings, status: InputPipelineStatus, actionHandler: @escaping (RecognizedGesture) -> Void, eventTapStatus: @escaping (MouseButtonEventTapStatus) -> Void) {
+
+    init(
+        generation: UInt64,
+        settings: AppSettings,
+        status: InputPipelineStatus,
+        bridge: MiddleClickSessionBridge? = nil,
+        releaseEmitter: any MiddleClickReleaseEmitting = MiddleClickEmitter(),
+        actionHandler: @escaping (RecognizedGesture) -> Void,
+        eventTapStatus: @escaping (MouseButtonEventTapStatus) -> Void,
+        monitorFactory: InputTouchMonitorFactory? = nil,
+        eventTapFactory: InputEventTapFactory? = nil,
+        deliverAction: @escaping (@escaping () -> Void) -> Void = { work in DispatchQueue.main.async(execute: work) }
+    ) {
         self.generation = generation
         self.status = status
+        self.releaseEmitter = releaseEmitter
         self.actionHandler = actionHandler
         self.eventTapStatus = eventTapStatus
-        bridge = MiddleClickSessionBridge(generation: generation, now: { ProcessInfo.processInfo.systemUptime })
+        self.bridge = bridge ?? MiddleClickSessionBridge(generation: generation, now: { ProcessInfo.processInfo.systemUptime })
+        self.monitorFactory = monitorFactory ?? { statusHandler, middleHandler, edgeHandler in
+            PhysicalTrackpadMonitor(
+                generation: generation,
+                statusHandler: statusHandler,
+                middleClickUpdateHandler: middleHandler,
+                handler: edgeHandler
+            )
+        }
+        self.eventTapFactory = eventTapFactory ?? { reducer, emitter, statusHandler in
+            MouseButtonEventTap(reducer: reducer, releaseEmitter: emitter, statusHandler: statusHandler)
+        }
+        self.deliverAction = deliverAction
         middleRecognizer = MiddleClickRecognizer(tapEnabled: settings.middleClick.tapEnabled)
         edgeRecognizer = GestureRecognizer(settings: settings)
     }
 
-    func startTouchMonitor() -> Bool { monitor.start() }
+    func startTouchMonitor() -> Bool {
+        guard let token = withLock({ isActive ? activeToken : nil }) else { return false }
+        let started = monitor.start()
+        let remainsActive = withLock { isActive && activeToken == token }
+        if !remainsActive { monitor.stop() }
+        return started && remainsActive
+    }
     func startEventTap(completion: @escaping (Bool) -> Void) {
-        let tap = MouseButtonEventTap(
-            reducer: MouseButtonEventReducer(bridge: bridge, generation: generation, ownMarker: MiddleClickEventIdentity.marker),
-            releaseEmitter: emitter,
-            statusHandler: { [weak self] value in self?.eventTapStatus(value) }
+        let tap = eventTapFactory(
+            MouseButtonEventReducer(bridge: bridge, generation: generation, ownMarker: MiddleClickEventIdentity.marker),
+            releaseEmitter,
+            { [weak self] value in self?.eventTapStatus(value) }
         )
-        eventTapInstance = tap
+        let accepted = withLock { () -> Bool in
+            guard isActive else { return false }
+            eventTapInstance = tap
+            return true
+        }
+        guard accepted else {
+            tap.stop { completion(false) }
+            return
+        }
         tap.start(completion: completion)
     }
-    func updateEdgeSettings(_ settings: AppSettings) { edgeRecognizer.settings = settings.validated() }
+    func updateEdgeSettings(_ settings: AppSettings) {
+        withLock {
+            guard isActive else { return }
+            edgeRecognizer.settings = settings.validated()
+        }
+    }
 
     func quiesce(completion: @escaping () -> Void) {
-        guard !didQuiesce else { completion(); return }
-        didQuiesce = true
-        if let pending = bridge.quiesce() { _ = emitter.emitRelease(eventNumber: pending.eventNumber) }
-        let finish = { [weak self] in self?.monitor.stop(); completion() }
+        let transition = withLock { () -> (MiddleClickPendingRelease?, (any InputEventTapLifecycle)?)? in
+            guard isActive else { return nil }
+            isActive = false
+            activeToken &+= 1
+            return (bridge.quiesce(), eventTapInstance)
+        }
+        guard let (pending, eventTapInstance) = transition else { completion(); return }
+        if let pending { _ = releaseEmitter.emitRelease(eventNumber: pending.eventNumber) }
+        let finish = { [self] in monitor.stop(); completion() }
         if let eventTapInstance {
             eventTapInstance.stop(completion: finish)
         } else {
@@ -326,22 +453,49 @@ private final class ProductionInputPipeline: InputPipelineInstance {
         }
     }
 
-    private func processMiddleClick(_ update: MiddleClickInputUpdate) {
-        guard !didQuiesce else { return }
-        let output = middleRecognizer.process(update)
-        bridge.applyTouchUpdate(output)
-        status.update(frameReceivedAt: output.receivedAt)
-        guard output.tapCandidate, let sessionID = output.sessionID,
-              bridge.claimTap(sessionID: sessionID, generation: generation) else { return }
-        DispatchQueue.main.async { [weak self] in self?.actionHandler(.middleClickTap) }
+    func receiveMiddleClick(_ update: MiddleClickInputUpdate) {
+        let result = withLock { () -> (receivedAt: Double, deliveryToken: UInt64?)? in
+            guard isActive else { return nil }
+            let output = middleRecognizer.process(update)
+            bridge.applyTouchUpdate(output)
+            let token: UInt64?
+            if output.tapCandidate,
+               let sessionID = output.sessionID,
+               bridge.claimTap(sessionID: sessionID, generation: generation) {
+                token = activeToken
+            } else {
+                token = nil
+            }
+            return (output.receivedAt, token)
+        }
+        guard let result else { return }
+        status.update(frameReceivedAt: result.receivedAt, frameGeneration: generation)
+        guard let token = result.deliveryToken else { return }
+        deliverAction { [weak self] in
+            guard let self else { return }
+            // This token check is the action-delivery linearization point.
+            let shouldDeliver = self.withLock { self.isActive && self.activeToken == token }
+            if shouldDeliver { self.actionHandler(.middleClickTap) }
+        }
     }
 
-    private func processEdge(_ event: NormalizedInputEvent) {
-        guard !didQuiesce, let recognized = edgeRecognizer.process(event) else { return }
-        actionHandler(recognized)
+    func receiveEdge(_ event: NormalizedInputEvent) {
+        let result = withLock { () -> (RecognizedGesture, UInt64)? in
+            guard isActive, let recognized = edgeRecognizer.process(event) else { return nil }
+            return (recognized, activeToken)
+        }
+        guard let (recognized, token) = result else { return }
+        let shouldDeliver = withLock { isActive && activeToken == token }
+        if shouldDeliver { actionHandler(recognized) }
     }
 
     private func handleMonitorStatus(_ runtime: PhysicalTrackpadMonitorStatus) {
         status.update(frameworkAvailable: runtime.frameworkAvailable, deviceAvailable: runtime.deviceAvailable, touchMonitor: runtime.state, failure: runtime.failure)
+    }
+
+    private func withLock<Result>(_ body: () -> Result) -> Result {
+        lock.lock()
+        defer { lock.unlock() }
+        return body()
     }
 }

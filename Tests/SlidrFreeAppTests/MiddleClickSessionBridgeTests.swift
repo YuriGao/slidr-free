@@ -111,7 +111,7 @@ final class MiddleClickSessionBridgeTests: XCTestCase {
         XCTAssertNil(bridge.quiesce())
         XCTAssertFalse(bridge.finishPhysical(sourceButton: 1, eventNumber: 88, generation: 11))
         XCTAssertFalse(bridge.beginPhysical(sourceButton: 0, eventNumber: 89, generation: 11))
-        XCTAssertEqual(bridge.generation, 13)
+        XCTAssertEqual(bridge.generation, 12)
     }
 
     private func active(

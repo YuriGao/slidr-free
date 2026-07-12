@@ -178,6 +178,7 @@ final class MiddleClickSessionBridge: @unchecked Sendable {
 
     func quiesce() -> MiddleClickPendingRelease? {
         withLock {
+            guard accepting else { return nil }
             accepting = false
             currentGeneration &+= 1
             lastSequence = nil

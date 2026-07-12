@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindowController: SettingsWindowController?
     private var cancellables = Set<AnyCancellable>()
     private let systemControl = SystemControl()
+    private let terminationWaiter = PipelineTerminationWaiter(timeout: 2)
 
     private lazy var pipelineFactory = ProductionInputPipelineFactory { [weak self] gesture in
         self?.dispatch(gesture: gesture)
@@ -17,7 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var pipelineCoordinator = InputPipelineCoordinator(
         factory: pipelineFactory,
         status: pipelineStatus,
-        refreshPermission: { [weak self] in _ = self?.permissionManager.currentSnapshot() },
+        refreshPermission: { PermissionManager.currentSnapshot().accessibility },
         schedule: { delay, work in DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work) }
     )
 
@@ -57,9 +58,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        let stopped = DispatchSemaphore(value: 0)
-        pipelineCoordinator.terminate { stopped.signal() }
-        stopped.wait()
+        let stopped = terminationWaiter.waitForStop { [pipelineCoordinator] completion in
+            pipelineCoordinator.terminate(completion: completion)
+        }
+        if !stopped {
+            pipelineStatus.update(failure: "Input pipeline stop timed out during termination.")
+        }
     }
 
     private func updateInputPipeline(refreshPermission: Bool) {

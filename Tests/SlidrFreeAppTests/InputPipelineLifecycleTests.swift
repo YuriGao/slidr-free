@@ -84,6 +84,48 @@ final class InputPipelineLifecycleTests: XCTestCase {
         XCTAssertEqual(harness.factory.instances.map(\.generation), [1, 2])
     }
 
+    func testStaleWakeTimerCannotRestartAfterAnotherWillSleep() {
+        let harness = Harness()
+        harness.coordinator.update(settings: enabledSettings(), permission: .granted)
+        harness.coordinator.willSleep()
+        harness.coordinator.didWake()
+        harness.coordinator.willSleep()
+        harness.runScheduled()
+        XCTAssertEqual(harness.factory.instances.map(\.generation), [1])
+        XCTAssertNil(harness.coordinator.activeGeneration)
+    }
+
+    func testLatestMiddleClickSettingsWinWhilePreviousPipelineIsQuiescing() {
+        let harness = Harness()
+        harness.factory.deferQuiesce = true
+        var settings = enabledSettings()
+        harness.coordinator.update(settings: settings, permission: .granted)
+        let first = harness.factory.last!
+        settings.middleClick.tapEnabled = false
+        harness.coordinator.update(settings: settings, permission: .granted)
+        settings.middleClick.tapEnabled = true
+        harness.coordinator.update(settings: settings, permission: .granted)
+        first.completeQuiesce()
+        XCTAssertEqual(harness.factory.instances.map(\.tapEnabled), [true, true])
+
+        settings.middleClick.tapEnabled = false
+        harness.coordinator.update(settings: settings, permission: .granted)
+        harness.factory.last!.completeQuiesce()
+        XCTAssertEqual(harness.factory.instances.last?.tapEnabled, false)
+    }
+
+    func testSettingsChangedDuringFreshPermissionQueryAreNotLost() {
+        let harness = Harness()
+        harness.coordinator.update(settings: enabledSettings(), permission: .granted)
+        var changed = enabledSettings(); changed.middleClick.tapEnabled = false
+        harness.onRefresh = {
+            var latest = changed; latest.middleClick.tapEnabled = true
+            harness.coordinator.update(settings: latest, permission: .granted)
+        }
+        harness.coordinator.update(settings: changed, permission: .granted)
+        XCTAssertEqual(harness.factory.instances.last?.tapEnabled, true)
+    }
+
     func testTerminationWaitsForStopCompletion() {
         let harness = Harness()
         harness.factory.deferQuiesce = true
@@ -104,6 +146,39 @@ final class InputPipelineLifecycleTests: XCTestCase {
         XCTAssertEqual(harness.status.eventTap, .degraded)
         XCTAssertEqual(harness.permissionRefreshes, 4)
     }
+
+    func testTerminationWaiterSucceedsAndTimesOutWithoutUnboundedBlocking() {
+        let success = PipelineTerminationWaiter(timeout: 2) { semaphore, _ in
+            semaphore.wait(timeout: .now()) == .success
+        }
+        XCTAssertTrue(success.waitForStop { completion in completion() })
+
+        var observedTimeout: TimeInterval?
+        let timeout = PipelineTerminationWaiter(timeout: 2) { _, seconds in
+            observedTimeout = seconds
+            return false
+        }
+        XCTAssertFalse(timeout.waitForStop { _ in })
+        XCTAssertEqual(observedTimeout, 2)
+
+        let status = InputPipelineStatus()
+        status.update(failure: String(repeating: "x", count: 300))
+        XCTAssertEqual(status.lastFailureReason?.count, 160)
+    }
+
+    func testQueuedOldGenerationFrameCannotOverwriteFreshStatus() {
+        var queued: [() -> Void] = []
+        let status = InputPipelineStatus(deliverOnMain: { queued.append($0) })
+        status.update(generation: 1)
+        queued.removeFirst()()
+        status.update(frameReceivedAt: 10, frameGeneration: 1)
+        status.update(generation: 2)
+        let oldFrame = queued.removeFirst()
+        queued.removeFirst()()
+        oldFrame()
+        XCTAssertEqual(status.generation, 2)
+        XCTAssertNil(status.lastFrameReceivedAt)
+    }
 }
 
 private func enabledSettings() -> AppSettings {
@@ -118,10 +193,19 @@ private final class Harness {
     var permissionRefreshes = 0
     var scheduledDelays: [TimeInterval] = []
     var scheduled: [() -> Void] = []
+    var freshPermission: PermissionState = .granted
+    var onRefresh: (() -> Void)?
     lazy var coordinator = InputPipelineCoordinator(
         factory: factory,
         status: status,
-        refreshPermission: { [weak self] in self?.permissionRefreshes += 1 },
+        refreshPermission: { [weak self] in
+            guard let self else { return .denied }
+            self.permissionRefreshes += 1
+            let action = self.onRefresh
+            self.onRefresh = nil
+            action?()
+            return self.freshPermission
+        },
         schedule: { [weak self] delay, work in self?.scheduledDelays.append(delay); self?.scheduled.append(work) }
     )
 
