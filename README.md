@@ -67,7 +67,7 @@ Packaging produces `release/Slidr-Free.app` and `release/Slidr-Free.app.zip`. Th
 
 ## Rollback
 
-The known-good baseline is tag `v0.2.0` at commit `eb93e18e9ba225502bac580ae98e006c1bf1aec5`. Before replacing an installed v0.2.0 app, preserve its archive and the `SlidrFree.settings.v1` preference payload. To roll back, quit Slidr Free, restore the v0.2.0 bundle, reset Accessibility only if macOS no longer recognizes it, relaunch, and verify the existing edge gestures.
+The known-good baseline is tag `v0.2.0` at commit `eb93e18e9ba225502bac580ae98e006c1bf1aec5`. Before replacing an installed v0.2.0 app, preserve its archive, record that archive's SHA-256, and back up the `SlidrFree.settings.v1` preference payload. To roll back, quit Slidr Free, restore the v0.2.0 bundle, reset Accessibility only if macOS no longer recognizes it, relaunch, and verify both the displayed version and every existing edge gesture. Before a public release, rehearse the full v0.3 → v0.2 → v0.3 settings-compatibility path.
 
 ## Provenance
 
