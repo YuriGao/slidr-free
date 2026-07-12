@@ -2,375 +2,404 @@
 
 **Date:** 2026-07-12
 
-**Status:** Approved for implementation planning
+**Status:** Approved for implementation planning after review revision
 
-**Target release:** v0.3.0 beta, followed by v0.3.0 stable
+**Target:** Submit an implementation PR for v0.3.0 beta
 
-**Baseline:** `YuriGao/slidr-free` `main@1246345e526190de89618ce4b301c6f34cc90e21`
+**Slidr Free baseline:** `main@1246345e526190de89618ce4b301c6f34cc90e21`
+
+**Behavior reference snapshot:** `artginzburg/MiddleClick@21234476a51d58b87c4b8d6fdd7b49ce49147c8d`
 
 ## 1. Summary
 
-Slidr Free will add configurable three-finger middle-click behavior for the currently monitored trackpad. The feature will support both:
+Slidr Free will add opt-in, exact-three-finger middle-click behavior for the single default multitouch device already monitored by the app. The feature supports:
 
-1. **Three-finger tap:** lifting a stationary three-finger chord emits one middle-button down/up pair at the current pointer location.
-2. **Three-finger physical click:** a real left- or right-button down/up pair produced while the chord is active is transformed in place into a middle-button down/up pair.
+1. **Three-finger tap:** a short stationary three-finger session emits one middle-button down/up pair at the current pointer location.
+2. **Three-finger physical click:** a real left- or right-button down/drag/up stream that begins while a fresh three-finger chord is active is transformed into a coherent middle-button stream.
 
-The implementation will reuse Slidr Free's existing `PhysicalTrackpadMonitor`, settings, menu-bar app, permission flow, action dispatch, packaging, and SwiftPM structure. It will not import or adapt source files from `artginzburg/MiddleClick`.
+The implementation reuses Slidr Free's existing SwiftPM structure, private-framework bridge, settings, menu-bar app, permission flow, action dispatch, packaging, and CI. It does not import, copy, translate, link, or adapt source or build artifacts from MiddleClick.
 
-The first release targets the single default multitouch device already supported by Slidr Free. Multi-device enumeration, Magic Mouse support, hot-plug routing, and per-application exclusions are deferred.
+The v0.3 scope is deliberately narrow: exact three fingers, the current default multitouch device, no per-application exclusions, and no promise that a physical Click originated from the touch device rather than another system mouse source.
 
 ## 2. Goals
 
-- Add reliable three-finger tap and physical-click middle-button behavior.
-- Keep Slidr Free's existing volume, brightness, and browser-tab gestures unchanged for single-finger input.
-- Prevent a multi-finger gesture from triggering an edge gesture.
-- Prevent one physical interaction from producing two middle clicks.
-- Preserve existing v0.2 user settings during decoding and migration.
-- Fail open: if the middle-click event tap is unavailable or fails, ordinary mouse input must continue unchanged.
-- Keep the distributed Slidr Free source under its existing MIT license by independently implementing behavior rather than copying GPL-covered implementation code.
-- Maintain a reversible release path and document macOS Accessibility reauthorization behavior.
+- Deliver reliable three-finger Tap and physical Click middle-button behavior.
+- Preserve existing single-finger volume, brightness, and browser-tab gestures.
+- Suppress edge gestures from the first observed multi-touch frame until all touches lift.
+- Guarantee Tap and physical Click are mutually exclusive within one touch session.
+- Guarantee every transformed middle-button Down is released at most once.
+- Fail open when touch state is stale, the Event Tap is unavailable, or lifecycle teardown starts.
+- Preserve all v0.2 settings while adding middle-click settings.
+- Keep the Slidr Free codebase MIT-licensed by avoiding reuse of GPL-covered expression and recording implementation provenance.
+- Package the MIT license with every binary archive.
+- Keep v0.2.0 as a verified rollback point.
 
 ## 3. Non-goals
 
-- Importing `MiddleClick`, `MoreTouch`, `ConfigCore`, its Xcode project, menu implementation, login-item implementation, icons, or source-level state machines.
-- Magic Mouse support in v0.3.
-- Enumerating multiple multitouch devices or routing gestures by device kind in v0.3.
-- Per-application ignore lists in v0.3.
-- Supporting two-finger middle click. The configurable range is 3 to 5 fingers because two fingers conflict with common secondary-click behavior.
-- Replacing the private `MultitouchSupport` dependency with a public API; macOS does not expose an equivalent per-finger physical-coordinate API.
+- Importing or adapting MiddleClick, MoreTouch, ConfigCore, their Xcode project, resources, state machines, menus, or login-item code.
+- Claiming a strict legal clean-room process. The project will instead claim no source reuse or transliteration and will keep a provenance record.
+- Supporting configurable finger counts, `allowMoreFingers`, or user-adjustable duration/movement thresholds in v0.3.
+- Supporting two-finger middle click.
+- Enumerating multiple multitouch devices, identifying device kinds, or guaranteeing Magic Mouse/external Magic Trackpad behavior in v0.3.
+- Per-application ignore lists.
+- Delaying every single-finger edge action to discover whether more fingers will arrive.
 - Mac App Store distribution.
+- Developer ID signing and notarization in this PR.
 
-## 4. Licensing Decision
+## 4. Licensing and Provenance
 
-`artginzburg/MiddleClick` is GPL-3.0, while Slidr Free is MIT-licensed. Directly copying, translating, adapting, or linking its implementation into the distributed Slidr Free application would make the combined distribution subject to GPL obligations.
+MiddleClick is GPL-3.0 and Slidr Free is MIT. If GPL-protected implementation expression is incorporated or adapted, or GPL code is linked into the same application, public distribution will normally require GPLv3 treatment of the combined work. The exact legal boundary is fact-dependent; this document is an engineering control, not legal advice.
 
-The v0.3 implementation therefore follows these rules:
+Implementation controls:
 
-- Use only public, user-visible behavior as the product requirement.
-- Design and write all new source in the Slidr Free repository without copying or line-by-line translating MiddleClick source.
-- Do not import MiddleClick packages or build artifacts.
-- Keep a short design note in the repository explaining the independent implementation decision.
-- Perform a final license review before public release. This design is an engineering decision record, not legal advice.
+- The requirements source is this approved design, public user-visible behavior, black-box validation, Apple documentation, and existing Slidr Free code.
+- MiddleClick source, resources, build artifacts, and line-by-line translations are prohibited implementation inputs.
+- Implementation agents receive this specification and the Slidr Free repository, not the MiddleClick checkout or prior source-analysis context.
+- `docs/middle-click-provenance.md` records the fixed reference SHA, permitted sources, implementer/reviewer roles, dependency inventory, and the no-source-reuse decision.
+- Before publication, a reviewer inspects the diff for source or structural copying and records the result in the provenance note.
+- The release archive includes Slidr Free's `LICENSE`; automated verification fails if it is missing.
+- If any GPL source, resource, or build artifact enters the deliverable, the MIT publishing flow stops pending a new license decision.
+
+Copyright protects copyrightable program expression, not the underlying idea, method, or algorithm. This distinction supports behavior-level reimplementation but does not make source copying permissible.
 
 ## 5. Existing Baseline
 
-Slidr Free currently has a single input pipeline:
+The current pipeline is:
 
 ```text
 MultitouchSupport
     -> PhysicalTrackpadMonitor
-    -> NormalizedInputEvent.physicalTouchFrame
+    -> DispatchQueue.main
     -> GestureRecognizer
     -> ActionDispatcher
     -> SystemControl
 ```
 
-`PhysicalTrackpadMonitor` dynamically loads the private framework and calls `MTDeviceCreateDefault`. `GestureRecognizer` currently reads the first touch and recognizes left, right, and top edge movement. `AppDelegate` owns pipeline lifecycle, while `SettingsStore` persists a version-one JSON value in `UserDefaults`.
+`PhysicalTrackpadMonitor` uses `MTDeviceCreateDefault`. It currently rejects a nil touch buffer before handling `count == 0`, silently drops malformed frames, and posts normalized frames asynchronously to the main queue. `GestureRecognizer` reads the first touch. `AppDelegate` recreates the recognizer on every settings update.
 
-The repository previously contained a middle-click event listener, removed by commit `b027186448254dec3225aa9767983e778739fc0c`. That implementation listened for already-generated middle-button events and replayed them; it did not recognize a three-finger gesture. It must not be restored or cherry-picked.
+Commit `b027186448254dec3225aa9767983e778739fc0c` removed an earlier event listener that replayed already-existing middle clicks. It did not recognize a three-finger gesture and must not be restored or cherry-picked.
 
 ## 6. Target Architecture
 
 ```text
-                              +-> Edge GestureRecognizer -> ActionDispatcher
-PhysicalTrackpadMonitor ------+
-                              +-> MiddleClickRecognizer --+-> tap intent
-                                                         +-> chord state
+Multitouch callback
+    -> normalize active touches / empty frame / cancellation
+    -> synchronous MiddleClickRecognizer + MiddleClickSessionBridge
+    -> main queue: edge recognizer, UI status, tap action delivery
 
-tap intent -> ActionDispatcher -> SystemControl -> MiddleClickEmitter -> CGEvent middle down/up
-thread-safe chord state -----------> MouseButtonEventTap -> transform left/right to middle
+Dedicated Event Tap run loop
+    -> MouseButtonEventReducer
+    -> MiddleClickSessionBridge
+    -> pass / transform / release / re-enable decision
 ```
 
-### 6.1 Single touch-frame source
+### 6.1 Single touch source and sequencing authority
 
-There will be exactly one `PhysicalTrackpadMonitor` and one private-framework callback. Each normalized frame will be offered to two independent recognizers:
+There is one `PhysicalTrackpadMonitor` callback. After copying the callback data into value types, the monitor synchronously feeds the middle-click recognizer and bridge before scheduling edge/UI work on the main queue. This removes the main-queue delay from physical-click chord activation and deactivation.
 
-- the existing edge recognizer;
-- the new `MiddleClickRecognizer`.
+Each normalized update carries:
 
-The recognizers do not call one another and do not own macOS event objects. They operate on normalized data and return state or intents.
+- a monotonically increasing `frameSequence`;
+- a pipeline `generation`;
+- a monotonic receipt time;
+- active touches;
+- an update kind: `frame`, `empty`, or `cancel(reason)`.
 
-### 6.2 Edge gesture arbitration
+Updates from an older generation or non-increasing sequence are ignored. Event Tap considers a chord eligible only when its last frame age is no more than `0.15` seconds. A stale chord is inactive and ordinary input passes through.
 
-The existing edge recognizer will only process a frame when `touches.count == 1`. A frame with zero or more than one touch resets edge continuity and its accumulated physical step.
+### 6.2 Zero-touch and cancellation contract
 
-This rule prevents a three-finger chord near the trackpad edge from changing volume, brightness, or browser tabs.
+- `count == 0` always becomes an empty update, even if `touchBytes == nil`; no buffer is dereferenced.
+- `count > 0 && touchBytes == nil`, invalid counts, monitor stop/restart, sleep, permission loss, and settings reconfiguration produce cancellation.
+- Empty completes a normal Tap candidate; cancellation never produces Tap.
+- Empty and cancellation atomically deactivate the chord.
+- Stop/restart advances generation so queued stale updates cannot reactivate old state.
+
+The adapter treats the callback `count` as the active-touch count for v0.3. It retains `MTTouch.state` for diagnostics and tests. If target-hardware validation shows inactive contacts inside `count`, implementation stops and revises the filter contract before release.
 
 ### 6.3 Middle-click recognizer
 
-`MiddleClickRecognizer` is a pure state machine in `SlidrFreeCore`. It accepts a full touch frame and returns a state update containing:
+`MiddleClickRecognizer` is a pure, lock-free value state machine owned by the synchronous touch-processing path. It does not read settings storage, access AppKit/CGEvent, inspect applications, or perform I/O.
 
-- whether the configured finger chord is currently active;
-- whether a tap candidate is ready to be atomically claimed;
-- a session identifier used to suppress duplicate delivery.
+It produces `MiddleClickTouchUpdate` values containing:
 
-It does not inspect the frontmost application, read `UserDefaults`, access `CGEvent`, or perform I/O.
-
-### 6.4 Thread-safe chord state
-
-Touch frames are delivered to the main queue, while a Quartz event-tap callback may execute on its run-loop thread. A small lock-protected `MiddleClickChordState` bridges those contexts.
-
-The event tap may synchronously read and update only:
-
+- session ID;
 - chord active/inactive;
-- current session identifier;
-- whether a physical mouse down was transformed;
-- the original button associated with a pending transformed down;
-- whether the session was consumed by a physical click.
+- tap candidate ready/not ready;
+- frame sequence and monotonic time;
+- terminal reason when the session closes.
 
-No UI work, settings reads, app lookup, logging, or allocation-heavy processing occurs in the event-tap callback.
+### 6.4 Atomic session bridge
 
-### 6.5 Mouse event transformation
+`MiddleClickSessionBridge` is a small lock-protected reducer shared by touch processing and Event Tap. Its states are:
 
-`MouseButtonEventTap` uses a modifiable `.cghidEventTap` at `.headInsertEventTap`. It listens for:
+```text
+idle
+open(session, chordFresh)
+physicalPending(session, sourceButton, eventNumber, generation)
+physicalConsumed(session)
+tapClaimed(session)
+closed(session)
+```
 
-- `.leftMouseDown` and `.leftMouseUp`;
-- `.rightMouseDown` and `.rightMouseUp`;
-- `.tapDisabledByTimeout` and `.tapDisabledByUserInput`.
+Binding rules:
 
-When a left/right down arrives while the configured chord is active, it is transformed in place to `.otherMouseDown` with button `.center`. The bridge records that the down was transformed and marks the touch session as consumed.
+- `claimTap(session)` succeeds only from `open` after chord deactivation by normal empty completion, then atomically enters `tapClaimed`/`closed`.
+- A physical Down transforms only from a fresh `open` state and atomically enters `physicalPending`.
+- `tapClaimed`, `physicalPending`, and `physicalConsumed` are mutually exclusive for a session.
+- A matching Up is identified by original source button, `mouseEventNumber`, pipeline generation, and pending state.
+- A matching Up atomically extracts and clears pending state before any output is emitted.
+- A second Down while one is pending, a mismatched Up, duplicate Up, or obsolete generation is passed through unchanged.
+- Once any physical Down is accepted, the touch session can never claim Tap.
 
-Once a down has been transformed, the up matching its original source button is always transformed to `.otherMouseUp`, even if the fingers have already left the trackpad. This pairing rule prevents a stuck or mismatched button state.
+### 6.5 Edge gesture arbitration
 
-When the chord is inactive and there is no pending transformed down, the original event is returned unchanged. If event-tap creation fails, the tap is stopped, the degraded state is reported, and normal input remains untouched.
+The edge recognizer processes only `touches.count == 1`. Once a frame with two or more touches is observed, an edge-suppression latch remains active until the next empty/cancellation update.
 
-### 6.6 Tap emission
+The latch cannot undo a single-finger edge action emitted before the second finger arrived. v0.3 preserves immediate single-finger response rather than buffering every edge action. Acceptance therefore requires no edge action after multi-touch is observed and no unexpected edge action during normal stationary three-finger placement; it does not promise mathematical prevention before multi-touch is visible.
 
-When the recognizer emits a tap intent, `AppDelegate` atomically calls `claimTap(sessionID:)` on `MiddleClickChordState`. The claim succeeds only when the same session has not been consumed by a physical click and no transformed down is pending. A successful claim is routed through `ActionDispatcher` and `SystemControl`; `MiddleClickEmitter` then reads the current Quartz pointer location and posts one center-button down/up pair.
+### 6.6 Event Tap ownership and reducer
 
-Synthetic events are tagged with a Slidr Free-specific `eventSourceUserData` marker. The event tap passes these tagged events through without reinterpreting them.
+`MouseButtonEventTap` owns a dedicated serial thread and CFRunLoop. Creation, source add/remove, enable, disable, and invalidation occur only on that executor. `start`, `quiesce`, and `stop` have completion callbacks so pipeline lifecycle can wait for a defined transition.
 
-## 7. Gesture State Machine
+The mask includes:
 
-### 7.1 Defaults
+- left/right Down and Up;
+- left/right Dragged;
+- tap-disabled-by-timeout/user-input notifications.
 
-- Feature enabled: `false` in v0.3 beta.
-- Finger count: `3`.
-- Allow more fingers: `false`.
-- Tap enabled: `true` when the feature is enabled.
-- Maximum qualifying duration: `0.30` seconds.
-- Maximum centroid movement: `0.05` in normalized trackpad coordinates.
+`MouseButtonEventReducer` is a pure component. It accepts normalized event metadata and bridge state, and returns one of:
 
-### 7.2 Tap recognition
+- pass unchanged;
+- transform to center Down/Dragged/Up;
+- request one synthetic center Up;
+- re-enable Event Tap;
+- enter degraded state.
 
-1. Frames below the configured finger count are accepted as the user places fingers; they do not start timing.
-2. The first frame satisfying the configured count starts a candidate, records its timestamp, active touch identifiers, and centroid.
-3. If `allowMoreFingers` is false, any later frame above the configured count invalidates the candidate.
-4. While the qualifying count remains present, the recognizer records the maximum Euclidean distance between the current centroid and the initial centroid.
-5. After qualification, the first reduction in touch count begins the release phase. A later increase before all fingers lift invalidates the candidate as ambiguous.
-6. A zero-touch frame completes the session.
-7. The session emits one tap candidate only when it qualified, did not exceed the duration or movement thresholds, and was not invalidated. The atomic claim in Section 6.6 rejects a candidate already consumed by a physical click.
-8. Completion or cancellation clears all candidate state.
+Transformed Down/Dragged/Up set event type and `mouseEventButtonNumber` to center, set `mouseEventClickState` to `1` for v0.3, preserve location/timestamp/modifiers and unrelated fields, and keep the matching event number.
 
-Using the centroid rather than individual finger order avoids false movement when the private framework changes touch-array ordering.
+If a chord is active while an external mouse or another unmarked system source generates a qualifying event, that event may be transformed. Quartz does not expose a reliable trackpad-device association for these mouse events. This is a documented v0.3 limitation and a required manual test.
 
-Chord tracking remains active when `tapEnabled` is false so physical-click transformation continues to work. Disabling Tap suppresses only tap-candidate creation and completion.
+### 6.7 Unified quiesce transaction
 
-### 7.3 Physical-click recognition
+Settings changes that affect middle-click semantics, app disable, permission loss, Event Tap disable, will-sleep, monitor restart, and application termination use one transaction:
 
-The chord is active only while the current frame satisfies the configured count rule. Physical click delivery is driven by the event tap, not by pressure thresholds in the private touch frame.
+1. Under the bridge lock set `accepting=false` and advance generation.
+2. Atomically extract and clear any pending physical Down.
+3. Outside the lock, request at most one tagged center Up.
+4. On the Event Tap run loop, disable/remove/invalidate the tap as required.
+5. Cancel recognizer and edge-suppression state.
+6. Validate/apply new configuration.
+7. Create a fresh generation and restart eligible components.
 
-The event tap tracks at most one pending transformed down/up pair at a time. After that pair completes, another physical click may be transformed while the chord remains active. Any transformed down marks the touch session as consumed so lifting the fingers cannot also emit a tap middle click.
+Event Tap timeout/user-input disable first runs the release portion of this transaction, then attempts re-enable up to 3 times at 100 ms intervals. Success requires `CGEvent.tapIsEnabled == true`. Failure latches `degraded` until the next explicit pipeline restart.
+
+### 6.8 Tap emitter
+
+Tap action delivery uses the existing ActionDispatcher/SystemControl path. `MiddleClickEmitter` first creates and fully configures tagged Down and Up events. It posts neither event unless both were created successfully. Both use the same current Quartz pointer location and click state `1`.
+
+## 7. Exact-Three-Finger Tap State Machine
+
+Constants are internal and not exposed in v0.3 UI:
+
+- exact active touch count: `3`;
+- maximum session duration: `0.30` seconds;
+- maximum centroid movement: `0.05` normalized Euclidean distance;
+- chord freshness: `0.15` seconds.
+
+Rules:
+
+1. The first non-empty frame opens a session and starts the monotonic duration clock.
+2. Before qualification, counts 1 and 2 are placement frames. Empty cancels without Tap.
+3. The first exact-three frame qualifies and records the touch-ID set and centroid.
+4. Any count above 3 invalidates Tap for the session and deactivates physical-click eligibility.
+5. While count remains 3, the touch-ID set must remain identical. Array ordering may change; ID replacement invalidates Tap.
+6. Movement is the maximum Euclidean distance from the initial qualified centroid using the same ID set.
+7. The first count below 3 after qualification begins release. Any later increase before empty invalidates Tap.
+8. Empty completes the session. Tap candidate passes only when total duration from first non-empty frame is `<= 0.30`, maximum movement is `<= 0.05`, and no invalidation/cancellation occurred.
+9. A non-increasing input timestamp cancels the Tap candidate. Receipt-time freshness still controls physical-click eligibility.
+10. Completion/cancellation clears recognizer state. Session IDs increase only when a new first non-empty frame opens a session.
+
+When `tapEnabled == false`, the recognizer still tracks session/chord updates needed by physical Click but never creates a Tap candidate.
 
 ## 8. Settings and Migration
 
-`AppSettings` gains a `MiddleClickSettings` value with:
+`AppSettings` gains JSON property `middleClick` with:
 
-- `isEnabled`;
-- `fingerCount`;
-- `allowMoreFingers`;
-- `tapEnabled`;
-- `maxDurationSeconds`;
-- `maxMovement`.
+- `isEnabled`, default `false`;
+- `tapEnabled`, default `true`.
 
-Validation clamps:
+The default object remains `isEnabled=false, tapEnabled=true`; toggling the feature must not overwrite the saved Tap preference.
 
-- finger count to `3...5`;
-- duration to `0.10...0.60` seconds;
-- movement to `0.01...0.15`.
+Migration requirements:
 
-Custom decoding must use `decodeIfPresent` and fall back to the safe beta defaults. Decoding a v0.2 settings payload must preserve all existing feature values and add middle-click settings without resetting the entire object.
+- `AppSettings.middleClick` missing: decode the complete beta default.
+- Individual nested fields missing: default each independently.
+- Representative v0.2 payload: preserve every existing value exactly.
+- Structurally corrupt payload: keep the current application behavior of falling back to validated defaults and record a non-sensitive diagnostic.
+- Keep `SlidrFree.settings.v1`; custom top-level and nested decoders make the schema additive.
 
-The existing `SlidrFree.settings.v1` key remains unchanged because the encoded model already supports additive migration. No destructive migration or defaults reset is allowed.
+Any change to `isEnabled` or `tapEnabled` quiesces the active middle-click session before new configuration takes effect. Unrelated settings may update without restarting Event Tap.
 
 ## 9. Settings UI
 
-The SwiftUI settings form gains a **Middle Click** section containing:
+The settings form gains a **Middle Click** section with:
 
-- feature toggle;
-- finger-count picker for 3, 4, or 5 fingers;
-- tap toggle;
-- allow-more-fingers toggle;
-- an expandable Advanced group for duration and movement thresholds;
-- compact conflict guidance for three-finger drag and three-finger lookup/data-detector gestures;
-- runtime state text distinguishing touch monitoring from physical-click event-tap availability.
+- middle-click feature toggle;
+- three-finger Tap toggle;
+- fixed “3 fingers” explanatory text;
+- guidance about macOS three-finger drag and lookup/data-detector conflicts;
+- touch-monitor and physical-click Event Tap runtime state.
 
-The menu-bar menu remains unchanged in v0.3. Middle click is configured in the settings window rather than adding another quick toggle.
+The menu-bar menu remains unchanged. English and Simplified Chinese strings ship together.
 
-English and Simplified Chinese strings are added together. The documentation will state that granting Accessibility again may be required after replacing an ad-hoc signed build.
+## 10. Lifecycle, Permissions, and Diagnostics
 
-## 10. Input Pipeline Lifecycle
-
-`AppDelegate.updateEventTap()` is renamed to `updateInputPipeline()` because it manages more than an event tap.
-
-The pipeline rules are:
-
-- Start `PhysicalTrackpadMonitor` when the app is enabled, Accessibility is granted, and any physical gesture feature is enabled.
+- Start `PhysicalTrackpadMonitor` when the app is enabled, Accessibility is granted, and any physical gesture is enabled.
 - Start `MouseButtonEventTap` only when middle click is enabled and Accessibility is granted.
-- Stop and clear both components when the application is disabled or permission is revoked.
-- If a transformed down is pending during shutdown, request one best-effort center-button up before invalidating the event tap, then clear pending state. A later unmodified source-button up is allowed to pass through.
-- Re-enable the event tap after `.tapDisabledByTimeout` or `.tapDisabledByUserInput`; if repeated re-enable fails, report a degraded state and leave mouse input untouched.
-- On system wake, restart the private touch monitor after a bounded delay and recreate the event tap if required.
+- Refresh Accessibility on application activation and before every pipeline start. Event Tap creation/re-enable failure also forces a permission refresh.
+- Observe will-sleep and did-wake. Will-sleep quiesces; did-wake restarts after 2 seconds in a fresh generation.
+- App termination uses quiesce and waits for the Event Tap stop completion before returning.
 
-Multi-device hot-plug handling, display-change restarts, and fast-user-switching specialization are deferred until multi-device support.
+Runtime status covers framework/device availability, touch monitor state, Event Tap state, generation, last bounded failure reason, and last frame age. It never records raw frames, pointer coordinates, application activity, or user content.
 
-## 11. Error Handling and Diagnostics
+## 11. Source Changes
 
-The current private-framework bridge silently drops several failures. The integration adds a lightweight runtime status model covering:
-
-- private framework loaded/unavailable;
-- default touch device available/unavailable;
-- touch monitor running/stopped;
-- mouse event tap running/degraded/stopped;
-- last non-sensitive failure reason.
-
-Diagnostics must not record raw touch frames, pointer locations, application activity, or user content. Status is displayed in the settings window and printed only as bounded development logging.
-
-Failure behavior:
-
-- Private framework unavailable: all physical gestures stop; the app and settings remain usable.
-- Event tap unavailable: edge gestures and three-finger tap may continue; physical-click transformation is marked unavailable.
-- Accessibility revoked: all event-generating input components stop until permission is restored.
-- Invalid settings: values are clamped before recognizers are created.
-
-## 12. Expected Source Changes
-
-### New core files
+New core/app components:
 
 - `Sources/SlidrFreeCore/MiddleClickRecognizer.swift`
 - `Sources/SlidrFreeCore/MiddleClickSettings.swift`
-
-### New app files
-
-- `Sources/SlidrFreeApp/MiddleClickChordState.swift`
+- `Sources/SlidrFreeApp/MiddleClickSessionBridge.swift`
+- `Sources/SlidrFreeApp/MouseButtonEventReducer.swift`
 - `Sources/SlidrFreeApp/MouseButtonEventTap.swift`
 - `Sources/SlidrFreeApp/MiddleClickEmitter.swift`
 - `Sources/SlidrFreeApp/InputPipelineStatus.swift`
 
-### Modified files
+Modified integration files:
 
-- `Sources/SlidrFreeCore/AppSettings.swift`
-- `Sources/SlidrFreeCore/GestureRecognizer.swift`
-- `Sources/SlidrFreeCore/ActionDispatcher.swift`
-- `Sources/SlidrFreeApp/AppDelegate.swift`
-- `Sources/SlidrFreeApp/PhysicalTrackpadMonitor.swift`
-- `Sources/SlidrFreeApp/PermissionManager.swift`
-- `Sources/SlidrFreeApp/SettingsView.swift`
-- `Sources/SlidrFreeApp/SystemControl.swift`
-- localized strings, core checks, XCTest files, CI, README, and packaging documentation.
+- core settings, gesture/action models, core checks;
+- `AppDelegate`, `PhysicalTrackpadMonitor`, `PermissionManager`, `SettingsView`, `SystemControl`;
+- `Package.swift`, CI, localizations, README files;
+- `scripts/package-release.sh` and release verification.
 
-The implementation plan may consolidate a proposed file when the resulting type remains focused and testable, but it must preserve the component boundaries in this design.
+New tests and governance files:
 
-## 13. Testing Strategy
+- `Tests/SlidrFreeCoreTests/`;
+- Event reducer, session bridge, emitter factory, adapter/lifecycle, migration, and existing app tests;
+- `docs/middle-click-provenance.md`.
 
-### 13.1 Pure recognizer tests
+## 12. Automated Testing
 
-- Exact 3-finger chord succeeds; 2 and 4 fail by default.
-- `allowMoreFingers` accepts counts above the configured value.
-- Gradual placement and gradual release succeed.
-- Count increase after release begins cancels.
-- Duration and movement values immediately inside and outside boundaries behave correctly.
-- Touch-array reordering does not create false movement.
-- Timeout, cancellation, empty-frame completion, and settings disable clear state.
-- One session emits at most one tap intent.
-- A session consumed by physical click emits no tap intent.
+Required tests include:
 
-### 13.2 Arbitration tests
+- exact-three placement, qualification, release, ID reordering/replacement, movement/duration boundaries, non-monotonic timestamps, cancellation, missing/empty frames, and Tap disabled;
+- nil-buffer zero frame, missing non-empty buffer, invalid count, stop/restart generation, stale chord timeout;
+- edge-suppression latch and normal single-finger regression;
+- claim-vs-physical-Down concurrency in both orders;
+- pending matching by source button/event number/generation;
+- second Down, mismatched Up, duplicate Up, mixed left/right, multiple physical clicks, and Dragged conversion;
+- stop-vs-Down, stop-vs-Up, timeout-between-Down/Up, sleep-while-Down, settings change while pending;
+- emitter Down/Up creation failures and pair-only posting;
+- v0.2 UserDefaults migration through `SettingsStore` save/reload;
+- pipeline start/stop/reconfigure/wake and Event Tap factory failure/re-enable/degraded state;
+- release bundle contains `LICENSE`, expected version, bundle ID, and valid ad-hoc signature.
 
-- Existing single-finger left, right, and top edge cases remain unchanged.
-- Every frame with more than one touch resets edge continuity and emits no edge action.
-- Leaving and re-entering an edge establishes a fresh baseline.
+Tests use pure reducers/factories and must not require live Accessibility permission.
 
-### 13.3 Event-tap tests
-
-The callback logic is separated from tap creation so synthetic event fixtures can verify:
-
-- left/right down and matching up convert to center events;
-- up remains converted after chord deactivation;
-- input passes through when no chord is active;
-- tagged synthetic events pass through;
-- sequential physical clicks remain balanced and convert while the chord stays active;
-- disabling the feature clears pending state;
-- stopping with a pending transformed down requests a best-effort center-button up;
-- timeout/user-input disable events request safe re-enable;
-- physical conversion marks the matching touch session consumed.
-
-### 13.4 Settings and migration tests
-
-- Decode representative v0.2 JSON without losing existing values.
-- Decode missing middle-click fields to beta defaults.
-- Clamp finger count, duration, and movement.
-- Save and reload all new settings.
-
-### 13.5 Verification gates
-
-Local and CI gates are:
+Mandatory gates:
 
 1. `swift run SlidrFreeCoreChecks`
-2. `swift test` where XCTest is available
+2. `swift test`
 3. `swift build`
-4. `swift build -c release`
-5. `bash scripts/package-release.sh`
-6. `codesign --verify --verbose=2 release/Slidr-Free.app`
+4. `bash scripts/package-release.sh`
+5. `codesign --verify --verbose=2 release/Slidr-Free.app`
+6. Verify packaged `LICENSE`, `CFBundleIdentifier=com.slidr.free`, and version `0.3.0`
+7. Secret scan on documentation and release inputs
 
-CI will add `swift test` rather than relying only on core checks.
+## 13. Manual Beta Verification
 
-### 13.6 Manual test matrix
+Required target: this arm64 Mac running macOS 26.5 with its built-in trackpad.
 
-- macOS 13, 14, 15, and 26 where hardware is available.
-- Built-in Force Touch trackpad; the current default-device behavior on an external Magic Trackpad is exploratory, not a v0.3 guarantee.
-- Tap to Click on/off.
-- Three-finger drag and three-finger lookup/data-detector gestures on/off.
-- Safari background-link opening and tab closing, Terminal middle-button paste, Finder, Chrome, and Edge.
-- Ordinary left click, right click, click-and-drag, and existing edge gestures.
-- Accessibility first grant, denial, revocation, app replacement, and reauthorization.
-- Sleep/wake and app enable/disable cycles.
-- Idle CPU observation and repeated rapid gestures to identify stuck event taps or duplicated clicks.
+- 50 three-finger Taps: 50 middle clicks, zero duplicates, zero stuck buttons.
+- 50 three-finger physical Clicks: 50 balanced middle streams, zero duplicates/stuck buttons.
+- 20 physical click-and-drag actions: coherent center Down/Dragged/Up.
+- 100 ordinary left and 100 ordinary right clicks with no chord: zero conversions.
+- Normal stationary three-finger placement near each edge: no edge action after multi-touch is observed.
+- External mouse Click while chord active: record the documented global-source behavior.
+- Five enable/disable cycles and five Tap setting changes, including one while a physical Down is pending.
+- Three sleep/wake cycles, including one while a physical Down is pending.
+- Accessibility grant, revoke, and regrant; ad-hoc app replacement and reauthorization.
+- Safari middle-link behavior/tab close, Terminal paste, Finder, Chrome, and Edge.
+- Five-minute idle observation: no sustained CPU regression greater than 0.5 percentage points versus v0.2.0 on the same machine.
 
-## 14. Rollout and Rollback
+Record build SHA, macOS version, hardware, TCC state, counts, and results in the PR. Duplicate or stuck clicks are release-blocking.
 
-1. Release an opt-in v0.3.0 beta with middle click disabled by default.
-2. Install it alongside the established packaging flow and reauthorize Accessibility if macOS invalidates the ad-hoc replacement.
-3. Run the manual matrix on the target Mac before enabling the feature by default in any later release.
-4. Keep v0.2.0 as the known-good rollback release until v0.3.0 is accepted in daily use.
-5. Tag and attach the verified application archive only after packaging and signature checks pass.
-6. If input feels unreliable, duplicates clicks, or interferes with ordinary mouse behavior, roll back the installed app immediately rather than tuning the behavior in place on the user's primary environment.
+## 14. Packaging, Submission, and Rollback
 
-## 15. Acceptance Criteria
+This task submits a tested branch and pull request; it does not create a public GitHub Release or merge the PR without a separate user instruction.
 
-The v0.3 design is complete when all of the following are true:
+Packaging rules:
 
-- A valid configured tap produces exactly one middle click at the current pointer location.
-- A valid configured physical click transforms exactly one down/up pair to the center button.
-- Physical click and tap recognition never double-deliver for the same touch session.
-- A transformed down always receives a transformed matching up.
-- Ordinary left/right input is unchanged when no chord is active or the feature is disabled.
-- Existing volume, brightness, and browser-tab gestures still work for single-finger input.
-- Multi-finger input never triggers an edge action.
-- Existing v0.2 settings survive migration.
-- Permission loss, event-tap failure, or private-framework failure does not block ordinary input or crash the app.
-- Automated verification gates pass and the manual target-Mac matrix has no critical failures.
-- README and release notes describe the private-API limitation, Accessibility/TCC behavior, supported device scope, default-off beta state, and MIT/GPL implementation boundary accurately.
+- `CFBundleShortVersionString=0.3.0` and `CFBundleVersion=3001` for beta build 1.
+- Release tag, if later authorized: `v0.3.0-beta.1`.
+- The ad-hoc app and ZIP are experimental direct-download artifacts; `codesign --verify` does not imply Developer ID, notarization, Gatekeeper acceptance, private-API approval, or TCC persistence.
+- Include `LICENSE` in `Contents/Resources` and verify it after packaging.
+- Record archive SHA-256 when a release asset is later created.
 
-## 16. Deferred Follow-up
+Rollback rules:
 
-After v0.3 is accepted, a separate design cycle may add:
+- Known-good source/tag: `v0.2.0` / `eb93e18e9ba225502bac580ae98e006c1bf1aec5`.
+- Preserve a copy and SHA-256 of the known-good v0.2.0 app archive before installing beta.
+- Back up `SlidrFree.settings.v1` before beta installation.
+- Rollback stops the running app, replaces the bundle, restores/retains compatible settings, resets Accessibility only when needed, relaunches, and verifies version plus all existing edge gestures.
+- Test v0.3 settings -> v0.2 launch -> v0.3 relaunch before any later public release.
 
-- `MTDeviceCreateList` multi-device enumeration;
-- stable device identifiers and device-kind routing;
-- Magic Mouse-specific recognition;
-- external Magic Trackpad hot-plug support;
-- per-application exclusions;
-- Developer ID signing and notarization if distribution credentials are available.
+## 15. Gates
 
-These items are deliberately excluded from the v0.3 implementation plan.
+### Implementation complete
+
+- All mandatory automated gates pass.
+- Provenance review and license-in-archive check pass.
+- No open Critical/Important code-review findings.
+
+### Ready to submit PR
+
+- Implementation-complete gate passes.
+- PR describes private API, default-device scope, global mouse-source limitation, default-off behavior, and TCC reauthorization.
+- No secret or generated release artifact is committed.
+
+### Ready for beta release
+
+- PR is merged by authorized maintainer.
+- Manual beta matrix passes on the required target.
+- Rollback rehearsal passes.
+- Archive/version/license/hash evidence is attached.
+
+### Ready for stable release
+
+- Separate user authorization.
+- At least seven days of daily use or an explicitly approved shorter window.
+- Zero known duplicate/stuck-click defects and zero P0/P1 ordinary-input regressions.
+- Stable default value is decided from beta evidence rather than assumed.
+
+## 16. Acceptance Criteria
+
+- Valid Tap produces exactly one middle click; valid physical Click produces a balanced center stream.
+- Tap and physical Click never both win one session.
+- Matching Up is emitted at most once across normal completion and teardown races.
+- Stale/unknown/cancelled chord state always passes ordinary input through.
+- Existing single-finger gestures pass their current tests and work on the target Mac.
+- After multi-touch is observed, edge actions remain suppressed until empty/cancellation.
+- v0.2 settings survive migration.
+- Event Tap failure, permission loss, sleep, setting changes, and stop/restart do not crash the app or strand a middle button.
+- Binary archive contains MIT `LICENSE` and the verified app identity/version.
+- Documentation states supported scope and limitations without claiming strict clean-room, notarization, or device-source guarantees.
+
+## 17. Deferred Work
+
+- Configurable 4/5-finger gestures and `allowMoreFingers`.
+- User-adjustable duration/movement thresholds.
+- Multi-device enumeration and device-kind routing.
+- Magic Mouse and guaranteed external Magic Trackpad support.
+- Per-application exclusions.
+- Developer ID signing/notarization.
