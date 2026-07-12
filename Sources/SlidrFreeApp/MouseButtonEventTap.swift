@@ -146,7 +146,7 @@ final class MouseButtonEventTap {
     }
 }
 
-private final class MouseButtonEventTapContext {
+final class MouseButtonEventTapContext {
     private let reducer: MouseButtonEventReducer
     private let releaseHandler: (MiddleClickPendingRelease) -> Void
     private let statusHandler: (MouseButtonEventTapStatus) -> Void
@@ -158,11 +158,13 @@ private final class MouseButtonEventTapContext {
     init(
         reducer: MouseButtonEventReducer,
         releaseHandler: @escaping (MiddleClickPendingRelease) -> Void,
-        statusHandler: @escaping (MouseButtonEventTapStatus) -> Void
+        statusHandler: @escaping (MouseButtonEventTapStatus) -> Void,
+        recovery: MouseButtonEventTapRecoveryCoordinator? = nil
     ) {
         self.reducer = reducer
         self.releaseHandler = releaseHandler
         self.statusHandler = statusHandler
+        self.recovery = recovery
     }
 
     func start(completion: @escaping (Bool) -> Void) {
@@ -220,6 +222,15 @@ private final class MouseButtonEventTapContext {
     }
 
     func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        if isQuiesced {
+            switch type {
+            case .tapDisabledByTimeout, .tapDisabledByUserInput:
+                return nil
+            default:
+                return Unmanaged.passUnretained(event)
+            }
+        }
+
         let metadata = MouseButtonEventMetadata(
             kind: metadataKind(for: type),
             sourceButton: event.getIntegerValueField(.mouseEventButtonNumber),
