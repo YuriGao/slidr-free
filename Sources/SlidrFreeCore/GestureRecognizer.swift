@@ -20,22 +20,36 @@ public struct GestureRecognizer: Sendable {
     public var settings: AppSettings
     private var previousPrimaryPhysicalTouch: PhysicalTouch?
     private var activePhysicalStep: PhysicalStepState?
+    private var isSuppressingEdgesUntilEmpty: Bool
 
     public init(settings: AppSettings = .default) {
         self.settings = settings.validated()
         self.previousPrimaryPhysicalTouch = nil
         self.activePhysicalStep = nil
+        self.isSuppressingEdgesUntilEmpty = false
     }
 
     public mutating func process(_ event: NormalizedInputEvent) -> RecognizedGesture? {
-        guard settings.isAppEnabled else { return nil }
-
         switch event {
+        case .physicalTouchCancelled:
+            isSuppressingEdgesUntilEmpty = false
+            resetPhysicalContinuity()
+            return nil
         case .physicalTouchFrame(let touches, let timestamp):
-            guard let current = touches.first else {
+            guard !touches.isEmpty else {
+                isSuppressingEdgesUntilEmpty = false
                 resetPhysicalContinuity()
                 return nil
             }
+
+            if touches.count > 1 {
+                isSuppressingEdgesUntilEmpty = true
+                resetPhysicalContinuity()
+                return nil
+            }
+
+            guard !isSuppressingEdgesUntilEmpty, settings.isAppEnabled else { return nil }
+            let current = touches[0]
 
             let edgeHit = physicalEdgeHit(for: current)
             guard let edgeHit else {

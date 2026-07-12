@@ -2,6 +2,67 @@ import Darwin
 import Foundation
 import SlidrFreeCore
 
+struct PhysicalTouchAdapter {
+    let maximumTouchCount: Int
+
+    init(maximumTouchCount: Int = 16) {
+        self.maximumTouchCount = maximumTouchCount
+    }
+
+    func adapt(
+        count: Int,
+        touches: [PhysicalTouch]?,
+        generation: UInt64,
+        sequence: UInt64,
+        timestamp: Double,
+        receivedAt: Double
+    ) -> MiddleClickInputUpdate {
+        guard count >= 0, count <= maximumTouchCount else {
+            return .cancel(
+                generation: generation,
+                sequence: sequence,
+                receivedAt: receivedAt,
+                reason: .invalidTouchCount
+            )
+        }
+
+        if count == 0 {
+            return .empty(
+                generation: generation,
+                sequence: sequence,
+                timestamp: timestamp,
+                receivedAt: receivedAt
+            )
+        }
+
+        guard let touches else {
+            return .cancel(
+                generation: generation,
+                sequence: sequence,
+                receivedAt: receivedAt,
+                reason: .missingBuffer
+            )
+        }
+
+        guard touches.count == count else {
+            return .cancel(
+                generation: generation,
+                sequence: sequence,
+                receivedAt: receivedAt,
+                reason: .invalidTouchCount
+            )
+        }
+
+        return .frame(
+            generation: generation,
+            sequence: sequence,
+            timestamp: timestamp,
+            receivedAt: receivedAt,
+            touches: touches
+        )
+    }
+}
+
 /// Experimental bridge to the private MultitouchSupport framework.
 ///
 /// Keep all private API surface in this file. The monitor fails closed when the
@@ -60,6 +121,8 @@ final class PhysicalTrackpadMonitor {
     private static var monitorsByDevice: [UInt: WeakMonitor] = [:]
 
     private let handler: (NormalizedInputEvent) -> Void
+    private let middleClickUpdateHandler: (MiddleClickInputUpdate) -> Void
+    private let adapter = PhysicalTouchAdapter(maximumTouchCount: maxTouchCount)
     private let lock = NSLock()
 
     private var libraryHandle: UnsafeMutableRawPointer?
@@ -67,6 +130,7 @@ final class PhysicalTrackpadMonitor {
     private var deviceStop: MTDeviceStopFunction?
     private var running = false
     private var generation: UInt64 = 0
+    private var frameSequence: UInt64 = 0
 
     private struct PreparedDeviceStart {
         let device: MTDeviceRef
@@ -79,7 +143,11 @@ final class PhysicalTrackpadMonitor {
         lock.withLock { running }
     }
 
-    init(handler: @escaping (NormalizedInputEvent) -> Void) {
+    init(
+        middleClickUpdateHandler: @escaping (MiddleClickInputUpdate) -> Void = { _ in },
+        handler: @escaping (NormalizedInputEvent) -> Void
+    ) {
+        self.middleClickUpdateHandler = middleClickUpdateHandler
         self.handler = handler
     }
 
@@ -91,11 +159,29 @@ final class PhysicalTrackpadMonitor {
     }
 
     func start() {
+        var restartCancellation: MiddleClickInputUpdate?
         let preparedStart = lock.withLock { () -> PreparedDeviceStart? in
             guard !running else { return nil }
+            let isRestart = generation > 0
             generation &+= 1
+            if isRestart {
+                frameSequence &+= 1
+                restartCancellation = .cancel(
+                    generation: generation,
+                    sequence: frameSequence,
+                    receivedAt: ProcessInfo.processInfo.systemUptime,
+                    reason: .pipelineReconfigured
+                )
+            }
 
             return prepareStartLocked(generation: generation)
+        }
+
+        if let restartCancellation {
+            middleClickUpdateHandler(restartCancellation)
+            DispatchQueue.main.async { [handler] in
+                handler(.physicalTouchCancelled)
+            }
         }
 
         guard let preparedStart else { return }
@@ -122,21 +208,37 @@ final class PhysicalTrackpadMonitor {
     }
 
     func stop() {
-        let deviceToStop = lock.withLock { () -> (device: MTDeviceRef, stop: MTDeviceStopFunction)? in
+        let stopped = lock.withLock { () -> (
+            deviceToStop: (device: MTDeviceRef, stop: MTDeviceStopFunction)?,
+            cancellation: MiddleClickInputUpdate
+        )? in
             guard running || device != nil else { return nil }
 
             running = false
             generation &+= 1
+            frameSequence &+= 1
 
             let deviceToStop = device.flatMap { device in deviceStop.map { (device, $0) } }
+            let cancellation = MiddleClickInputUpdate.cancel(
+                generation: generation,
+                sequence: frameSequence,
+                receivedAt: ProcessInfo.processInfo.systemUptime,
+                reason: .monitorStopped
+            )
 
             device = nil
             deviceStop = nil
 
-            return deviceToStop
+            return (deviceToStop, cancellation)
         }
 
-        if let deviceToStop {
+        guard let stopped else { return }
+        middleClickUpdateHandler(stopped.cancellation)
+        DispatchQueue.main.async { [handler] in
+            handler(.physicalTouchCancelled)
+        }
+
+        if let deviceToStop = stopped.deviceToStop {
             _ = deviceToStop.stop(deviceToStop.device)
             Self.registryLock.withLock {
                 _ = Self.monitorsByDevice.removeValue(forKey: UInt(bitPattern: deviceToStop.device))
@@ -193,50 +295,65 @@ final class PhysicalTrackpadMonitor {
         let monitor = registryLock.withLock { monitorsByDevice[UInt(bitPattern: device)]?.monitor }
         guard let monitor else { return }
 
-        guard count >= 0, count <= maxTouchCount else {
-            monitor.dropFrame(reason: "invalid touch count \(count)")
-            return
-        }
-
-        guard let touchBytes else {
-            monitor.dropFrame(reason: "missing touch buffer")
-            return
-        }
-
-        monitor.handleFrame(touches: touchBytes.assumingMemoryBound(to: MTTouch.self), count: Int(count), timestamp: timestamp)
+        monitor.handleFrame(touchBytes: touchBytes, count: Int(count), timestamp: timestamp)
     }
 
-    private func handleFrame(touches: UnsafeMutablePointer<MTTouch>, count: Int, timestamp: Double) {
+    private func handleFrame(touchBytes: UnsafeMutableRawPointer?, count: Int, timestamp: Double) {
+        let receivedAt = ProcessInfo.processInfo.systemUptime
         var frameGeneration: UInt64 = 0
+        var sequence: UInt64 = 0
         let shouldRead = lock.withLock { () -> Bool in
             guard running else { return false }
             frameGeneration = generation
+            frameSequence &+= 1
+            sequence = frameSequence
             return true
         }
         guard shouldRead else { return }
 
-        let physicalTouches = (0..<count).map { index -> PhysicalTouch in
-            let touch = touches[index]
-            return PhysicalTouch(
-                id: Int(touch.identifier),
-                x: Double(touch.normalizedPosition.x),
-                y: Double(touch.normalizedPosition.y),
-                pressure: Double(touch.pressure),
-                state: Int(touch.state)
-            )
+        let physicalTouches: [PhysicalTouch]?
+        if count > 0, count <= Self.maxTouchCount, let touchBytes {
+            let touches = touchBytes.assumingMemoryBound(to: MTTouch.self)
+            physicalTouches = (0..<count).map { index -> PhysicalTouch in
+                let touch = touches[index]
+                return PhysicalTouch(
+                    id: Int(touch.identifier),
+                    x: Double(touch.normalizedPosition.x),
+                    y: Double(touch.normalizedPosition.y),
+                    pressure: Double(touch.pressure),
+                    state: Int(touch.state)
+                )
+            }
+        } else {
+            physicalTouches = nil
         }
+
+        let update = adapter.adapt(
+            count: count,
+            touches: physicalTouches,
+            generation: frameGeneration,
+            sequence: sequence,
+            timestamp: timestamp,
+            receivedAt: receivedAt
+        )
+
+        middleClickUpdateHandler(update)
 
         DispatchQueue.main.async { [weak self, handler] in
             guard self?.isCurrentFrameGeneration(frameGeneration) == true else { return }
-            handler(.physicalTouchFrame(touches: physicalTouches, timestamp: timestamp))
+            switch update {
+            case .frame(_, _, let timestamp, _, let touches):
+                handler(.physicalTouchFrame(touches: touches, timestamp: timestamp))
+            case .empty(_, _, let timestamp, _):
+                handler(.physicalTouchFrame(touches: [], timestamp: timestamp))
+            case .cancel:
+                handler(.physicalTouchCancelled)
+            }
         }
     }
 
     private func isCurrentFrameGeneration(_ frameGeneration: UInt64) -> Bool {
         lock.withLock { running && generation == frameGeneration }
-    }
-
-    private func dropFrame(reason: String) {
     }
 
     private func failLocked(_ reason: String) {
