@@ -3,10 +3,15 @@ import Foundation
 public struct MiddleClickSettings: Codable, Equatable, Sendable {
     public var isEnabled: Bool
     public var tapEnabled: Bool
-    public var fingerCount: Int
+    public var fingerCount: Int {
+        didSet {
+            fingerCount = Self.validatedFingerCount(fingerCount)
+        }
+    }
 
     public static let supportedFingerCounts = 2...4
-    public static let `default` = Self(isEnabled: false, tapEnabled: true, fingerCount: 4)
+    public static let defaultFingerCount = 4
+    public static let `default` = Self(isEnabled: false, tapEnabled: true, fingerCount: defaultFingerCount)
 
     private enum CodingKeys: String, CodingKey {
         case isEnabled
@@ -30,6 +35,6 @@ public struct MiddleClickSettings: Codable, Equatable, Sendable {
     }
 
     public static func validatedFingerCount(_ fingerCount: Int) -> Int {
-        supportedFingerCounts.contains(fingerCount) ? fingerCount : Self.default.fingerCount
+        supportedFingerCounts.contains(fingerCount) ? fingerCount : defaultFingerCount
     }
 }

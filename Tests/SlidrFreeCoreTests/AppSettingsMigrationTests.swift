@@ -101,6 +101,17 @@ final class AppSettingsMigrationTests: XCTestCase {
         }
     }
 
+    func testDirectFingerCountMutationNormalizesBeforeEncoding() throws {
+        var settings = MiddleClickSettings.default
+        settings.fingerCount = 5
+
+        XCTAssertEqual(settings.fingerCount, 4)
+
+        let data = try JSONEncoder().encode(settings)
+        let decodedJSON = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(decodedJSON["fingerCount"] as? Int, 4)
+    }
+
     private func decodeSettings(middleClickJSON: String) throws -> AppSettings {
         let payload = try XCTUnwrap(
             """
