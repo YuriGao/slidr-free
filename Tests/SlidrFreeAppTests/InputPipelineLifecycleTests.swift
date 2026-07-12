@@ -72,6 +72,22 @@ final class InputPipelineLifecycleTests: XCTestCase {
         XCTAssertEqual(harness.factory.instances.count, 2)
     }
 
+    func testFingerCountChangeQuiescesPendingAndBuildsFreshPipeline() {
+        let harness = Harness()
+        var settings = enabledSettings()
+        harness.coordinator.update(settings: settings, permission: .granted)
+        let first = harness.factory.last!
+        first.hasPending = true
+
+        settings.middleClick.fingerCount = 3
+        harness.coordinator.update(settings: settings, permission: .granted)
+
+        XCTAssertTrue(first.didQuiesce)
+        XCTAssertEqual(first.releaseCount, 1)
+        XCTAssertEqual(harness.factory.instances.map(\.fingerCount), [4, 3])
+        XCTAssertEqual(harness.factory.instances.map(\.generation), [1, 2])
+    }
+
     func testSleepWakeSchedulesFreshGenerationAfterTwoSeconds() {
         let harness = Harness()
         harness.coordinator.update(settings: enabledSettings(), permission: .granted)
@@ -270,7 +286,14 @@ private final class FakePipelineFactory: InputPipelineFactory {
     var last: FakePipeline? { instances.last }
 
     func make(generation: UInt64, settings: AppSettings, status: InputPipelineStatus, eventTapStatus: @escaping (MouseButtonEventTapStatus) -> Void) -> any InputPipelineInstance {
-        let value = FakePipeline(generation: generation, tapEnabled: settings.middleClick.tapEnabled, tapStartSucceeds: nextTapStartSucceeds, deferQuiesce: deferQuiesce, statusHandler: eventTapStatus)
+        let value = FakePipeline(
+            generation: generation,
+            tapEnabled: settings.middleClick.tapEnabled,
+            fingerCount: settings.middleClick.fingerCount,
+            tapStartSucceeds: nextTapStartSucceeds,
+            deferQuiesce: deferQuiesce,
+            statusHandler: eventTapStatus
+        )
         nextTapStartSucceeds = true
         instances.append(value)
         return value
@@ -281,6 +304,7 @@ private final class FakePipeline: InputPipelineInstance {
     let generation: UInt64
     let componentGenerations: [UInt64]
     let tapEnabled: Bool
+    let fingerCount: Int
     let tapStartSucceeds: Bool
     let deferQuiesce: Bool
     let statusHandler: (MouseButtonEventTapStatus) -> Void
@@ -292,9 +316,9 @@ private final class FakePipeline: InputPipelineInstance {
     var edgeUpdates = 0
     var pendingCompletion: (() -> Void)?
 
-    init(generation: UInt64, tapEnabled: Bool, tapStartSucceeds: Bool, deferQuiesce: Bool, statusHandler: @escaping (MouseButtonEventTapStatus) -> Void) {
+    init(generation: UInt64, tapEnabled: Bool, fingerCount: Int, tapStartSucceeds: Bool, deferQuiesce: Bool, statusHandler: @escaping (MouseButtonEventTapStatus) -> Void) {
         self.generation = generation; self.componentGenerations = [generation, generation, generation, generation]
-        self.tapEnabled = tapEnabled; self.tapStartSucceeds = tapStartSucceeds; self.deferQuiesce = deferQuiesce; self.statusHandler = statusHandler
+        self.tapEnabled = tapEnabled; self.fingerCount = fingerCount; self.tapStartSucceeds = tapStartSucceeds; self.deferQuiesce = deferQuiesce; self.statusHandler = statusHandler
     }
 
     func startTouchMonitor() -> Bool { touchRequested = true; return true }

@@ -3,6 +3,37 @@ import XCTest
 @testable import SlidrFreeApp
 
 final class ProductionInputPipelineTests: XCTestCase {
+    func testConfiguredFourFingerCountIsSharedByTapAndPhysicalClick() {
+        let monitor = PipelineMonitorSpy()
+        var actions: [RecognizedGesture] = []
+        var tap: PipelineEventTapSpy?
+        let pipeline = makePipeline(
+            settings: enabledSettingsForProduction(fingerCount: 4),
+            monitor: monitor,
+            eventTapFactory: { reducer in
+                let value = PipelineEventTapSpy(reducer: reducer)
+                tap = value
+                return value
+            },
+            actionHandler: { actions.append($0) }
+        )
+        pipeline.startEventTap { XCTAssertTrue($0) }
+
+        pipeline.receiveMiddleClick(.frame(generation: 7, sequence: 1, timestamp: 1.00, receivedAt: 1.00, touches: touches(count: 3)))
+        pipeline.receiveMiddleClick(.empty(generation: 7, sequence: 2, timestamp: 1.10, receivedAt: 1.10))
+        XCTAssertTrue(actions.isEmpty)
+
+        pipeline.receiveMiddleClick(.frame(generation: 7, sequence: 3, timestamp: 1.20, receivedAt: 1.20, touches: touches(count: 4)))
+        pipeline.receiveMiddleClick(.empty(generation: 7, sequence: 4, timestamp: 1.30, receivedAt: 1.30))
+        XCTAssertEqual(actions, [.middleClickTap])
+
+        pipeline.receiveMiddleClick(.frame(generation: 7, sequence: 5, timestamp: 1.40, receivedAt: 1.05, touches: touches(count: 4)))
+        XCTAssertEqual(
+            tap?.reducer.reduce(.init(kind: .down, sourceButton: 0, eventNumber: 77, marker: 0)),
+            .transform(.init(kind: .down, targetButton: 2, eventNumber: 77, clickState: 1))
+        )
+    }
+
     func testQuiesceWithEventTapStopAdvancesBridgeOnceAndEmitsPendingReleaseOnce() {
         let bridge = MiddleClickSessionBridge(generation: 7, now: { 1 })
         let monitor = PipelineMonitorSpy()
@@ -88,6 +119,7 @@ final class ProductionInputPipelineTests: XCTestCase {
 
     private func makePipeline(
         bridge: MiddleClickSessionBridge = MiddleClickSessionBridge(generation: 7, now: { 1.1 }),
+        settings: AppSettings = enabledSettingsForProduction(fingerCount: 3),
         monitor: PipelineMonitorSpy,
         emitter: ReleaseEmitterSpy = ReleaseEmitterSpy(),
         eventTapFactory: @escaping (MouseButtonEventReducer) -> any InputEventTapLifecycle = { PipelineEventTapSpy(reducer: $0) },
@@ -96,7 +128,7 @@ final class ProductionInputPipelineTests: XCTestCase {
     ) -> ProductionInputPipeline {
         ProductionInputPipeline(
             generation: 7,
-            settings: enabledSettingsForProduction(),
+            settings: settings,
             status: InputPipelineStatus(),
             bridge: bridge,
             releaseEmitter: emitter,
@@ -112,18 +144,17 @@ final class ProductionInputPipelineTests: XCTestCase {
         )
     }
 
-    private func touches() -> [PhysicalTouch] {
-        [
-            PhysicalTouch(id: 1, x: 0.4, y: 0.4, pressure: 0, state: 1),
-            PhysicalTouch(id: 2, x: 0.5, y: 0.4, pressure: 0, state: 1),
-            PhysicalTouch(id: 3, x: 0.6, y: 0.4, pressure: 0, state: 1)
-        ]
+    private func touches(count: Int = 3) -> [PhysicalTouch] {
+        (1...count).map { index in
+            PhysicalTouch(id: index, x: 0.3 + Double(index) * 0.1, y: 0.4, pressure: 0, state: 1)
+        }
     }
 }
 
-private func enabledSettingsForProduction() -> AppSettings {
+private func enabledSettingsForProduction(fingerCount: Int) -> AppSettings {
     var settings = AppSettings.default
     settings.middleClick.isEnabled = true
+    settings.middleClick.fingerCount = fingerCount
     return settings
 }
 

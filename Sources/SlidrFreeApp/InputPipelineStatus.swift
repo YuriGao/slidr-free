@@ -421,7 +421,10 @@ final class ProductionInputPipeline: InputPipelineInstance {
             MouseButtonEventTap(reducer: reducer, releaseEmitter: emitter, statusHandler: statusHandler)
         }
         self.deliverAction = deliverAction
-        middleRecognizer = MiddleClickRecognizer(tapEnabled: settings.middleClick.tapEnabled)
+        middleRecognizer = MiddleClickRecognizer(
+            tapEnabled: settings.middleClick.tapEnabled,
+            fingerCount: settings.middleClick.fingerCount
+        )
         edgeRecognizer = GestureRecognizer(settings: settings)
     }
 
