@@ -27,6 +27,9 @@ jobs:
       - name: Verify release contract
         run: bash scripts/verify-release.sh
 
+      - name: Test ad-hoc signature contract
+        run: bash scripts/test-verify-release-signature.sh
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
