@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
-    branches: ["*"]
+    branches: ["**"]
 
 jobs:
   build-and-test:
@@ -15,11 +15,17 @@ jobs:
       - name: Run core checks
         run: swift run SlidrFreeCoreChecks
 
+      - name: Run tests
+        run: swift test
+
       - name: Build
         run: swift build
 
       - name: Package release
         run: bash scripts/package-release.sh
+
+      - name: Verify release contract
+        run: bash scripts/verify-release.sh
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

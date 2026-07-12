@@ -19,6 +19,9 @@ echo "==> Copying icon..."
 cp "AppIcon.icns" "release/Slidr-Free.app/Contents/Resources/AppIcon.icns"
 cp "Resources/MenuBarIcon.png" "release/Slidr-Free.app/Contents/Resources/MenuBarIcon.png"
 
+echo "==> Copying license..."
+cp "LICENSE" "release/Slidr-Free.app/Contents/Resources/LICENSE"
+
 echo "==> Copying localizations..."
 cp -R Resources/en.lproj "release/Slidr-Free.app/Contents/Resources/"
 cp -R Resources/zh-Hans.lproj "release/Slidr-Free.app/Contents/Resources/"
@@ -36,9 +39,9 @@ cat > "release/Slidr-Free.app/Contents/Info.plist" <<EOF
     <key>CFBundleName</key>
     <string>Slidr Free</string>
     <key>CFBundleVersion</key>
-    <string>0.2.0</string>
+    <string>3001</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.2.0</string>
+    <string>0.3.0</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleIconFile</key>
