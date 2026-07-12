@@ -4,6 +4,7 @@ public enum SystemAction: Equatable, Sendable {
     case adjustBrightness(delta: Double)
     case adjustVolume(delta: Double)
     case switchBrowserTab(direction: BrowserTabDirection)
+    case middleClick
 }
 
 public struct ActionDispatcher: Sendable {
@@ -21,6 +22,8 @@ public struct ActionDispatcher: Sendable {
             return [.adjustVolume(delta: signedDelta(direction: direction, magnitude: magnitude))]
         case .browserTab(let direction):
             return [.switchBrowserTab(direction: direction)]
+        case .middleClickTap:
+            return [.middleClick]
         }
     }
 

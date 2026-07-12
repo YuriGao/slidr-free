@@ -8,6 +8,7 @@ public protocol SystemControlling: AnyObject {
     func adjustVolume(delta: Double) -> SystemActionResult
     func adjustBrightness(delta: Double) -> SystemActionResult
     func switchBrowserTab(direction: BrowserTabDirection) -> SystemActionResult
+    func middleClick() -> SystemActionResult
 }
 
 public enum SystemActionResult: Equatable {
@@ -19,6 +20,12 @@ public enum SystemActionResult: Equatable {
 // MARK: - Concrete Implementation
 
 final class SystemControl: SystemControlling {
+    private let middleClickEmitter: any MiddleClickEmitting
+
+    init(middleClickEmitter: any MiddleClickEmitting = MiddleClickEmitter()) {
+        self.middleClickEmitter = middleClickEmitter
+    }
+
     func adjustVolume(delta: Double) -> SystemActionResult {
         let isUp = delta > 0
         guard postMediaKey(isUp ? .volumeUp : .volumeDown) else {
@@ -55,6 +62,10 @@ final class SystemControl: SystemControlling {
             event.post(tap: .cghidEventTap)
         }
         return .success
+    }
+
+    func middleClick() -> SystemActionResult {
+        middleClickEmitter.emitClick()
     }
 
     // MARK: - Private Helpers

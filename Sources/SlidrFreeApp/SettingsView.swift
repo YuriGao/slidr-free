@@ -4,6 +4,7 @@ import SlidrFreeCore
 struct SettingsView: View {
     @ObservedObject var store: SettingsStore
     @ObservedObject var permissionManager: PermissionManager
+    @ObservedObject var pipelineStatus: InputPipelineStatus
     @State private var launchAtLoginError: String?
 
     var body: some View {
@@ -27,6 +28,36 @@ struct SettingsView: View {
                 Toggle(NSLocalizedString("browser_tab_edge_gesture", comment: ""), isOn: binding(\.features.browserTabEdgeGesture))
                 Toggle(NSLocalizedString("swap_sides", comment: ""), isOn: binding(\.features.swapSides))
                 labeledSlider(NSLocalizedString("edge_width", comment: ""), value: binding(\.gesture.edgeWidthPercent), range: 0.04...0.20, isPercent: true)
+            }
+
+            Section(NSLocalizedString("section_middle_click", comment: "")) {
+                Toggle(NSLocalizedString("middle_click_enable", comment: ""), isOn: binding(\.middleClick.isEnabled))
+                Toggle(NSLocalizedString("middle_click_tap_enable", comment: ""), isOn: binding(\.middleClick.tapEnabled))
+                    .disabled(!store.settings.middleClick.isEnabled)
+                Picker(
+                    NSLocalizedString("middle_click_finger_count", comment: ""),
+                    selection: binding(\.middleClick.fingerCount)
+                ) {
+                    ForEach(MiddleClickSettings.supportedFingerCounts, id: \.self) { fingerCount in
+                        Text("\(fingerCount)").tag(fingerCount)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .disabled(!store.settings.middleClick.isEnabled)
+                Text(NSLocalizedString("middle_click_exact_count_help", comment: ""))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if store.settings.middleClick.fingerCount == 2 {
+                    Label(NSLocalizedString("middle_click_two_finger_warning", comment: ""), systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                } else if store.settings.middleClick.fingerCount == 3 {
+                    Text(NSLocalizedString("middle_click_three_finger_drag_guidance", comment: ""))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                statusRow(NSLocalizedString("touch_monitor_status", comment: ""), value: localizedTouchState(pipelineStatus.touchMonitor))
+                statusRow(NSLocalizedString("event_tap_status", comment: ""), value: localizedEventTapState(pipelineStatus.eventTap))
             }
 
             Section(NSLocalizedString("section_permissions", comment: "")) {
@@ -106,5 +137,19 @@ struct SettingsView: View {
 
     private func localizedPermissionState(_ state: PermissionState) -> String {
         NSLocalizedString(state.rawValue, comment: "")
+    }
+
+    private func localizedTouchState(_ state: TouchMonitorRuntimeState) -> String {
+        NSLocalizedString("pipeline_\(state.rawValue)", comment: "")
+    }
+
+    private func localizedEventTapState(_ state: MouseButtonEventTapStatus) -> String {
+        switch state {
+        case .stopped: return NSLocalizedString("pipeline_stopped", comment: "")
+        case .starting: return NSLocalizedString("pipeline_starting", comment: "")
+        case .running: return NSLocalizedString("pipeline_running", comment: "")
+        case .recoveryRequiresPipelineRestart: return NSLocalizedString("pipeline_restarting", comment: "")
+        case .degraded: return NSLocalizedString("pipeline_degraded", comment: "")
+        }
     }
 }

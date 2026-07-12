@@ -11,18 +11,29 @@
 "section_general" = "通用";
 "section_edge_gestures" = "物理触控板边缘手势";
 "section_permissions" = "权限";
+"section_middle_click" = "中键点击";
 
 /* General */
 "enable_app_toggle" = "启用应用";
 "launch_at_login" = "登录时启动";
 
 /* Edge Gestures */
-"physical_trackpad_experimental_warning" = "实验性功能：物理触控板边缘手势使用 Apple 私有 MultitouchSupport API。若不可用，Slidr-Free 会在调试面板记录失败原因，且不会回退为屏幕边缘光标手势。";
+"physical_trackpad_experimental_warning" = "实验性功能：物理触控板边缘手势使用 Apple 私有 MultitouchSupport API。若不可用，Slidr-Free 会在设置页显示有界运行状态，且不会回退为屏幕边缘光标手势。";
 "volume_edge_gesture" = "物理触控板音量边缘手势";
 "brightness_edge_gesture" = "物理触控板亮度边缘手势";
 "browser_tab_edge_gesture" = "上边缘切换浏览器标签页";
 "swap_sides" = "左右互换";
 "edge_width" = "边缘宽度";
+
+/* Middle Click */
+"middle_click_enable" = "启用中键点击";
+"middle_click_tap_enable" = "启用轻点";
+"middle_click_finger_count" = "手指数";
+"middle_click_exact_count_help" = "轻点和物理按下均要求恰好使用所选数量的手指。";
+"middle_click_two_finger_warning" = "两指可能与 macOS 辅助点按及常用双指手势冲突。";
+"middle_click_three_finger_drag_guidance" = "若已启用 macOS 三指拖移，请改选 4 指。";
+"touch_monitor_status" = "触控监视器";
+"event_tap_status" = "物理点击 Event Tap";
 
 /* Permissions */
 "accessibility" = "辅助功能";
@@ -37,3 +48,9 @@
 "granted" = "已授权";
 "denied" = "未授权";
 "unknown" = "未知";
+"pipeline_stopped" = "已停止";
+"pipeline_starting" = "启动中";
+"pipeline_running" = "运行中";
+"pipeline_unavailable" = "不可用";
+"pipeline_restarting" = "正在重启";
+"pipeline_degraded" = "降级";
