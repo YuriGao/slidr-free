@@ -48,7 +48,7 @@ final class AppSettingsMigrationTests: XCTestCase {
                 horizontalDominanceRatio: 2.25
             )
         )
-        XCTAssertEqual(decoded.middleClick, MiddleClickSettings(isEnabled: false, tapEnabled: true))
+        XCTAssertEqual(decoded.middleClick, MiddleClickSettings(isEnabled: false, tapEnabled: true, fingerCount: 4))
     }
 
     func testDecodingMiddleClickWithOnlyIsEnabledDefaultsTapEnabled() throws {
@@ -56,7 +56,7 @@ final class AppSettingsMigrationTests: XCTestCase {
         {"isEnabled": true}
         """)
 
-        XCTAssertEqual(decoded.middleClick, MiddleClickSettings(isEnabled: true, tapEnabled: true))
+        XCTAssertEqual(decoded.middleClick, MiddleClickSettings(isEnabled: true, tapEnabled: true, fingerCount: 4))
     }
 
     func testDecodingMiddleClickWithOnlyTapEnabledDefaultsIsEnabled() throws {
@@ -64,7 +64,7 @@ final class AppSettingsMigrationTests: XCTestCase {
         {"tapEnabled": false}
         """)
 
-        XCTAssertEqual(decoded.middleClick, MiddleClickSettings(isEnabled: false, tapEnabled: false))
+        XCTAssertEqual(decoded.middleClick, MiddleClickSettings(isEnabled: false, tapEnabled: false, fingerCount: 4))
     }
 
     func testValidationPreservesMiddleClickBooleans() throws {
@@ -72,7 +72,33 @@ final class AppSettingsMigrationTests: XCTestCase {
         {"isEnabled": true, "tapEnabled": false}
         """)
 
-        XCTAssertEqual(decoded.validated().middleClick, MiddleClickSettings(isEnabled: true, tapEnabled: false))
+        XCTAssertEqual(decoded.validated().middleClick, MiddleClickSettings(isEnabled: true, tapEnabled: false, fingerCount: 4))
+    }
+
+    func testMiddleClickDefaultsToFourFingers() {
+        XCTAssertEqual(MiddleClickSettings.default.fingerCount, 4)
+    }
+
+    func testSupportedFingerCountsRoundTrip() throws {
+        for fingerCount in 2...4 {
+            let original = MiddleClickSettings(isEnabled: true, tapEnabled: false, fingerCount: fingerCount)
+            let data = try JSONEncoder().encode(original)
+            let decoded = try JSONDecoder().decode(MiddleClickSettings.self, from: data)
+
+            XCTAssertEqual(decoded, original)
+        }
+    }
+
+    func testUnsupportedPersistedFingerCountsFallBackToFour() throws {
+        for fingerCount in [1, 5] {
+            let decoded = try decodeSettings(middleClickJSON: """
+            {"isEnabled": true, "tapEnabled": false, "fingerCount": \(fingerCount)}
+            """)
+
+            XCTAssertEqual(decoded.middleClick.fingerCount, 4)
+            XCTAssertTrue(decoded.middleClick.isEnabled)
+            XCTAssertFalse(decoded.middleClick.tapEnabled)
+        }
     }
 
     private func decodeSettings(middleClickJSON: String) throws -> AppSettings {
