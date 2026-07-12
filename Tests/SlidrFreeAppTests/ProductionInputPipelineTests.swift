@@ -20,6 +20,10 @@ final class ProductionInputPipelineTests: XCTestCase {
         pipeline.startEventTap { XCTAssertTrue($0) }
 
         pipeline.receiveMiddleClick(.frame(generation: 7, sequence: 1, timestamp: 1.00, receivedAt: 1.00, touches: touches(count: 3)))
+        XCTAssertEqual(
+            tap?.reducer.reduce(.init(kind: .down, sourceButton: 0, eventNumber: 66, marker: 0)),
+            .passUnchanged
+        )
         pipeline.receiveMiddleClick(.empty(generation: 7, sequence: 2, timestamp: 1.10, receivedAt: 1.10))
         XCTAssertTrue(actions.isEmpty)
 
@@ -31,6 +35,18 @@ final class ProductionInputPipelineTests: XCTestCase {
         XCTAssertEqual(
             tap?.reducer.reduce(.init(kind: .down, sourceButton: 0, eventNumber: 77, marker: 0)),
             .transform(.init(kind: .down, targetButton: 2, eventNumber: 77, clickState: 1))
+        )
+        XCTAssertEqual(
+            tap?.reducer.reduce(.init(kind: .dragged, sourceButton: 0, eventNumber: 77, marker: 0)),
+            .transform(.init(kind: .dragged, targetButton: 2, eventNumber: 77, clickState: 1))
+        )
+        XCTAssertEqual(
+            tap?.reducer.reduce(.init(kind: .up, sourceButton: 0, eventNumber: 77, marker: 0)),
+            .transform(.init(kind: .up, targetButton: 2, eventNumber: 77, clickState: 1))
+        )
+        XCTAssertEqual(
+            tap?.reducer.reduce(.init(kind: .up, sourceButton: 0, eventNumber: 77, marker: 0)),
+            .passUnchanged
         )
     }
 
