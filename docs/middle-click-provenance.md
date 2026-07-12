@@ -50,7 +50,9 @@ Implementation was split into bounded workstreams:
 - lifecycle, Settings integration, and diagnostics.
 - configurable-count settings migration, recognition, lifecycle propagation, UI, and bilingual documentation.
 
-Each workstream was reviewed by a separate review-only role before the next workstream proceeded. Those reviews checked specification compliance, ordinary-input fail-open behavior, concurrency/lifecycle safety, test coverage, and the no-source-reuse constraint. Critical and Important findings were fixed and re-reviewed before later work began. A final whole-branch provenance/copying review remains a required pull-request and release gate.
+Each workstream was reviewed by a separate review-only role before the next workstream proceeded. Those reviews checked specification compliance, ordinary-input fail-open behavior, concurrency/lifecycle safety, test coverage, and the no-source-reuse constraint. Critical and Important findings were fixed and re-reviewed before later work began. The original integration's final whole-branch provenance/copying review is recorded in the pull request; the extension review is recorded below.
+
+The configurable-count extension received a final read-only review over `71cb6c161de26639db4b6a2cfc509c739edb45e8..970f7f7384ffae40bc55892581e4a0d9a618a278`. The reviewer reported no Critical or Important findings after fixes, confirmed the public-document-only input boundary, and found no suspected upstream source, resource, project, binary, structural, or transliteration reuse in the extension.
 
 ## Dependency inventory
 
