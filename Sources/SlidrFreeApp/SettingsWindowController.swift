@@ -2,8 +2,8 @@ import AppKit
 import SwiftUI
 
 final class SettingsWindowController: NSWindowController {
-    init(store: SettingsStore, permissionManager: PermissionManager) {
-        let view = SettingsView(store: store, permissionManager: permissionManager)
+    init(store: SettingsStore, permissionManager: PermissionManager, pipelineStatus: InputPipelineStatus) {
+        let view = SettingsView(store: store, permissionManager: permissionManager, pipelineStatus: pipelineStatus)
         let hostingController = NSHostingController(rootView: view)
         let window = NSWindow(contentViewController: hostingController)
         window.title = NSLocalizedString("settings_title", comment: "")

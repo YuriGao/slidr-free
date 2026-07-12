@@ -2,6 +2,13 @@ import Darwin
 import Foundation
 import SlidrFreeCore
 
+struct PhysicalTrackpadMonitorStatus: Sendable {
+    let frameworkAvailable: Bool
+    let deviceAvailable: Bool
+    let state: TouchMonitorRuntimeState
+    let failure: String?
+}
+
 struct PhysicalTouchAdapter {
     let maximumTouchCount: Int
 
@@ -122,6 +129,7 @@ final class PhysicalTrackpadMonitor {
 
     private let handler: (NormalizedInputEvent) -> Void
     private let middleClickUpdateHandler: (MiddleClickInputUpdate) -> Void
+    private let statusHandler: (PhysicalTrackpadMonitorStatus) -> Void
     private let adapter = PhysicalTouchAdapter(maximumTouchCount: maxTouchCount)
     private let lock = NSLock()
 
@@ -129,7 +137,7 @@ final class PhysicalTrackpadMonitor {
     private var device: MTDeviceRef?
     private var deviceStop: MTDeviceStopFunction?
     private var running = false
-    private var generation: UInt64 = 0
+    private let generation: UInt64
     private var frameSequence: UInt64 = 0
 
     private struct PreparedDeviceStart {
@@ -144,9 +152,13 @@ final class PhysicalTrackpadMonitor {
     }
 
     init(
+        generation: UInt64 = 1,
+        statusHandler: @escaping (PhysicalTrackpadMonitorStatus) -> Void = { _ in },
         middleClickUpdateHandler: @escaping (MiddleClickInputUpdate) -> Void = { _ in },
         handler: @escaping (NormalizedInputEvent) -> Void
     ) {
+        self.generation = generation
+        self.statusHandler = statusHandler
         self.middleClickUpdateHandler = middleClickUpdateHandler
         self.handler = handler
     }
@@ -158,33 +170,13 @@ final class PhysicalTrackpadMonitor {
         }
     }
 
-    func start() {
-        var restartCancellation: MiddleClickInputUpdate?
+    @discardableResult
+    func start() -> Bool {
         let preparedStart = lock.withLock { () -> PreparedDeviceStart? in
             guard !running else { return nil }
-            let isRestart = generation > 0
-            generation &+= 1
-            if isRestart {
-                frameSequence &+= 1
-                restartCancellation = .cancel(
-                    generation: generation,
-                    sequence: frameSequence,
-                    receivedAt: ProcessInfo.processInfo.systemUptime,
-                    reason: .pipelineReconfigured
-                )
-            }
-
             return prepareStartLocked(generation: generation)
         }
-
-        if let restartCancellation {
-            middleClickUpdateHandler(restartCancellation)
-            DispatchQueue.main.async { [handler] in
-                handler(.physicalTouchCancelled)
-            }
-        }
-
-        guard let preparedStart else { return }
+        guard let preparedStart else { return isRunning }
 
         guard preparedStart.startDevice(preparedStart.device, 0) == 0 else {
             _ = preparedStart.stopDevice(preparedStart.device)
@@ -198,13 +190,18 @@ final class PhysicalTrackpadMonitor {
                 }
                 failLocked("MTDeviceStart failed")
             }
-            return
+            report(framework: true, device: true, state: .unavailable, failure: "MTDeviceStart failed")
+            return false
         }
 
-        lock.withLock {
-            guard device == preparedStart.device, generation == preparedStart.generation else { return }
+        let committed = lock.withLock { () -> Bool in
+            guard device == preparedStart.device, generation == preparedStart.generation else { return false }
             running = true
+            return true
         }
+        guard committed else { return false }
+        report(framework: true, device: true, state: .running, failure: nil)
+        return true
     }
 
     func stop() {
@@ -215,7 +212,6 @@ final class PhysicalTrackpadMonitor {
             guard running || device != nil else { return nil }
 
             running = false
-            generation &+= 1
             frameSequence &+= 1
 
             let deviceToStop = device.flatMap { device in deviceStop.map { (device, $0) } }
@@ -244,12 +240,15 @@ final class PhysicalTrackpadMonitor {
                 _ = Self.monitorsByDevice.removeValue(forKey: UInt(bitPattern: deviceToStop.device))
             }
         }
+        report(framework: libraryHandle != nil, device: false, state: .stopped, failure: nil)
     }
 
     private func prepareStartLocked(generation: UInt64) -> PreparedDeviceStart? {
+        report(framework: true, device: false, state: .starting, failure: nil)
         if libraryHandle == nil {
             guard let handle = dlopen(Self.frameworkPath, RTLD_NOW) else {
                 failLocked("MultitouchSupport unavailable: \(dlerrorString())")
+                report(framework: false, device: false, state: .unavailable, failure: "MultitouchSupport unavailable")
                 return nil
             }
             libraryHandle = handle
@@ -257,6 +256,7 @@ final class PhysicalTrackpadMonitor {
 
         guard let handle = libraryHandle else {
             failLocked("MultitouchSupport unavailable")
+            report(framework: false, device: false, state: .unavailable, failure: "MultitouchSupport unavailable")
             return nil
         }
 
@@ -267,11 +267,13 @@ final class PhysicalTrackpadMonitor {
             let stopDevice: MTDeviceStopFunction = loadSymbol("MTDeviceStop", from: handle)
         else {
             failLocked("MultitouchSupport missing required symbols")
+            report(framework: false, device: false, state: .unavailable, failure: "MultitouchSupport missing required symbols")
             return nil
         }
 
         guard let newDevice = create() else {
             failLocked("MTDeviceCreateDefault returned nil")
+            report(framework: true, device: false, state: .unavailable, failure: "No default multitouch device")
             return nil
         }
 
@@ -358,8 +360,11 @@ final class PhysicalTrackpadMonitor {
 
     private func failLocked(_ reason: String) {
         running = false
-        generation &+= 1
         device = nil
+    }
+
+    private func report(framework: Bool, device: Bool, state: TouchMonitorRuntimeState, failure: String?) {
+        statusHandler(PhysicalTrackpadMonitorStatus(frameworkAvailable: framework, deviceAvailable: device, state: state, failure: failure.map { String($0.prefix(160)) }))
     }
 
     private func dlerrorString() -> String {

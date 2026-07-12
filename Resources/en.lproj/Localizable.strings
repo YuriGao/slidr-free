@@ -11,6 +11,7 @@
 "section_general" = "General";
 "section_edge_gestures" = "Physical Trackpad Edge Gestures";
 "section_permissions" = "Permissions";
+"section_middle_click" = "Middle Click";
 
 /* General */
 "enable_app_toggle" = "Enable app";
@@ -23,6 +24,14 @@
 "browser_tab_edge_gesture" = "Top edge browser tab switching";
 "swap_sides" = "Swap sides";
 "edge_width" = "Edge width";
+
+/* Middle Click */
+"middle_click_enable" = "Enable three-finger middle click";
+"middle_click_tap_enable" = "Enable three-finger Tap";
+"middle_click_fixed_three" = "Uses exactly 3 fingers. Finger count and thresholds are fixed in this beta.";
+"middle_click_conflict_guidance" = "If macOS three-finger drag or Look up & data detectors is enabled, disable or change that gesture in Trackpad settings to avoid conflicts.";
+"touch_monitor_status" = "Touch monitor";
+"event_tap_status" = "Physical Click Event Tap";
 
 /* Permissions */
 "accessibility" = "Accessibility";
@@ -37,3 +46,9 @@
 "granted" = "granted";
 "denied" = "denied";
 "unknown" = "unknown";
+"pipeline_stopped" = "stopped";
+"pipeline_starting" = "starting";
+"pipeline_running" = "running";
+"pipeline_unavailable" = "unavailable";
+"pipeline_restarting" = "restarting";
+"pipeline_degraded" = "degraded";

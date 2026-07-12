@@ -11,6 +11,7 @@
 "section_general" = "通用";
 "section_edge_gestures" = "物理触控板边缘手势";
 "section_permissions" = "权限";
+"section_middle_click" = "中键点击";
 
 /* General */
 "enable_app_toggle" = "启用应用";
@@ -23,6 +24,14 @@
 "browser_tab_edge_gesture" = "上边缘切换浏览器标签页";
 "swap_sides" = "左右互换";
 "edge_width" = "边缘宽度";
+
+/* Middle Click */
+"middle_click_enable" = "启用三指中键点击";
+"middle_click_tap_enable" = "启用三指轻点";
+"middle_click_fixed_three" = "固定使用恰好 3 指；此测试版不提供手指数和阈值调节。";
+"middle_click_conflict_guidance" = "若已启用 macOS 三指拖移或“查询与数据检测器”，请在触控板设置中停用或更改相应手势以避免冲突。";
+"touch_monitor_status" = "触控监视器";
+"event_tap_status" = "物理点击 Event Tap";
 
 /* Permissions */
 "accessibility" = "辅助功能";
@@ -37,3 +46,9 @@
 "granted" = "已授权";
 "denied" = "未授权";
 "unknown" = "未知";
+"pipeline_stopped" = "已停止";
+"pipeline_starting" = "启动中";
+"pipeline_running" = "运行中";
+"pipeline_unavailable" = "不可用";
+"pipeline_restarting" = "正在重启";
+"pipeline_degraded" = "降级";
