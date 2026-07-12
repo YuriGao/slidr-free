@@ -3,6 +3,59 @@ import XCTest
 @testable import SlidrFreeApp
 
 final class ProductionInputPipelineTests: XCTestCase {
+    func testSequentialFourFingerPlacementQualifiesTap() {
+        let monitor = PipelineMonitorSpy()
+        var actions: [RecognizedGesture] = []
+        let pipeline = makePipeline(
+            settings: enabledSettingsForProduction(fingerCount: 4),
+            monitor: monitor,
+            actionHandler: { actions.append($0) }
+        )
+
+        for count in 1...4 {
+            pipeline.receiveMiddleClick(.frame(
+                generation: 7,
+                sequence: UInt64(count),
+                timestamp: 1.00 + Double(count) * 0.02,
+                receivedAt: 1.00 + Double(count) * 0.02,
+                touches: touches(count: count)
+            ))
+        }
+        pipeline.receiveMiddleClick(.empty(generation: 7, sequence: 5, timestamp: 1.20, receivedAt: 1.20))
+
+        XCTAssertEqual(actions, [.middleClickTap])
+    }
+
+    func testSequentialFourFingerPlacementQualifiesPhysicalClick() {
+        let monitor = PipelineMonitorSpy()
+        var tap: PipelineEventTapSpy?
+        let pipeline = makePipeline(
+            settings: enabledSettingsForProduction(fingerCount: 4),
+            monitor: monitor,
+            eventTapFactory: { reducer in
+                let value = PipelineEventTapSpy(reducer: reducer)
+                tap = value
+                return value
+            }
+        )
+        pipeline.startEventTap { XCTAssertTrue($0) }
+
+        for count in 1...4 {
+            pipeline.receiveMiddleClick(.frame(
+                generation: 7,
+                sequence: UInt64(count),
+                timestamp: 1.00 + Double(count) * 0.02,
+                receivedAt: 1.00 + Double(count) * 0.02,
+                touches: touches(count: count)
+            ))
+        }
+
+        XCTAssertEqual(
+            tap?.reducer.reduce(.init(kind: .down, sourceButton: 0, eventNumber: 91, marker: 0)),
+            .transform(.init(kind: .down, targetButton: 2, eventNumber: 91, clickState: 1))
+        )
+    }
+
     func testConfiguredFourFingerCountIsSharedByTapAndPhysicalClick() {
         let monitor = PipelineMonitorSpy()
         var actions: [RecognizedGesture] = []

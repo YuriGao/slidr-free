@@ -3,6 +3,14 @@ import XCTest
 @testable import SlidrFreeApp
 
 final class MiddleClickSessionBridgeTests: XCTestCase {
+    func testPlacementFrameDoesNotCloseSessionBeforeChordQualification() {
+        let bridge = MiddleClickSessionBridge(generation: 7, now: { 10.0 })
+        bridge.applyTouchUpdate(placement(session: 41, generation: 7, sequence: 1, receivedAt: 9.95))
+        bridge.applyTouchUpdate(active(session: 41, generation: 7, sequence: 2, receivedAt: 10.0))
+
+        XCTAssertTrue(bridge.beginPhysical(sourceButton: 0, eventNumber: 90, generation: 7))
+    }
+
     func testCompletedTapClaimsBeforePhysicalDownAndExcludesPhysical() {
         let time = 10.0
         let bridge = MiddleClickSessionBridge(generation: 7, now: { time })
@@ -123,6 +131,23 @@ final class MiddleClickSessionBridgeTests: XCTestCase {
         MiddleClickTouchUpdate(
             sessionID: session,
             chordActive: true,
+            tapCandidate: false,
+            generation: generation,
+            sequence: sequence,
+            receivedAt: receivedAt,
+            terminalReason: nil
+        )
+    }
+
+    private func placement(
+        session: UInt64,
+        generation: UInt64,
+        sequence: UInt64,
+        receivedAt: Double
+    ) -> MiddleClickTouchUpdate {
+        MiddleClickTouchUpdate(
+            sessionID: session,
+            chordActive: false,
             tapCandidate: false,
             generation: generation,
             sequence: sequence,

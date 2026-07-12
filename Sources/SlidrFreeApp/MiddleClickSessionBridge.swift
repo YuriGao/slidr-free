@@ -104,6 +104,16 @@ final class MiddleClickSessionBridge: @unchecked Sendable {
                         lastReceivedAt: update.receivedAt
                     )
                 )
+            } else if update.terminalReason == nil {
+                state = .open(
+                    OpenSession(
+                        sessionID: sessionID,
+                        generation: update.generation,
+                        chordActive: false,
+                        tapReady: false,
+                        lastReceivedAt: update.receivedAt
+                    )
+                )
             } else {
                 state = .closed(sessionID: sessionID, generation: update.generation)
             }
