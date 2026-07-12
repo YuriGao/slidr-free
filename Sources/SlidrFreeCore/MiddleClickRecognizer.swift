@@ -69,7 +69,6 @@ public struct MiddleClickRecognizer: Sendable {
     private static let exactTouchCount = 3
     private static let maximumDuration = 0.30
     private static let maximumCentroidMovement = 0.05
-    private static let boundaryTolerance = 1e-12
 
     private struct Point: Sendable {
         let x: Double
@@ -218,7 +217,7 @@ public struct MiddleClickRecognizer: Sendable {
                 currentCentroid.y - initialCentroid.y
             )
             session!.maximumMovement = max(session!.maximumMovement, movement)
-            if session!.maximumMovement > Self.maximumCentroidMovement + Self.boundaryTolerance {
+            if session!.maximumMovement > Self.maximumCentroidMovement {
                 session!.tapInvalidated = true
             }
         } else if !session!.chordInvalidated {
@@ -254,8 +253,8 @@ public struct MiddleClickRecognizer: Sendable {
         let completed = finishedSession.qualifiedIDs != nil
             && !finishedSession.tapInvalidated
             && !finishedSession.chordInvalidated
-            && duration <= Self.maximumDuration + Self.boundaryTolerance
-            && finishedSession.maximumMovement <= Self.maximumCentroidMovement + Self.boundaryTolerance
+            && duration <= Self.maximumDuration
+            && finishedSession.maximumMovement <= Self.maximumCentroidMovement
 
         return output(
             sessionID: finishedSession.id,
@@ -269,12 +268,13 @@ public struct MiddleClickRecognizer: Sendable {
     }
 
     private func centroid(of touches: [PhysicalTouch]) -> Point {
-        let total = touches.reduce(into: (x: 0.0, y: 0.0)) { partial, touch in
-            partial.x += touch.x
-            partial.y += touch.y
+        guard let anchor = touches.first else { return Point(x: 0, y: 0) }
+        let delta = touches.dropFirst().reduce(into: (x: 0.0, y: 0.0)) { partial, touch in
+            partial.x += touch.x - anchor.x
+            partial.y += touch.y - anchor.y
         }
         let count = Double(touches.count)
-        return Point(x: total.x / count, y: total.y / count)
+        return Point(x: anchor.x + delta.x / count, y: anchor.y + delta.y / count)
     }
 
     private func output(

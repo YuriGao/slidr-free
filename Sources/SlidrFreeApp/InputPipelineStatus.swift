@@ -382,6 +382,7 @@ final class ProductionInputPipeline: InputPipelineInstance {
     private var edgeRecognizer: GestureRecognizer
     private var isActive = true
     private var activeToken: UInt64 = 1
+    private var lastAcceptedMiddleClickSequence: UInt64 = 0
     private var eventTapInstance: (any InputEventTapLifecycle)?
 
     private lazy var monitor = monitorFactory(
@@ -475,6 +476,16 @@ final class ProductionInputPipeline: InputPipelineInstance {
     func receiveMiddleClick(_ update: MiddleClickInputUpdate) {
         let result = withLock { () -> (receivedAt: Double, deliveryToken: UInt64?)? in
             guard isActive else { return nil }
+            let updateMetadata: (generation: UInt64, sequence: UInt64)
+            switch update {
+            case .frame(let generation, let sequence, _, _, _),
+                 .empty(let generation, let sequence, _, _),
+                 .cancel(let generation, let sequence, _, _):
+                updateMetadata = (generation, sequence)
+            }
+            guard updateMetadata.generation == generation,
+                  updateMetadata.sequence > lastAcceptedMiddleClickSequence else { return nil }
+            lastAcceptedMiddleClickSequence = updateMetadata.sequence
             let output = middleRecognizer.process(update)
             bridge.applyTouchUpdate(output)
             let token: UInt64?

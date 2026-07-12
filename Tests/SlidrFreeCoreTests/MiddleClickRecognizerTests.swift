@@ -132,6 +132,16 @@ final class MiddleClickRecognizerTests: XCTestCase {
         XCTAssertEqual(finished.terminalReason, .invalidated)
     }
 
+    func testDurationAtNextRepresentableValueAboveBoundaryDoesNotProduceTap() {
+        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+
+        _ = recognizer.process(frame(sequence: 1, timestamp: 0.00, touches: [touch(1), touch(2), touch(3)]))
+        let finished = recognizer.process(empty(sequence: 2, timestamp: Double(0.30).nextUp))
+
+        XCTAssertFalse(finished.tapCandidate)
+        XCTAssertEqual(finished.terminalReason, .invalidated)
+    }
+
     func testDurationStartsAtFirstPlacementFrame() {
         var recognizer = MiddleClickRecognizer(tapEnabled: true)
 
@@ -159,6 +169,17 @@ final class MiddleClickRecognizerTests: XCTestCase {
         _ = recognizer.process(frame(sequence: 2, timestamp: 0.05, touches: coincidentTouches(x: 0.050_001)))
         _ = recognizer.process(frame(sequence: 3, timestamp: 0.10, touches: coincidentTouches(x: 0.00)))
         let finished = recognizer.process(empty(sequence: 4, timestamp: 0.20))
+
+        XCTAssertFalse(finished.tapCandidate)
+        XCTAssertEqual(finished.terminalReason, .invalidated)
+    }
+
+    func testCentroidMovementAtNextRepresentableValueAboveBoundaryDoesNotProduceTap() {
+        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+
+        _ = recognizer.process(frame(sequence: 1, timestamp: 0.00, touches: coincidentTouches(x: 0.00)))
+        _ = recognizer.process(frame(sequence: 2, timestamp: 0.10, touches: coincidentTouches(x: Double(0.05).nextUp)))
+        let finished = recognizer.process(empty(sequence: 3, timestamp: 0.20))
 
         XCTAssertFalse(finished.tapCandidate)
         XCTAssertEqual(finished.terminalReason, .invalidated)
@@ -203,6 +224,16 @@ final class MiddleClickRecognizerTests: XCTestCase {
         let finished = recognizer.process(empty(sequence: 3, timestamp: 1.10))
 
         XCTAssertTrue(repeatedTimestamp.chordActive)
+        XCTAssertFalse(finished.tapCandidate)
+        XCTAssertEqual(finished.terminalReason, .invalidated)
+    }
+
+    func testEmptyAtEqualTimestampInvalidatesTap() {
+        var recognizer = MiddleClickRecognizer(tapEnabled: true)
+
+        _ = recognizer.process(frame(sequence: 1, timestamp: 1.00, touches: [touch(1), touch(2), touch(3)]))
+        let finished = recognizer.process(empty(sequence: 2, timestamp: 1.00))
+
         XCTAssertFalse(finished.tapCandidate)
         XCTAssertEqual(finished.terminalReason, .invalidated)
     }

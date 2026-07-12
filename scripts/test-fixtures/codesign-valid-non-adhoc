@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == "--verify" ]]; then
+  exit 0
+fi
+if [[ "${1:-}" == "-dv" ]]; then
+  echo "Executable=fake" >&2
+  echo "Signature=Developer ID Application" >&2
+  echo "TeamIdentifier=EXAMPLE123" >&2
+  exit 0
+fi
+exit 2

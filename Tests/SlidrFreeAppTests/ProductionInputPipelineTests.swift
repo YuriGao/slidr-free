@@ -56,6 +56,36 @@ final class ProductionInputPipelineTests: XCTestCase {
         XCTAssertEqual(monitor.stopCount, 1)
     }
 
+    func testOutOfOrderFrameAfterNewerEmptyCannotOpenTapSession() {
+        let monitor = PipelineMonitorSpy()
+        var actions: [RecognizedGesture] = []
+        let pipeline = makePipeline(monitor: monitor, actionHandler: { actions.append($0) })
+
+        pipeline.receiveMiddleClick(.empty(generation: 7, sequence: 2, timestamp: 1.1, receivedAt: 1.1))
+        pipeline.receiveMiddleClick(.frame(generation: 7, sequence: 1, timestamp: 1.2, receivedAt: 1.2, touches: touches()))
+        pipeline.receiveMiddleClick(.empty(generation: 7, sequence: 3, timestamp: 1.3, receivedAt: 1.3))
+
+        XCTAssertTrue(actions.isEmpty)
+    }
+
+    func testOlderGenerationWithHigherSequenceCannotInvalidateCurrentTapSession() {
+        let monitor = PipelineMonitorSpy()
+        var actions: [RecognizedGesture] = []
+        let pipeline = makePipeline(monitor: monitor, actionHandler: { actions.append($0) })
+
+        pipeline.receiveMiddleClick(.frame(generation: 7, sequence: 1, timestamp: 1.0, receivedAt: 1.0, touches: touches()))
+        pipeline.receiveMiddleClick(.frame(
+            generation: 6,
+            sequence: 999,
+            timestamp: 1.05,
+            receivedAt: 1.05,
+            touches: touches() + [PhysicalTouch(id: 4, x: 0.7, y: 0.4, pressure: 0, state: 1)]
+        ))
+        pipeline.receiveMiddleClick(.empty(generation: 7, sequence: 2, timestamp: 1.1, receivedAt: 1.1))
+
+        XCTAssertEqual(actions, [.middleClickTap])
+    }
+
     private func makePipeline(
         bridge: MiddleClickSessionBridge = MiddleClickSessionBridge(generation: 7, now: { 1.1 }),
         monitor: PipelineMonitorSpy,

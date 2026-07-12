@@ -39,6 +39,16 @@ verify_app_bundle() {
   assert_plist_value "${label}" "${info_plist}" "CFBundleShortVersionString" "0.3.0"
   assert_plist_value "${label}" "${info_plist}" "CFBundleVersion" "3001"
   codesign --verify --verbose=2 "${app_path}" || fail "${label}: code signature verification failed"
+  local signature_details
+  local signature=""
+  signature_details="$(codesign -dv --verbose=4 "${app_path}" 2>&1)" || fail "${label}: cannot inspect code signature"
+  while IFS= read -r line; do
+    case "${line}" in
+      Signature=*) signature="${line#Signature=}" ;;
+    esac
+  done <<< "${signature_details}"
+  [[ "${signature}" == "adhoc" ]] || fail "${label}: expected ad-hoc signature, got '${signature:-missing}'"
+  echo "verified ${label}: Signature=${signature}"
 }
 
 verify_app_bundle "loose app" "${APP_PATH}"
