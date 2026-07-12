@@ -78,6 +78,15 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var launchAtLogin: Bool
     public var features: FeatureToggles
     public var gesture: GestureSettings
+    public var middleClick: MiddleClickSettings
+
+    private enum CodingKeys: String, CodingKey {
+        case isAppEnabled
+        case launchAtLogin
+        case features
+        case gesture
+        case middleClick
+    }
 
     public static let `default` = AppSettings(
         isAppEnabled: true,
@@ -94,8 +103,32 @@ public struct AppSettings: Codable, Equatable, Sendable {
             physicalStepIntervalSeconds: 0.08,
             tabSwitchStepIntervalSeconds: 0.20,
             horizontalDominanceRatio: 1.5
-        )
+        ),
+        middleClick: .default
     )
+
+    public init(
+        isAppEnabled: Bool,
+        launchAtLogin: Bool,
+        features: FeatureToggles,
+        gesture: GestureSettings,
+        middleClick: MiddleClickSettings
+    ) {
+        self.isAppEnabled = isAppEnabled
+        self.launchAtLogin = launchAtLogin
+        self.features = features
+        self.gesture = gesture
+        self.middleClick = middleClick
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.isAppEnabled = try container.decode(Bool.self, forKey: .isAppEnabled)
+        self.launchAtLogin = try container.decode(Bool.self, forKey: .launchAtLogin)
+        self.features = try container.decode(FeatureToggles.self, forKey: .features)
+        self.gesture = try container.decode(GestureSettings.self, forKey: .gesture)
+        self.middleClick = try container.decodeIfPresent(MiddleClickSettings.self, forKey: .middleClick) ?? Self.default.middleClick
+    }
 
     public func validated() -> AppSettings {
         var copy = self

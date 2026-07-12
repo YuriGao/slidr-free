@@ -23,6 +23,7 @@ let package = Package(
             ]
         ),
         .executableTarget(name: "SlidrFreeCoreChecks", dependencies: ["SlidrFreeCore"]),
+        .testTarget(name: "SlidrFreeCoreTests", dependencies: ["SlidrFreeCore"]),
         .testTarget(name: "SlidrFreeAppTests", dependencies: ["SlidrFreeApp"])
     ]
 )
