@@ -26,10 +26,12 @@
 "edge_width" = "边缘宽度";
 
 /* Middle Click */
-"middle_click_enable" = "启用三指中键点击";
-"middle_click_tap_enable" = "启用三指轻点";
-"middle_click_fixed_three" = "固定使用恰好 3 指；此测试版不提供手指数和阈值调节。";
-"middle_click_conflict_guidance" = "若已启用 macOS 三指拖移或“查询与数据检测器”，请在触控板设置中停用或更改相应手势以避免冲突。";
+"middle_click_enable" = "启用中键点击";
+"middle_click_tap_enable" = "启用轻点";
+"middle_click_finger_count" = "手指数";
+"middle_click_exact_count_help" = "轻点和物理按下均要求恰好使用所选数量的手指。";
+"middle_click_two_finger_warning" = "两指可能与 macOS 辅助点按及常用双指手势冲突。";
+"middle_click_three_finger_drag_guidance" = "若已启用 macOS 三指拖移，请改选 4 指。";
 "touch_monitor_status" = "触控监视器";
 "event_tap_status" = "物理点击 Event Tap";
 

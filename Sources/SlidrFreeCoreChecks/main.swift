@@ -66,6 +66,7 @@ private func testDefaultSettingsEnableAllFirstVersionFeaturesIndividually() thro
     try check(!settings.launchAtLogin, "Launch at login should be disabled by default")
     try check(!settings.middleClick.isEnabled, "Middle click should be disabled by default")
     try check(settings.middleClick.tapEnabled, "Middle-click Tap preference should be enabled by default")
+    try check(settings.middleClick.fingerCount == 4, "Middle click should default to four fingers")
     try checkEqual(settings.gesture.physicalStepDistance, 0.05, accuracy: 0.0001, "Physical step distance should default to 0.05")
     try checkEqual(settings.gesture.physicalStepIntervalSeconds, 0.08, accuracy: 0.0001, "Physical step interval should default to 0.08s")
 }
@@ -111,11 +112,12 @@ private func testSettingsDecodeMigratesMissingPhysicalStepFields() throws {
 }
 
 private func testMiddleClickRecognizer() throws {
-    var recognizer = MiddleClickRecognizer(tapEnabled: true)
+    var recognizer = MiddleClickRecognizer(tapEnabled: true, fingerCount: 4)
     let touches = [
         PhysicalTouch(id: 1, x: 0.20, y: 0.20),
         PhysicalTouch(id: 2, x: 0.25, y: 0.20),
-        PhysicalTouch(id: 3, x: 0.30, y: 0.20)
+        PhysicalTouch(id: 3, x: 0.30, y: 0.20),
+        PhysicalTouch(id: 4, x: 0.35, y: 0.20)
     ]
 
     let qualified = recognizer.process(.frame(
@@ -132,8 +134,8 @@ private func testMiddleClickRecognizer() throws {
         receivedAt: 10.20
     ))
 
-    try check(qualified.chordActive, "Exact three touches should activate the middle-click chord")
-    try check(finished.tapCandidate, "A short stationary exact-three session should produce one Tap candidate")
+    try check(qualified.chordActive, "Exact four touches should activate the middle-click chord")
+    try check(finished.tapCandidate, "A short stationary exact-four session should produce one Tap candidate")
     try check(finished.terminalReason == .completed, "A valid middle-click Tap should complete normally")
 }
 

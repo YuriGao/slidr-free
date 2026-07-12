@@ -26,10 +26,12 @@
 "edge_width" = "Edge width";
 
 /* Middle Click */
-"middle_click_enable" = "Enable three-finger middle click";
-"middle_click_tap_enable" = "Enable three-finger Tap";
-"middle_click_fixed_three" = "Uses exactly 3 fingers. Finger count and thresholds are fixed in this beta.";
-"middle_click_conflict_guidance" = "If macOS three-finger drag or Look up & data detectors is enabled, disable or change that gesture in Trackpad settings to avoid conflicts.";
+"middle_click_enable" = "Enable middle click";
+"middle_click_tap_enable" = "Enable Tap";
+"middle_click_finger_count" = "Fingers";
+"middle_click_exact_count_help" = "Tap and physical Click require exactly the selected number of fingers.";
+"middle_click_two_finger_warning" = "Two fingers may conflict with macOS secondary click and common two-finger gestures.";
+"middle_click_three_finger_drag_guidance" = "If macOS three-finger drag is enabled, choose 4 fingers instead.";
 "touch_monitor_status" = "Touch monitor";
 "event_tap_status" = "Physical Click Event Tap";
 
