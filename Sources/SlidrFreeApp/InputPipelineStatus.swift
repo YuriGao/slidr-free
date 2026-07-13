@@ -149,16 +149,20 @@ final class InputPipelineCoordinator {
 
     private func updateLocked(settings newSettings: AppSettings, permission newPermission: PermissionState) {
         let previous = settings
-        settings = newSettings.validated()
+        let validated = newSettings.validated()
+        settings = validated
         permission = newPermission
 
         if isStarting { return }
 
         guard !terminated, !sleeping else { return }
         let semanticChange = previous.map {
-            $0.isAppEnabled != newSettings.isAppEnabled || $0.middleClick != newSettings.middleClick
+            $0.isAppEnabled != validated.isAppEnabled
+                || $0.middleClick.isEnabled != validated.middleClick.isEnabled
+                || $0.middleClick.tapEnabled != validated.middleClick.tapEnabled
+                || $0.middleClick.fingerCount != validated.middleClick.fingerCount
         } ?? true
-        let eligible = newSettings.isAppEnabled && newPermission == .granted && hasPhysicalGesture(newSettings)
+        let eligible = validated.isAppEnabled && newPermission == .granted && hasPhysicalGesture(validated)
 
         guard eligible else {
             stopActive(completion: {})
@@ -167,7 +171,7 @@ final class InputPipelineCoordinator {
         if pipeline == nil || semanticChange {
             restart()
         } else {
-            pipeline?.updateEdgeSettings(newSettings)
+            pipeline?.updateEdgeSettings(validated)
         }
     }
 

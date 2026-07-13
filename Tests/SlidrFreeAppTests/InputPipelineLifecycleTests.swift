@@ -88,6 +88,25 @@ final class InputPipelineLifecycleTests: XCTestCase {
         XCTAssertEqual(harness.factory.instances.map(\.generation), [1, 2])
     }
 
+    func testHapticOnlyChangeKeepsActivePipelineAndGeneration() {
+        let harness = Harness()
+        var settings = enabledSettings()
+        harness.coordinator.update(settings: settings, permission: .granted)
+        let first = harness.factory.last!
+        first.hasPending = true
+
+        settings.middleClick.hapticFeedbackEnabled = false
+        harness.coordinator.update(settings: settings, permission: .granted)
+
+        XCTAssertEqual(harness.factory.instances.count, 1)
+        XCTAssertEqual(harness.coordinator.activeGeneration, 1)
+        XCTAssertFalse(first.didQuiesce)
+        XCTAssertEqual(first.releaseCount, 0)
+        XCTAssertTrue(first.hasPending)
+        XCTAssertEqual(first.edgeUpdates, 1)
+        XCTAssertEqual(harness.permissionRefreshes, 1)
+    }
+
     func testSleepWakeSchedulesFreshGenerationAfterTwoSeconds() {
         let harness = Harness()
         harness.coordinator.update(settings: enabledSettings(), permission: .granted)
