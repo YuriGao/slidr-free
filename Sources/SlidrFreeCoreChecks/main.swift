@@ -67,6 +67,7 @@ private func testDefaultSettingsEnableAllFirstVersionFeaturesIndividually() thro
     try check(!settings.middleClick.isEnabled, "Middle click should be disabled by default")
     try check(settings.middleClick.tapEnabled, "Middle-click Tap preference should be enabled by default")
     try check(settings.middleClick.fingerCount == 4, "Middle click should default to four fingers")
+    try check(settings.middleClick.hapticFeedbackEnabled, "Middle-click haptic feedback should be enabled by default")
     try checkEqual(settings.gesture.physicalStepDistance, 0.05, accuracy: 0.0001, "Physical step distance should default to 0.05")
     try checkEqual(settings.gesture.physicalStepIntervalSeconds, 0.08, accuracy: 0.0001, "Physical step interval should default to 0.08s")
 }

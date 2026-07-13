@@ -22,6 +22,20 @@ final class SettingsStoreMigrationTests: XCTestCase {
         XCTAssertEqual(SettingsStore(defaults: defaults).settings, store.settings)
     }
 
+    func testPersistedMiddleClickWithoutHapticFieldMigratesEnabledAndRoundTrips() {
+        let defaults = isolatedDefaults()
+        let payload = #"{"isAppEnabled":true,"launchAtLogin":false,"features":{"volumeEdgeGesture":true,"brightnessEdgeGesture":true,"browserTabEdgeGesture":true,"swapSides":false},"gesture":{"edgeWidthPercent":0.10,"physicalStepDistance":0.05,"physicalStepIntervalSeconds":0.08,"tabSwitchStepIntervalSeconds":0.20,"horizontalDominanceRatio":1.5},"middleClick":{"isEnabled":true,"tapEnabled":false,"fingerCount":3}}"#.data(using: .utf8)!
+        defaults.set(payload, forKey: SettingsStore.defaultsKey)
+
+        let store = SettingsStore(defaults: defaults)
+        XCTAssertTrue(store.settings.middleClick.hapticFeedbackEnabled)
+        XCTAssertEqual(store.settings.middleClick.fingerCount, 3)
+        XCTAssertFalse(store.settings.middleClick.tapEnabled)
+
+        store.save(store.settings)
+        XCTAssertTrue(SettingsStore(defaults: defaults).settings.middleClick.hapticFeedbackEnabled)
+    }
+
     func testCorruptPayloadFallsBackAndRecordsBoundedNonSensitiveDiagnostic() {
         let defaults = isolatedDefaults()
         defaults.set(Data("not-json-secret-material".utf8), forKey: SettingsStore.defaultsKey)

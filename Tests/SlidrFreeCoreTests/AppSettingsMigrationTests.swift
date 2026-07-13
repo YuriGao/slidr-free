@@ -79,6 +79,41 @@ final class AppSettingsMigrationTests: XCTestCase {
         XCTAssertEqual(MiddleClickSettings.default.fingerCount, 4)
     }
 
+    func testMiddleClickDefaultsEnableHapticFeedback() {
+        XCTAssertTrue(MiddleClickSettings.default.hapticFeedbackEnabled)
+    }
+
+    func testDecodingMiddleClickWithoutHapticFieldDefaultsEnabledAndPreservesExistingValues() throws {
+        let decoded = try decodeSettings(middleClickJSON: """
+        {"isEnabled": true, "tapEnabled": false, "fingerCount": 3}
+        """)
+
+        XCTAssertEqual(
+            decoded.middleClick,
+            MiddleClickSettings(
+                isEnabled: true,
+                tapEnabled: false,
+                fingerCount: 3,
+                hapticFeedbackEnabled: true
+            )
+        )
+    }
+
+    func testExplicitlyDisabledHapticFeedbackRoundTrips() throws {
+        let original = MiddleClickSettings(
+            isEnabled: true,
+            tapEnabled: true,
+            fingerCount: 4,
+            hapticFeedbackEnabled: false
+        )
+
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(MiddleClickSettings.self, from: data)
+
+        XCTAssertEqual(decoded, original)
+        XCTAssertFalse(decoded.hapticFeedbackEnabled)
+    }
+
     func testSupportedFingerCountsRoundTrip() throws {
         for fingerCount in 2...4 {
             let original = MiddleClickSettings(isEnabled: true, tapEnabled: false, fingerCount: fingerCount)
