@@ -16,7 +16,7 @@ This project is independent and non-affiliated with any similarly named commerci
 - **Left and right edge gestures** — Slide vertically along the physical trackpad left or right edge to adjust brightness and volume. By default, the left edge controls brightness and the right edge controls volume.
 - **Side swapping option** — Swap the left and right edge actions in Settings.
 - **Top-edge browser tab gesture** — Slide horizontally along the physical trackpad top edge to switch Safari, Google Chrome, and Microsoft Edge tabs, with haptic feedback for each switch.
-- **Configurable middle click (beta)** — Use exactly 2, 3, or 4 fingers to produce a middle click by Tap or physical Click. The default is 4.
+- **Configurable middle click (beta)** — Use exactly 2, 3, or 4 fingers to produce a middle click by Tap or physical Click. The default is 4, with success haptics enabled.
 
 ## Configurable middle-click beta
 
@@ -24,6 +24,7 @@ Middle click is **disabled by default**. Enable it from the menu bar item under 
 
 - **Tap** emits one middle-button Down/Up pair after a qualifying exact-count placement is released. The separate **Enable Tap** preference is on by default, but it only takes effect while the main middle-click feature is enabled.
 - **Physical Click** converts the matching left- or right-button Down/Dragged/Up stream to a balanced middle-button stream while a fresh exact-count chord is active. Tap and physical Click are mutually exclusive for one touch session.
+- **Haptic feedback on success** is enabled by default and can be changed without restarting the touch monitor or Event Tap. Slidr Free requests one public AppKit generic haptic only after submitting a synthetic Tap click or converting the matching physical Up. AppKit feedback is best-effort and may be suppressed by the active trackpad, system settings, accessibility preferences, or lack of trackpad contact.
 - Settings reports the bounded runtime state of the touch monitor and physical-Click Event Tap. A degraded state passes ordinary mouse input through rather than guessing.
 
 Use 4 fingers when macOS **three-finger drag** is enabled. The 2-finger option may conflict with macOS secondary click and common two-finger gestures.
@@ -64,6 +65,7 @@ Packaging produces `release/Slidr-Free.app` and `release/Slidr-Free.app.zip`. Th
 - The global mouse-source limitation described above means an external mouse click can be converted while the chord is active.
 - Top-edge tab switching only runs when Safari, Google Chrome, or Microsoft Edge is frontmost.
 - Automated tests do not require live Accessibility/TCC or physical hardware. Hardware behavior still needs the manual beta matrix described in the approved design.
+- AppKit does not expose haptic capability or delivery acknowledgement. Unsupported hardware or suppressed feedback remains silent and does not affect middle-click delivery.
 
 ## Rollback
 

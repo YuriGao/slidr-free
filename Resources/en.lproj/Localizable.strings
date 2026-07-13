@@ -28,6 +28,8 @@
 /* Middle Click */
 "middle_click_enable" = "Enable middle click";
 "middle_click_tap_enable" = "Enable Tap";
+"middle_click_haptic_feedback" = "Haptic feedback on success";
+"middle_click_haptic_feedback_help" = "Feedback is requested only after Slidr Free submits a middle click. macOS may suppress it depending on the trackpad and system settings.";
 "middle_click_finger_count" = "Fingers";
 "middle_click_exact_count_help" = "Tap and physical Click require exactly the selected number of fingers.";
 "middle_click_two_finger_warning" = "Two fingers may conflict with macOS secondary click and common two-finger gestures.";

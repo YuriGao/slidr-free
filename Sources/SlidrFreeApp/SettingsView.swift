@@ -34,6 +34,11 @@ struct SettingsView: View {
                 Toggle(NSLocalizedString("middle_click_enable", comment: ""), isOn: binding(\.middleClick.isEnabled))
                 Toggle(NSLocalizedString("middle_click_tap_enable", comment: ""), isOn: binding(\.middleClick.tapEnabled))
                     .disabled(!store.settings.middleClick.isEnabled)
+                Toggle(
+                    NSLocalizedString("middle_click_haptic_feedback", comment: ""),
+                    isOn: binding(\.middleClick.hapticFeedbackEnabled)
+                )
+                .disabled(!store.settings.middleClick.isEnabled)
                 Picker(
                     NSLocalizedString("middle_click_finger_count", comment: ""),
                     selection: binding(\.middleClick.fingerCount)
@@ -45,6 +50,9 @@ struct SettingsView: View {
                 .pickerStyle(.segmented)
                 .disabled(!store.settings.middleClick.isEnabled)
                 Text(NSLocalizedString("middle_click_exact_count_help", comment: ""))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(NSLocalizedString("middle_click_haptic_feedback_help", comment: ""))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if store.settings.middleClick.fingerCount == 2 {

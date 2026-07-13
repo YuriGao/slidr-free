@@ -28,6 +28,8 @@
 /* Middle Click */
 "middle_click_enable" = "启用中键点击";
 "middle_click_tap_enable" = "启用轻点";
+"middle_click_haptic_feedback" = "成功时触感反馈";
+"middle_click_haptic_feedback_help" = "仅在 Slidr-Free 成功提交中键点击后请求反馈；macOS 可能根据触控板和系统设置抑制反馈。";
 "middle_click_finger_count" = "手指数";
 "middle_click_exact_count_help" = "轻点和物理按下均要求恰好使用所选数量的手指。";
 "middle_click_two_finger_warning" = "两指可能与 macOS 辅助点按及常用双指手势冲突。";

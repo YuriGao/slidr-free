@@ -12,6 +12,8 @@ This record documents the engineering controls used for Slidr Free's middle-clic
 
 The configurable 2–4-finger extension is specified by `docs/superpowers/specs/2026-07-12-configurable-middle-click-finger-count-design.md` (design commit `5189a4b`). It supersedes only the original fixed-three-finger product scope; the original concurrency, fail-open, lifecycle, and licensing controls remain in force.
 
+The success-haptic extension is specified by `docs/superpowers/specs/2026-07-13-middle-click-haptic-feedback-design.md` (design commit `6a576f0`). It uses the public AppKit `NSHapticFeedbackManager` API and existing Slidr Free success boundaries. Its implementation inputs are the approved specification, existing Slidr Free code and tests, and Apple's SDK documentation; no upstream MiddleClick source, resource, project, binary, or implementation structure is used.
+
 ## Permitted implementation inputs
 
 Implementers were limited to:
@@ -49,6 +51,7 @@ Implementation was split into bounded workstreams:
 - Event Tap, emitter, and middle-button system action;
 - lifecycle, Settings integration, and diagnostics.
 - configurable-count settings migration, recognition, lifecycle propagation, UI, and bilingual documentation.
+- success-haptic settings migration, public-AppKit boundary, Tap/physical success wiring, lifecycle semantics, UI, and bilingual documentation.
 
 Each workstream was reviewed by a separate review-only role before the next workstream proceeded. Those reviews checked specification compliance, ordinary-input fail-open behavior, concurrency/lifecycle safety, test coverage, and the no-source-reuse constraint. Critical and Important findings were fixed and re-reviewed before later work began. The original integration's final whole-branch provenance/copying review is recorded in the pull request; the extension review is recorded below.
 
