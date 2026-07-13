@@ -20,9 +20,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         middleClickEmitter: MiddleClickEmitter(hapticFeedback: middleClickHapticFeedback)
     )
 
-    private lazy var pipelineFactory = ProductionInputPipelineFactory { [weak self] gesture in
-        self?.dispatch(gesture: gesture)
-    }
+    private lazy var pipelineFactory = ProductionInputPipelineFactory(
+        hapticFeedback: middleClickHapticFeedback,
+        actionHandler: { [weak self] gesture in
+            self?.dispatch(gesture: gesture)
+        }
+    )
     private lazy var pipelineCoordinator = InputPipelineCoordinator(
         factory: pipelineFactory,
         status: pipelineStatus,

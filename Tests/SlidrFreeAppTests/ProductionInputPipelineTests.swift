@@ -32,7 +32,7 @@ final class ProductionInputPipelineTests: XCTestCase {
         let pipeline = makePipeline(
             settings: enabledSettingsForProduction(fingerCount: 4),
             monitor: monitor,
-            eventTapFactory: { reducer in
+            eventTapFactory: { reducer, _ in
                 let value = PipelineEventTapSpy(reducer: reducer)
                 tap = value
                 return value
@@ -63,7 +63,7 @@ final class ProductionInputPipelineTests: XCTestCase {
         let pipeline = makePipeline(
             settings: enabledSettingsForProduction(fingerCount: 4),
             monitor: monitor,
-            eventTapFactory: { reducer in
+            eventTapFactory: { reducer, _ in
                 let value = PipelineEventTapSpy(reducer: reducer)
                 tap = value
                 return value
@@ -112,7 +112,7 @@ final class ProductionInputPipelineTests: XCTestCase {
             bridge: bridge,
             monitor: monitor,
             emitter: emitter,
-            eventTapFactory: { reducer in
+            eventTapFactory: { reducer, _ in
                 let value = PipelineEventTapSpy(reducer: reducer)
                 tap = value
                 return value
@@ -142,6 +142,24 @@ final class ProductionInputPipelineTests: XCTestCase {
         queued.removeFirst()()
 
         XCTAssertTrue(actions.isEmpty)
+    }
+
+    func testInjectedHapticFeedbackIsForwardedToEventTapFactory() {
+        let monitor = PipelineMonitorSpy()
+        let feedback = PipelineHapticFeedbackSpy()
+        var receivedFeedback: (any MiddleClickHapticFeedbackPerforming)?
+        let pipeline = makePipeline(
+            monitor: monitor,
+            hapticFeedback: feedback,
+            eventTapFactory: { reducer, injectedFeedback in
+                receivedFeedback = injectedFeedback
+                return PipelineEventTapSpy(reducer: reducer)
+            }
+        )
+
+        pipeline.startEventTap { XCTAssertTrue($0) }
+
+        XCTAssertTrue(receivedFeedback === feedback)
     }
 
     func testTouchCallbackArrivingAfterQuiesceCannotMutateOrQueueAction() {
@@ -191,7 +209,11 @@ final class ProductionInputPipelineTests: XCTestCase {
         settings: AppSettings = enabledSettingsForProduction(fingerCount: 3),
         monitor: PipelineMonitorSpy,
         emitter: ReleaseEmitterSpy = ReleaseEmitterSpy(),
-        eventTapFactory: @escaping (MouseButtonEventReducer) -> any InputEventTapLifecycle = { PipelineEventTapSpy(reducer: $0) },
+        hapticFeedback: (any MiddleClickHapticFeedbackPerforming)? = nil,
+        eventTapFactory: @escaping (
+            MouseButtonEventReducer,
+            (any MiddleClickHapticFeedbackPerforming)?
+        ) -> any InputEventTapLifecycle = { reducer, _ in PipelineEventTapSpy(reducer: reducer) },
         deliverAction: @escaping (@escaping () -> Void) -> Void = { $0() },
         actionHandler: @escaping (RecognizedGesture) -> Void = { _ in }
     ) -> ProductionInputPipeline {
@@ -201,6 +223,7 @@ final class ProductionInputPipelineTests: XCTestCase {
             status: InputPipelineStatus(),
             bridge: bridge,
             releaseEmitter: emitter,
+            hapticFeedback: hapticFeedback,
             actionHandler: actionHandler,
             eventTapStatus: { _ in },
             monitorFactory: { _, middle, edge in
@@ -208,7 +231,9 @@ final class ProductionInputPipelineTests: XCTestCase {
                 monitor.edgeHandler = edge
                 return monitor
             },
-            eventTapFactory: { reducer, _, _ in eventTapFactory(reducer) },
+            eventTapFactory: { reducer, _, injectedFeedback, _ in
+                eventTapFactory(reducer, injectedFeedback)
+            },
             deliverAction: deliverAction
         )
     }
@@ -252,5 +277,13 @@ private final class ReleaseEmitterSpy: MiddleClickReleaseEmitting {
     func emitRelease(eventNumber: Int64) -> SystemActionResult {
         eventNumbers.append(eventNumber)
         return .success
+    }
+}
+
+private final class PipelineHapticFeedbackSpy: MiddleClickHapticFeedbackPerforming {
+    private(set) var performCount = 0
+
+    func performSuccess() {
+        performCount += 1
     }
 }

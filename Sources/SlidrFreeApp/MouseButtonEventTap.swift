@@ -83,7 +83,8 @@ final class MouseButtonEventTap {
     init(
         reducer: MouseButtonEventReducer,
         releaseEmitter: any MiddleClickReleaseEmitting = MiddleClickEmitter(),
-        statusHandler: @escaping (MouseButtonEventTapStatus) -> Void = { _ in }
+        statusHandler: @escaping (MouseButtonEventTapStatus) -> Void = { _ in },
+        hapticFeedback: (any MiddleClickHapticFeedbackPerforming)? = nil
     ) {
         executor = MouseButtonEventTapExecutor()
         context = MouseButtonEventTapContext(
@@ -91,7 +92,8 @@ final class MouseButtonEventTap {
             releaseHandler: { pending in
                 _ = releaseEmitter.emitRelease(eventNumber: pending.eventNumber)
             },
-            statusHandler: statusHandler
+            statusHandler: statusHandler,
+            hapticFeedback: hapticFeedback
         )
     }
 
@@ -150,6 +152,7 @@ final class MouseButtonEventTapContext {
     private let reducer: MouseButtonEventReducer
     private let releaseHandler: (MiddleClickPendingRelease) -> Void
     private let statusHandler: (MouseButtonEventTapStatus) -> Void
+    private let hapticFeedback: (any MiddleClickHapticFeedbackPerforming)?
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var recovery: MouseButtonEventTapRecoveryCoordinator?
@@ -159,12 +162,14 @@ final class MouseButtonEventTapContext {
         reducer: MouseButtonEventReducer,
         releaseHandler: @escaping (MiddleClickPendingRelease) -> Void,
         statusHandler: @escaping (MouseButtonEventTapStatus) -> Void,
-        recovery: MouseButtonEventTapRecoveryCoordinator? = nil
+        recovery: MouseButtonEventTapRecoveryCoordinator? = nil,
+        hapticFeedback: (any MiddleClickHapticFeedbackPerforming)? = nil
     ) {
         self.reducer = reducer
         self.releaseHandler = releaseHandler
         self.statusHandler = statusHandler
         self.recovery = recovery
+        self.hapticFeedback = hapticFeedback
     }
 
     func start(completion: @escaping (Bool) -> Void) {
@@ -252,9 +257,14 @@ final class MouseButtonEventTapContext {
         case .enterDegradedState:
             statusHandler(.degraded)
             return nil
-        case .passUnchanged, .transform:
+        case .passUnchanged:
+            return Unmanaged.passUnretained(event)
+        case .transform(let transform):
             guard let output = MouseButtonEventFactory.event(for: decision, original: event) else {
                 return Unmanaged.passUnretained(event)
+            }
+            if transform.kind == .up {
+                hapticFeedback?.performSuccess()
             }
             return Unmanaged.passUnretained(output)
         }

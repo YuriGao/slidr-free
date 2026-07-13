@@ -131,11 +131,13 @@ final class MouseButtonEventTapTests: XCTestCase {
             status: { _ in }
         )
         var releases: [MiddleClickPendingRelease] = []
+        let feedback = EventTapHapticFeedbackSpy()
         let context = MouseButtonEventTapContext(
             reducer: reducer,
             releaseHandler: { releases.append($0) },
             statusHandler: { _ in },
-            recovery: recovery
+            recovery: recovery,
+            hapticFeedback: feedback
         )
 
         let down = try XCTUnwrap(CGEvent(source: nil))
@@ -148,12 +150,14 @@ final class MouseButtonEventTapTests: XCTestCase {
         XCTAssertEqual(bridge.generation, 2)
         XCTAssertEqual(scheduledRecoveryCount, 1)
         XCTAssertEqual(releases.count, 1)
+        XCTAssertEqual(feedback.performCount, 0)
 
         let secondDisable = try XCTUnwrap(CGEvent(source: nil))
         XCTAssertNil(context.handle(type: .tapDisabledByUserInput, event: secondDisable))
         XCTAssertEqual(bridge.generation, 2, "later disable sentinels must not re-enter the reducer")
         XCTAssertEqual(scheduledRecoveryCount, 1, "later disable sentinels must not schedule recovery again")
         XCTAssertEqual(releases.count, 1)
+        XCTAssertEqual(feedback.performCount, 0)
 
         let ordinary = try XCTUnwrap(CGEvent(source: nil))
         ordinary.type = .rightMouseDown
@@ -161,6 +165,77 @@ final class MouseButtonEventTapTests: XCTestCase {
         XCTAssertTrue(returned === ordinary, "ordinary mouse input must fail open after quiesce")
         XCTAssertEqual(bridge.generation, 2)
         XCTAssertEqual(scheduledRecoveryCount, 1)
+        XCTAssertEqual(feedback.performCount, 0)
+    }
+
+    func testMatchingPhysicalDownAndDragRequestNoHapticAndFirstTransformedUpRequestsOnce() throws {
+        let bridge = MiddleClickSessionBridge(generation: 1, now: { 10 })
+        bridge.applyTouchUpdate(
+            MiddleClickTouchUpdate(
+                sessionID: 7,
+                chordActive: true,
+                tapCandidate: false,
+                generation: 1,
+                sequence: 1,
+                receivedAt: 10,
+                terminalReason: nil
+            )
+        )
+        let feedback = EventTapHapticFeedbackSpy()
+        let context = MouseButtonEventTapContext(
+            reducer: MouseButtonEventReducer(
+                bridge: bridge,
+                generation: 1,
+                ownMarker: MiddleClickEventIdentity.marker
+            ),
+            releaseHandler: { _ in },
+            statusHandler: { _ in },
+            hapticFeedback: feedback
+        )
+
+        let down = try makeMouseEvent(button: 0, eventNumber: 42)
+        let transformedDown = context.handle(type: .leftMouseDown, event: down)?.takeUnretainedValue()
+        XCTAssertEqual(transformedDown?.type, .otherMouseDown)
+        XCTAssertEqual(feedback.performCount, 0)
+
+        let dragged = try makeMouseEvent(button: 0, eventNumber: 42)
+        let transformedDrag = context.handle(type: .leftMouseDragged, event: dragged)?.takeUnretainedValue()
+        XCTAssertEqual(transformedDrag?.type, .otherMouseDragged)
+        XCTAssertEqual(feedback.performCount, 0)
+
+        let up = try makeMouseEvent(button: 0, eventNumber: 42)
+        let transformedUp = context.handle(type: .leftMouseUp, event: up)?.takeUnretainedValue()
+        XCTAssertEqual(transformedUp?.type, .otherMouseUp)
+        XCTAssertEqual(feedback.performCount, 1)
+
+        let duplicateUp = try makeMouseEvent(button: 0, eventNumber: 42)
+        let unchangedDuplicate = context.handle(type: .leftMouseUp, event: duplicateUp)?.takeUnretainedValue()
+        XCTAssertTrue(unchangedDuplicate === duplicateUp)
+        XCTAssertEqual(feedback.performCount, 1)
+    }
+
+    func testTaggedSyntheticTapEventPassesUnchangedWithoutHaptic() throws {
+        let feedback = EventTapHapticFeedbackSpy()
+        let context = MouseButtonEventTapContext(
+            reducer: MouseButtonEventReducer(
+                bridge: MiddleClickSessionBridge(generation: 1, now: { 0 }),
+                generation: 1,
+                ownMarker: MiddleClickEventIdentity.marker
+            ),
+            releaseHandler: { _ in },
+            statusHandler: { _ in },
+            hapticFeedback: feedback
+        )
+        let event = try makeMouseEvent(
+            button: 2,
+            eventNumber: 99,
+            marker: MiddleClickEventIdentity.marker
+        )
+
+        let output = context.handle(type: .otherMouseUp, event: event)?.takeUnretainedValue()
+
+        XCTAssertTrue(output === event)
+        XCTAssertEqual(feedback.performCount, 0)
     }
 
     func testDoubleStopCompletesBothCallers() {
@@ -196,6 +271,26 @@ final class MouseButtonEventTapTests: XCTestCase {
             ownMarker: MiddleClickEventIdentity.marker
         )
         return MouseButtonEventTap(reducer: reducer)
+    }
+
+    private func makeMouseEvent(
+        button: Int64,
+        eventNumber: Int64,
+        marker: Int64 = 0
+    ) throws -> CGEvent {
+        let event = try XCTUnwrap(CGEvent(source: nil))
+        event.setIntegerValueField(.mouseEventButtonNumber, value: button)
+        event.setIntegerValueField(.mouseEventNumber, value: eventNumber)
+        event.setIntegerValueField(.eventSourceUserData, value: marker)
+        return event
+    }
+}
+
+private final class EventTapHapticFeedbackSpy: MiddleClickHapticFeedbackPerforming {
+    private(set) var performCount = 0
+
+    func performSuccess() {
+        performCount += 1
     }
 }
 

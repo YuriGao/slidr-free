@@ -329,14 +329,26 @@ final class InputPipelineCoordinator {
 }
 
 final class ProductionInputPipelineFactory: InputPipelineFactory {
+    private let hapticFeedback: any MiddleClickHapticFeedbackPerforming
     private let actionHandler: (RecognizedGesture) -> Void
 
-    init(actionHandler: @escaping (RecognizedGesture) -> Void) {
+    init(
+        hapticFeedback: any MiddleClickHapticFeedbackPerforming,
+        actionHandler: @escaping (RecognizedGesture) -> Void
+    ) {
+        self.hapticFeedback = hapticFeedback
         self.actionHandler = actionHandler
     }
 
     func make(generation: UInt64, settings: AppSettings, status: InputPipelineStatus, eventTapStatus: @escaping (MouseButtonEventTapStatus) -> Void) -> any InputPipelineInstance {
-        ProductionInputPipeline(generation: generation, settings: settings, status: status, actionHandler: actionHandler, eventTapStatus: eventTapStatus)
+        ProductionInputPipeline(
+            generation: generation,
+            settings: settings,
+            status: status,
+            hapticFeedback: hapticFeedback,
+            actionHandler: actionHandler,
+            eventTapStatus: eventTapStatus
+        )
     }
 }
 
@@ -362,6 +374,7 @@ typealias InputTouchMonitorFactory = (
 typealias InputEventTapFactory = (
     MouseButtonEventReducer,
     any MiddleClickReleaseEmitting,
+    (any MiddleClickHapticFeedbackPerforming)?,
     @escaping (MouseButtonEventTapStatus) -> Void
 ) -> any InputEventTapLifecycle
 
@@ -373,6 +386,7 @@ final class ProductionInputPipeline: InputPipelineInstance {
     private let status: InputPipelineStatus
     private let bridge: MiddleClickSessionBridge
     private let releaseEmitter: any MiddleClickReleaseEmitting
+    private let hapticFeedback: (any MiddleClickHapticFeedbackPerforming)?
     private let actionHandler: (RecognizedGesture) -> Void
     private let eventTapStatus: (MouseButtonEventTapStatus) -> Void
     private let monitorFactory: InputTouchMonitorFactory
@@ -397,6 +411,7 @@ final class ProductionInputPipeline: InputPipelineInstance {
         status: InputPipelineStatus,
         bridge: MiddleClickSessionBridge? = nil,
         releaseEmitter: any MiddleClickReleaseEmitting = MiddleClickEmitter(),
+        hapticFeedback: (any MiddleClickHapticFeedbackPerforming)? = nil,
         actionHandler: @escaping (RecognizedGesture) -> Void,
         eventTapStatus: @escaping (MouseButtonEventTapStatus) -> Void,
         monitorFactory: InputTouchMonitorFactory? = nil,
@@ -406,6 +421,7 @@ final class ProductionInputPipeline: InputPipelineInstance {
         self.generation = generation
         self.status = status
         self.releaseEmitter = releaseEmitter
+        self.hapticFeedback = hapticFeedback
         self.actionHandler = actionHandler
         self.eventTapStatus = eventTapStatus
         self.bridge = bridge ?? MiddleClickSessionBridge(generation: generation, now: { ProcessInfo.processInfo.systemUptime })
@@ -417,8 +433,13 @@ final class ProductionInputPipeline: InputPipelineInstance {
                 handler: edgeHandler
             )
         }
-        self.eventTapFactory = eventTapFactory ?? { reducer, emitter, statusHandler in
-            MouseButtonEventTap(reducer: reducer, releaseEmitter: emitter, statusHandler: statusHandler)
+        self.eventTapFactory = eventTapFactory ?? { reducer, emitter, hapticFeedback, statusHandler in
+            MouseButtonEventTap(
+                reducer: reducer,
+                releaseEmitter: emitter,
+                statusHandler: statusHandler,
+                hapticFeedback: hapticFeedback
+            )
         }
         self.deliverAction = deliverAction
         middleRecognizer = MiddleClickRecognizer(
@@ -439,6 +460,7 @@ final class ProductionInputPipeline: InputPipelineInstance {
         let tap = eventTapFactory(
             MouseButtonEventReducer(bridge: bridge, generation: generation, ownMarker: MiddleClickEventIdentity.marker),
             releaseEmitter,
+            hapticFeedback,
             { [weak self] value in self?.eventTapStatus(value) }
         )
         let accepted = withLock { () -> Bool in
