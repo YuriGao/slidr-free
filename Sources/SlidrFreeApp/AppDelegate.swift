@@ -9,8 +9,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarController: MenuBarController?
     private var settingsWindowController: SettingsWindowController?
     private var cancellables = Set<AnyCancellable>()
-    private let systemControl = SystemControl()
     private let terminationWaiter = PipelineTerminationWaiter(timeout: 2)
+
+    private lazy var middleClickHapticFeedback = AppKitMiddleClickHapticFeedback(
+        isEnabled: { [weak self] in
+            self?.settingsStore.settings.middleClick.hapticFeedbackEnabled ?? false
+        }
+    )
+    private lazy var systemControl = SystemControl(
+        middleClickEmitter: MiddleClickEmitter(hapticFeedback: middleClickHapticFeedback)
+    )
 
     private lazy var pipelineFactory = ProductionInputPipelineFactory { [weak self] gesture in
         self?.dispatch(gesture: gesture)

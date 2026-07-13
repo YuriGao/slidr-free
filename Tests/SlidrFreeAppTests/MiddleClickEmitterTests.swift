@@ -3,9 +3,14 @@ import XCTest
 @testable import SlidrFreeApp
 
 final class MiddleClickEmitterTests: XCTestCase {
-    func testCreatesAndConfiguresBothEventsBeforePostingDownThenUp() {
+    func testSuccessfulClickPostsDownAndUpBeforeRequestingHapticOnce() {
         let source = EventSourceSpy(location: CGPoint(x: 123, y: 456))
-        let emitter = MiddleClickEmitter(eventSource: source, marker: 9_001)
+        let feedback = MiddleClickHapticFeedbackSpy { source.log.append("haptic") }
+        let emitter = MiddleClickEmitter(
+            eventSource: source,
+            marker: 9_001,
+            hapticFeedback: feedback
+        )
 
         XCTAssertEqual(emitter.emitClick(), .success)
         XCTAssertEqual(source.created.map(\.type), [.otherMouseDown, .otherMouseUp])
@@ -17,43 +22,51 @@ final class MiddleClickEmitterTests: XCTestCase {
         XCTAssertEqual(source.created[1].fields[.mouseEventClickState], 1)
         XCTAssertEqual(source.created[0].fields[.eventSourceUserData], 9_001)
         XCTAssertEqual(source.created[1].fields[.eventSourceUserData], 9_001)
-        XCTAssertEqual(source.log.suffix(2), ["post-down", "post-up"])
-        XCTAssertEqual(source.log.firstIndex(of: "post-down"), source.log.count - 2)
+        XCTAssertEqual(source.log.suffix(3), ["post-down", "post-up", "haptic"])
+        XCTAssertEqual(source.log.firstIndex(of: "post-down"), source.log.count - 3)
+        XCTAssertEqual(feedback.performCount, 1)
     }
 
     func testPostsNeitherEventWhenDownCreationFails() {
         let source = EventSourceSpy(location: .zero, failingCreation: 1)
-        let emitter = MiddleClickEmitter(eventSource: source, marker: 1)
+        let feedback = MiddleClickHapticFeedbackSpy()
+        let emitter = MiddleClickEmitter(eventSource: source, marker: 1, hapticFeedback: feedback)
 
         guard case .failed = emitter.emitClick() else {
             return XCTFail("Expected emitter failure")
         }
         XCTAssertFalse(source.log.contains(where: { $0.hasPrefix("post-") }))
+        XCTAssertEqual(feedback.performCount, 0)
     }
 
     func testPostsNeitherEventWhenUpCreationFails() {
         let source = EventSourceSpy(location: .zero, failingCreation: 2)
-        let emitter = MiddleClickEmitter(eventSource: source, marker: 1)
+        let feedback = MiddleClickHapticFeedbackSpy()
+        let emitter = MiddleClickEmitter(eventSource: source, marker: 1, hapticFeedback: feedback)
 
         guard case .failed = emitter.emitClick() else {
             return XCTFail("Expected emitter failure")
         }
         XCTAssertFalse(source.log.contains(where: { $0.hasPrefix("post-") }))
+        XCTAssertEqual(feedback.performCount, 0)
     }
 
     func testPostsNeitherEventWhenPointerLocationIsUnavailable() {
         let source = EventSourceSpy(location: nil)
-        let emitter = MiddleClickEmitter(eventSource: source, marker: 1)
+        let feedback = MiddleClickHapticFeedbackSpy()
+        let emitter = MiddleClickEmitter(eventSource: source, marker: 1, hapticFeedback: feedback)
 
         guard case .failed = emitter.emitClick() else {
             return XCTFail("Expected emitter failure")
         }
         XCTAssertTrue(source.created.isEmpty)
+        XCTAssertEqual(feedback.performCount, 0)
     }
 
-    func testPendingReleasePostsOneTaggedMiddleUpWithMatchingEventNumber() {
+    func testPendingReleasePostsOneTaggedMiddleUpWithoutRequestingHaptic() {
         let source = EventSourceSpy(location: CGPoint(x: 10, y: 20))
-        let emitter = MiddleClickEmitter(eventSource: source, marker: 77)
+        let feedback = MiddleClickHapticFeedbackSpy()
+        let emitter = MiddleClickEmitter(eventSource: source, marker: 77, hapticFeedback: feedback)
 
         XCTAssertEqual(emitter.emitRelease(eventNumber: 404), .success)
         XCTAssertEqual(source.created.map(\.type), [.otherMouseUp])
@@ -63,6 +76,21 @@ final class MiddleClickEmitterTests: XCTestCase {
         XCTAssertEqual(source.created[0].fields[.eventSourceUserData], 77)
         XCTAssertEqual(source.created[0].fields[.mouseEventNumber], 404)
         XCTAssertEqual(source.log.last, "post-up")
+        XCTAssertEqual(feedback.performCount, 0)
+    }
+}
+
+private final class MiddleClickHapticFeedbackSpy: MiddleClickHapticFeedbackPerforming {
+    private let onPerform: () -> Void
+    private(set) var performCount = 0
+
+    init(onPerform: @escaping () -> Void = {}) {
+        self.onPerform = onPerform
+    }
+
+    func performSuccess() {
+        performCount += 1
+        onPerform()
     }
 }
 

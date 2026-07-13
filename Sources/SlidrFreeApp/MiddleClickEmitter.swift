@@ -67,13 +67,16 @@ protocol MiddleClickReleaseEmitting: AnyObject {
 final class MiddleClickEmitter: MiddleClickEmitting, MiddleClickReleaseEmitting {
     private let eventSource: any MiddleClickEventSource
     private let marker: Int64
+    private let hapticFeedback: (any MiddleClickHapticFeedbackPerforming)?
 
     init(
         eventSource: any MiddleClickEventSource = QuartzMiddleClickEventSource(),
-        marker: Int64 = MiddleClickEventIdentity.marker
+        marker: Int64 = MiddleClickEventIdentity.marker,
+        hapticFeedback: (any MiddleClickHapticFeedbackPerforming)? = nil
     ) {
         self.eventSource = eventSource
         self.marker = marker
+        self.hapticFeedback = hapticFeedback
     }
 
     func emitClick() -> SystemActionResult {
@@ -99,6 +102,7 @@ final class MiddleClickEmitter: MiddleClickEmitting, MiddleClickReleaseEmitting 
         configure(up)
         down.post()
         up.post()
+        hapticFeedback?.performSuccess()
         return .success
     }
 
