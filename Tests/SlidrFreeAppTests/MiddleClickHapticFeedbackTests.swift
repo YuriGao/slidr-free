@@ -78,4 +78,25 @@ final class MiddleClickHapticFeedbackTests: XCTestCase {
 
         XCTAssertEqual(performCount, 0)
     }
+
+    func testDefaultDeliveryMovesBackgroundRequestToMainThread() {
+        let delivered = expectation(description: "delivered on main thread")
+        let feedback = AppKitMiddleClickHapticFeedback(
+            isEnabled: {
+                XCTAssertTrue(Thread.isMainThread)
+                return true
+            },
+            perform: {
+                XCTAssertTrue(Thread.isMainThread)
+                delivered.fulfill()
+            }
+        )
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            XCTAssertFalse(Thread.isMainThread)
+            feedback.performSuccess()
+        }
+
+        wait(for: [delivered], timeout: 1)
+    }
 }

@@ -214,6 +214,75 @@ final class MouseButtonEventTapTests: XCTestCase {
         XCTAssertEqual(feedback.performCount, 1)
     }
 
+    func testOrdinaryPhysicalClickWithoutChordPassesUnchangedWithoutHaptic() throws {
+        let feedback = EventTapHapticFeedbackSpy()
+        let context = makeContext(
+            bridge: MiddleClickSessionBridge(generation: 1, now: { 10 }),
+            feedback: feedback
+        )
+
+        let down = try makeMouseEvent(button: 0, eventNumber: 43)
+        let unchangedDown = context.handle(type: .leftMouseDown, event: down)?.takeUnretainedValue()
+        XCTAssertTrue(unchangedDown === down)
+
+        let up = try makeMouseEvent(button: 0, eventNumber: 43)
+        let unchangedUp = context.handle(type: .leftMouseUp, event: up)?.takeUnretainedValue()
+        XCTAssertTrue(unchangedUp === up)
+        XCTAssertEqual(feedback.performCount, 0)
+    }
+
+    func testStaleChordPassesPhysicalClickUnchangedWithoutHaptic() throws {
+        let bridge = MiddleClickSessionBridge(generation: 1, now: { 10.2 })
+        bridge.applyTouchUpdate(
+            MiddleClickTouchUpdate(
+                sessionID: 8,
+                chordActive: true,
+                tapCandidate: false,
+                generation: 1,
+                sequence: 1,
+                receivedAt: 10,
+                terminalReason: nil
+            )
+        )
+        let feedback = EventTapHapticFeedbackSpy()
+        let context = makeContext(bridge: bridge, feedback: feedback)
+
+        let down = try makeMouseEvent(button: 0, eventNumber: 44)
+        let unchangedDown = context.handle(type: .leftMouseDown, event: down)?.takeUnretainedValue()
+        XCTAssertTrue(unchangedDown === down)
+
+        let up = try makeMouseEvent(button: 0, eventNumber: 44)
+        let unchangedUp = context.handle(type: .leftMouseUp, event: up)?.takeUnretainedValue()
+        XCTAssertTrue(unchangedUp === up)
+        XCTAssertEqual(feedback.performCount, 0)
+    }
+
+    func testCancelledTouchSessionPassesPhysicalClickUnchangedWithoutHaptic() throws {
+        let bridge = MiddleClickSessionBridge(generation: 1, now: { 10 })
+        bridge.applyTouchUpdate(
+            MiddleClickTouchUpdate(
+                sessionID: 9,
+                chordActive: false,
+                tapCandidate: false,
+                generation: 1,
+                sequence: 1,
+                receivedAt: 10,
+                terminalReason: .cancelled(.monitorStopped)
+            )
+        )
+        let feedback = EventTapHapticFeedbackSpy()
+        let context = makeContext(bridge: bridge, feedback: feedback)
+
+        let down = try makeMouseEvent(button: 1, eventNumber: 45)
+        let unchangedDown = context.handle(type: .rightMouseDown, event: down)?.takeUnretainedValue()
+        XCTAssertTrue(unchangedDown === down)
+
+        let up = try makeMouseEvent(button: 1, eventNumber: 45)
+        let unchangedUp = context.handle(type: .rightMouseUp, event: up)?.takeUnretainedValue()
+        XCTAssertTrue(unchangedUp === up)
+        XCTAssertEqual(feedback.performCount, 0)
+    }
+
     func testTaggedSyntheticTapEventPassesUnchangedWithoutHaptic() throws {
         let feedback = EventTapHapticFeedbackSpy()
         let context = MouseButtonEventTapContext(
@@ -271,6 +340,22 @@ final class MouseButtonEventTapTests: XCTestCase {
             ownMarker: MiddleClickEventIdentity.marker
         )
         return MouseButtonEventTap(reducer: reducer)
+    }
+
+    private func makeContext(
+        bridge: MiddleClickSessionBridge,
+        feedback: EventTapHapticFeedbackSpy
+    ) -> MouseButtonEventTapContext {
+        MouseButtonEventTapContext(
+            reducer: MouseButtonEventReducer(
+                bridge: bridge,
+                generation: 1,
+                ownMarker: MiddleClickEventIdentity.marker
+            ),
+            releaseHandler: { _ in },
+            statusHandler: { _ in },
+            hapticFeedback: feedback
+        )
     }
 
     private func makeMouseEvent(
