@@ -1,4 +1,4 @@
-public enum PermissionState: String, Codable, Equatable {
+public enum PermissionState: String, Codable, Equatable, Sendable {
     case granted
     case denied
     case unknown

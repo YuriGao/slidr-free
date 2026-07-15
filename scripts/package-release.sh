@@ -4,6 +4,9 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
+APP_VERSION="${APP_VERSION:-0.4.0}"
+BUILD_NUMBER="${BUILD_NUMBER:-4000}"
+
 echo "==> Building release binary..."
 swift build -c release
 
@@ -39,9 +42,9 @@ cat > "release/Slidr-Free.app/Contents/Info.plist" <<EOF
     <key>CFBundleName</key>
     <string>Slidr Free</string>
     <key>CFBundleVersion</key>
-    <string>3001</string>
+    <string>${BUILD_NUMBER}</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.3.0</string>
+    <string>${APP_VERSION}</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleIconFile</key>
@@ -59,8 +62,8 @@ cat > "release/Slidr-Free.app/Contents/Info.plist" <<EOF
 </plist>
 EOF
 
-echo "==> Ad-hoc signing app bundle..."
 xattr -cr "release/Slidr-Free.app"
+echo "==> Ad-hoc signing DEVELOPMENT-ONLY build..."
 codesign --force --deep --sign - "release/Slidr-Free.app"
 codesign --verify --verbose=2 "release/Slidr-Free.app"
 
@@ -69,6 +72,8 @@ cd release
 rm -f "Slidr-Free.app.zip"
 zip -r "Slidr-Free.app.zip" "Slidr-Free.app"
 cd "$PROJECT_ROOT"
+
+APP_VERSION="${APP_VERSION}" BUILD_NUMBER="${BUILD_NUMBER}" scripts/verify-release.sh
 
 echo "==> Done: release/Slidr-Free.app.zip"
 ls -lh "release/Slidr-Free.app.zip"

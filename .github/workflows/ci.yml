@@ -21,7 +21,12 @@ jobs:
       - name: Build
         run: swift build
 
-      - name: Package release
+      - name: Validate scripts and localizations
+        run: |
+          bash -n scripts/package-release.sh scripts/verify-release.sh scripts/test-verify-release-signature.sh
+          plutil -lint Resources/en.lproj/Localizable.strings Resources/zh-Hans.lproj/Localizable.strings
+
+      - name: Package development artifact
         run: bash scripts/package-release.sh
 
       - name: Verify release contract
@@ -33,5 +38,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Slidr-Free.app.zip
+          name: Slidr-Free-development-adhoc
           path: release/Slidr-Free.app.zip

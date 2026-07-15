@@ -5,7 +5,9 @@ final class SettingsStore: ObservableObject {
     static let defaultsKey = "SlidrFree.settings.v1"
 
     @Published private(set) var settings: AppSettings
-    private(set) var lastLoadDiagnostic: String?
+    @Published private(set) var lastLoadDiagnostic: String?
+    @Published private(set) var lastSaveDiagnostic: String?
+    let isNewInstall: Bool
 
     private let defaults: UserDefaults
     private let encoder = JSONEncoder()
@@ -13,6 +15,7 @@ final class SettingsStore: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        self.isNewInstall = defaults.data(forKey: Self.defaultsKey) == nil
 
         if let data = defaults.data(forKey: Self.defaultsKey) {
             do {
@@ -22,7 +25,7 @@ final class SettingsStore: ObservableObject {
                 lastLoadDiagnostic = "Stored settings could not be decoded; defaults restored."
             }
         } else {
-            settings = .default.validated()
+            settings = .newInstall.validated()
         }
     }
 
@@ -30,8 +33,22 @@ final class SettingsStore: ObservableObject {
         let validated = settings.validated()
         self.settings = validated
 
-        if let data = try? encoder.encode(validated) {
+        do {
+            let data = try encoder.encode(validated)
             defaults.set(data, forKey: Self.defaultsKey)
+            lastSaveDiagnostic = nil
+        } catch {
+            lastSaveDiagnostic = "Settings could not be saved."
         }
+    }
+
+    func dismissLoadDiagnostic() {
+        lastLoadDiagnostic = nil
+    }
+
+    func restoreDefaults() {
+        var restored = AppSettings.default
+        restored.experience = settings.experience
+        save(restored)
     }
 }

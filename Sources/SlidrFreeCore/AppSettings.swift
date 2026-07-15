@@ -1,5 +1,50 @@
 import Foundation
 
+public enum SideEdgeAction: String, Codable, CaseIterable, Equatable, Sendable {
+    case none
+    case brightness
+    case volume
+}
+
+public enum TopEdgeAction: String, Codable, CaseIterable, Equatable, Sendable {
+    case none
+    case browserTabs
+}
+
+public struct EdgeAssignments: Codable, Equatable, Sendable {
+    public var left: SideEdgeAction
+    public var right: SideEdgeAction
+    public var top: TopEdgeAction
+
+    public init(left: SideEdgeAction, right: SideEdgeAction, top: TopEdgeAction) {
+        self.left = left
+        self.right = right
+        self.top = top
+    }
+
+    public init(legacyFeatures: FeatureToggles) {
+        if legacyFeatures.swapSides {
+            left = legacyFeatures.volumeEdgeGesture ? .volume : .none
+            right = legacyFeatures.brightnessEdgeGesture ? .brightness : .none
+        } else {
+            left = legacyFeatures.brightnessEdgeGesture ? .brightness : .none
+            right = legacyFeatures.volumeEdgeGesture ? .volume : .none
+        }
+        top = legacyFeatures.browserTabEdgeGesture ? .browserTabs : .none
+    }
+}
+
+public struct ExperienceSettings: Codable, Equatable, Sendable {
+    public static let currentOnboardingVersion = 1
+    public var onboardingVersion: Int
+    public var hasSeenV04Welcome: Bool
+
+    public init(onboardingVersion: Int, hasSeenV04Welcome: Bool = false) {
+        self.onboardingVersion = max(0, onboardingVersion)
+        self.hasSeenV04Welcome = hasSeenV04Welcome
+    }
+}
+
 public struct FeatureToggles: Codable, Equatable, Sendable {
     public var volumeEdgeGesture: Bool
     public var brightnessEdgeGesture: Bool
@@ -79,6 +124,12 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var features: FeatureToggles
     public var gesture: GestureSettings
     public var middleClick: MiddleClickSettings
+    public var edgeAssignments: EdgeAssignments
+    public var experience: ExperienceSettings
+
+    public var hasConfiguredGesture: Bool {
+        middleClick.isEnabled || edgeAssignments.left != .none || edgeAssignments.right != .none || edgeAssignments.top != .none
+    }
 
     private enum CodingKeys: String, CodingKey {
         case isAppEnabled
@@ -86,6 +137,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case features
         case gesture
         case middleClick
+        case edgeAssignments
+        case experience
     }
 
     public static let `default` = AppSettings(
@@ -104,7 +157,24 @@ public struct AppSettings: Codable, Equatable, Sendable {
             tabSwitchStepIntervalSeconds: 0.20,
             horizontalDominanceRatio: 1.5
         ),
-        middleClick: .default
+        middleClick: .default,
+        edgeAssignments: EdgeAssignments(left: .brightness, right: .volume, top: .browserTabs),
+        experience: ExperienceSettings(onboardingVersion: ExperienceSettings.currentOnboardingVersion, hasSeenV04Welcome: true)
+    )
+
+    public static let newInstall = AppSettings(
+        isAppEnabled: false,
+        launchAtLogin: false,
+        features: FeatureToggles(
+            volumeEdgeGesture: true,
+            brightnessEdgeGesture: true,
+            browserTabEdgeGesture: true,
+            swapSides: false
+        ),
+        gesture: AppSettings.default.gesture,
+        middleClick: .default,
+        edgeAssignments: EdgeAssignments(left: .brightness, right: .volume, top: .browserTabs),
+        experience: ExperienceSettings(onboardingVersion: 0)
     )
 
     public init(
@@ -112,13 +182,17 @@ public struct AppSettings: Codable, Equatable, Sendable {
         launchAtLogin: Bool,
         features: FeatureToggles,
         gesture: GestureSettings,
-        middleClick: MiddleClickSettings
+        middleClick: MiddleClickSettings,
+        edgeAssignments: EdgeAssignments? = nil,
+        experience: ExperienceSettings = ExperienceSettings(onboardingVersion: ExperienceSettings.currentOnboardingVersion, hasSeenV04Welcome: false)
     ) {
         self.isAppEnabled = isAppEnabled
         self.launchAtLogin = launchAtLogin
         self.features = features
         self.gesture = gesture
         self.middleClick = middleClick
+        self.edgeAssignments = edgeAssignments ?? EdgeAssignments(legacyFeatures: features)
+        self.experience = experience
     }
 
     public init(from decoder: Decoder) throws {
@@ -128,6 +202,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.features = try container.decode(FeatureToggles.self, forKey: .features)
         self.gesture = try container.decode(GestureSettings.self, forKey: .gesture)
         self.middleClick = try container.decodeIfPresent(MiddleClickSettings.self, forKey: .middleClick) ?? Self.default.middleClick
+        self.edgeAssignments = try container.decodeIfPresent(EdgeAssignments.self, forKey: .edgeAssignments)
+            ?? EdgeAssignments(legacyFeatures: features)
+        self.experience = try container.decodeIfPresent(ExperienceSettings.self, forKey: .experience)
+            ?? ExperienceSettings(onboardingVersion: ExperienceSettings.currentOnboardingVersion)
     }
 
     public func validated() -> AppSettings {
