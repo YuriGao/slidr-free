@@ -178,6 +178,34 @@ final class InputPipelineLifecycleTests: XCTestCase {
         XCTAssertEqual(harness.permissionRefreshes, 4)
     }
 
+    func testRecheckRestartsUnavailableTouchMonitor() {
+        let harness = Harness()
+        let settings = enabledSettings()
+        harness.coordinator.update(settings: settings, permission: .granted)
+        let failedPipeline = harness.factory.last!
+        harness.status.update(touchMonitor: .unavailable)
+
+        harness.coordinator.update(settings: settings, permission: .granted)
+
+        XCTAssertTrue(failedPipeline.didQuiesce)
+        XCTAssertEqual(harness.factory.instances.map(\.generation), [1, 2])
+        XCTAssertEqual(harness.status.touchMonitor, .running)
+    }
+
+    func testRecheckRestartsDegradedEventTap() {
+        let harness = Harness()
+        let settings = enabledSettings()
+        harness.coordinator.update(settings: settings, permission: .granted)
+        let failedPipeline = harness.factory.last!
+        failedPipeline.report(.degraded)
+
+        harness.coordinator.update(settings: settings, permission: .granted)
+
+        XCTAssertTrue(failedPipeline.didQuiesce)
+        XCTAssertEqual(harness.factory.instances.map(\.generation), [1, 2])
+        XCTAssertEqual(harness.status.eventTap, .stopped)
+    }
+
     func testTerminationWaiterSucceedsAndTimesOutWithoutUnboundedBlocking() {
         let success = PipelineTerminationWaiter(timeout: 2) { semaphore, _ in
             semaphore.wait(timeout: .now()) == .success

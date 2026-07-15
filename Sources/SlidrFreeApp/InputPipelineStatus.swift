@@ -167,7 +167,9 @@ final class InputPipelineCoordinator {
             stopActive(completion: {})
             return
         }
-        if pipeline == nil || semanticChange {
+        let runtimeNeedsRestart = status.touchMonitor == .unavailable ||
+            (newSettings.middleClick.isEnabled && status.eventTap == .degraded)
+        if pipeline == nil || semanticChange || runtimeNeedsRestart {
             restart()
         } else {
             var runtimeSettings = newSettings
