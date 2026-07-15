@@ -14,9 +14,11 @@ This project is independent and non-affiliated with any similarly named commerci
 ## Features
 
 - **Left and right edge gestures** — Slide vertically along the physical trackpad left or right edge to adjust brightness and volume. By default, the left edge controls brightness and the right edge controls volume.
-- **Side swapping option** — Swap the left and right edge actions in Settings.
+- **Direct edge assignments** — Choose Brightness, Volume, or None independently for each side; choose Browser Tabs or None for the top edge.
 - **Top-edge browser tab gesture** — Slide horizontally along the physical trackpad top edge to switch Safari, Google Chrome, and Microsoft Edge tabs, with haptic feedback for each switch.
 - **Configurable middle click (beta)** — Use exactly 2, 3, or 4 fingers to produce a middle click by Tap or physical Click. The default is 4.
+- **Guided setup and safe tests** — First run checks compatibility and permission, then verifies a gesture without dispatching a system action.
+- **Unified health and diagnostics** — The menu bar and Overview share one actionable status; Diagnostics can preview a privacy-safe support summary before copying.
 
 ## Configurable middle-click beta
 
@@ -39,7 +41,7 @@ Physical trackpad gestures use Apple's private `MultitouchSupport` framework bec
 
 ## Settings and permissions
 
-The menu bar **Settings…** window provides controls for edge gestures, middle click, launch at login, and runtime status.
+The menu bar **Settings…** window has Overview, Edge Gestures, Middle Click, and Diagnostics sections. New installs stay disabled until the setup assistant is completed; existing v0.3 edge behavior is migrated to direct assignments.
 
 Slidr Free requires **Accessibility** permission to listen to the global input stream used by physical gestures. Grant it in **System Settings → Privacy & Security → Accessibility**. After replacing or rebuilding the ad-hoc-signed app, macOS may retain a stale TCC entry; quit Slidr Free, remove and re-add the current app in Accessibility settings, then relaunch and refresh the status if needed.
 
@@ -53,21 +55,20 @@ swift run SlidrFreeCoreChecks
 swift test
 swift build
 bash scripts/package-release.sh
-bash scripts/verify-release.sh
 ```
 
-Packaging produces `release/Slidr-Free.app` and `release/Slidr-Free.app.zip`. The verifier checks the bundle identifier, version `0.3.0` / build `3001`, bundled MIT license, archive license, and ad-hoc signature. The app uses `LSUIElement=true`, so it has no Dock icon and is controlled through its menu bar item. Ad-hoc signing is not Developer ID signing or notarization.
+Packaging produces `release/Slidr-Free.app` and `release/Slidr-Free.app.zip`, verifies version `0.4.0` / build `4000`, bundle identifier, license, archive contents, and an explicit ad-hoc signature. This repository does not currently publish a Developer ID-signed or Apple-notarized binary. The artifact is intended for local development and testing; users may need to approve macOS security prompts and re-add Accessibility permission after rebuilding. See [the lightweight v0.4 acceptance checklist](docs/qa/v0.4-release-acceptance.md).
 
 ## Known limitations
 
 - Middle click supports exact 2–4-finger gestures on the default physical touch device only. Higher counts, “at least N” matching, multi-device routing, and per-application exclusions are not included.
 - The global mouse-source limitation described above means an external mouse click can be converted while the chord is active.
 - Top-edge tab switching only runs when Safari, Google Chrome, or Microsoft Edge is frontmost.
-- Automated tests do not require live Accessibility/TCC or physical hardware. Hardware behavior still needs the manual beta matrix described in the approved design.
+- Automated tests do not require live Accessibility/TCC or physical hardware. Built-in and external trackpad checks on other Macs are welcome community validation, not a v0.4 release gate.
 
 ## Rollback
 
-The known-good baseline is tag `v0.2.0` at commit `eb93e18e9ba225502bac580ae98e006c1bf1aec5`. Before replacing an installed v0.2.0 app, preserve its archive, record that archive's SHA-256, and back up the `SlidrFree.settings.v1` preference payload. To roll back, quit Slidr Free, restore the v0.2.0 bundle, reset Accessibility only if macOS no longer recognizes it, relaunch, and verify both the displayed version and every existing edge gesture. Before a public release, rehearse the full v0.3 → v0.2 → v0.3 settings-compatibility path.
+The known-good baseline is tag `v0.2.0` at commit `eb93e18e9ba225502bac580ae98e006c1bf1aec5`. Before replacing an installed v0.2.0 app, preserve its archive, record that archive's SHA-256, and back up the `SlidrFree.settings.v1` preference payload. To roll back, quit Slidr Free, restore the v0.2.0 bundle, reset Accessibility only if macOS no longer recognizes it, relaunch, and verify both the displayed version and every existing edge gesture.
 
 ## Provenance
 

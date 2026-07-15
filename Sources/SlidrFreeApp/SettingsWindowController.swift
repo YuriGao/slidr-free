@@ -2,16 +2,15 @@ import AppKit
 import SwiftUI
 
 final class SettingsWindowController: NSWindowController {
-    init(store: SettingsStore, permissionManager: PermissionManager, pipelineStatus: InputPipelineStatus) {
-        let view = SettingsView(store: store, permissionManager: permissionManager, pipelineStatus: pipelineStatus)
+    init(store: SettingsStore, permissionManager: PermissionManager, pipelineStatus: InputPipelineStatus, gestureTestController: GestureTestController) {
+        let view = SettingsView(store: store, permissionManager: permissionManager, pipelineStatus: pipelineStatus, gestureTestController: gestureTestController)
         let hostingController = NSHostingController(rootView: view)
         let window = NSWindow(contentViewController: hostingController)
         window.title = NSLocalizedString("settings_title", comment: "")
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.isReleasedWhenClosed = false
-        // Size window to fit SwiftUI content
-        let fittingSize = hostingController.view.fittingSize
-        window.setContentSize(NSSize(width: max(fittingSize.width, 480), height: max(fittingSize.height, 600)))
+        window.minSize = NSSize(width: 640, height: 560)
+        window.setContentSize(NSSize(width: 720, height: 600))
         window.center()
         super.init(window: window)
     }

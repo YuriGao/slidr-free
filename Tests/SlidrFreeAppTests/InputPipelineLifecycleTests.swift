@@ -246,6 +246,23 @@ final class InputPipelineLifecycleTests: XCTestCase {
         queued.removeFirst()()
         XCTAssertEqual(status.touchMonitor, .stopped)
     }
+
+    func testPreviewCanProbeWhilePermissionDeniedAndNeverStartsPhysicalClickTap() {
+        let harness = Harness()
+        var settings = enabledSettings()
+        settings.isAppEnabled = false
+        harness.freshPermission = .denied
+
+        harness.coordinator.update(settings: settings, permission: .denied, previewMode: true)
+
+        XCTAssertTrue(harness.factory.last?.touchRequested == true)
+        XCTAssertFalse(harness.factory.last?.eventTapRequested == true)
+        XCTAssertNotNil(harness.coordinator.activeGeneration)
+
+        harness.coordinator.update(settings: settings, permission: .denied, previewMode: false)
+        XCTAssertNil(harness.coordinator.activeGeneration)
+        XCTAssertTrue(harness.factory.instances[0].didQuiesce)
+    }
 }
 
 private func enabledSettings() -> AppSettings {

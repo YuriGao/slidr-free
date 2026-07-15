@@ -4,6 +4,13 @@ import XCTest
 @testable import SlidrFreeApp
 
 final class SettingsStoreMigrationTests: XCTestCase {
+    func testNewInstallStartsDisabledAndRequiresOnboarding() {
+        let store = SettingsStore(defaults: isolatedDefaults())
+        XCTAssertTrue(store.isNewInstall)
+        XCTAssertFalse(store.settings.isAppEnabled)
+        XCTAssertEqual(store.settings.experience.onboardingVersion, 0)
+    }
+
     func testV02PayloadPreservesEveryFieldAndRoundTripsWithMiddleClickDefaults() throws {
         let defaults = isolatedDefaults()
         let payload = #"{"isAppEnabled":false,"launchAtLogin":true,"features":{"volumeEdgeGesture":false,"brightnessEdgeGesture":true,"browserTabEdgeGesture":false,"swapSides":true},"gesture":{"edgeWidthPercent":0.17,"physicalStepDistance":0.13,"physicalStepIntervalSeconds":0.22,"tabSwitchStepIntervalSeconds":0.31,"horizontalDominanceRatio":2.4}}"#.data(using: .utf8)!
@@ -17,6 +24,9 @@ final class SettingsStoreMigrationTests: XCTestCase {
             gesture: GestureSettings(edgeWidthPercent: 0.17, physicalStepDistance: 0.13, physicalStepIntervalSeconds: 0.22, tabSwitchStepIntervalSeconds: 0.31, horizontalDominanceRatio: 2.4),
             middleClick: .default
         ))
+        XCTAssertFalse(store.isNewInstall)
+        XCTAssertEqual(store.settings.experience.onboardingVersion, ExperienceSettings.currentOnboardingVersion)
+        XCTAssertFalse(store.settings.experience.hasSeenV04Welcome)
 
         store.save(store.settings)
         XCTAssertEqual(SettingsStore(defaults: defaults).settings, store.settings)

@@ -207,7 +207,8 @@ final class PhysicalTrackpadMonitor {
     func stop() {
         let stopped = lock.withLock { () -> (
             deviceToStop: (device: MTDeviceRef, stop: MTDeviceStopFunction)?,
-            cancellation: MiddleClickInputUpdate
+            cancellation: MiddleClickInputUpdate,
+            hadDevice: Bool
         )? in
             guard running || device != nil else { return nil }
 
@@ -215,6 +216,7 @@ final class PhysicalTrackpadMonitor {
             frameSequence &+= 1
 
             let deviceToStop = device.flatMap { device in deviceStop.map { (device, $0) } }
+            let hadDevice = device != nil
             let cancellation = MiddleClickInputUpdate.cancel(
                 generation: generation,
                 sequence: frameSequence,
@@ -225,7 +227,7 @@ final class PhysicalTrackpadMonitor {
             device = nil
             deviceStop = nil
 
-            return (deviceToStop, cancellation)
+            return (deviceToStop, cancellation, hadDevice)
         }
 
         guard let stopped else { return }
@@ -240,7 +242,7 @@ final class PhysicalTrackpadMonitor {
                 _ = Self.monitorsByDevice.removeValue(forKey: UInt(bitPattern: deviceToStop.device))
             }
         }
-        report(framework: libraryHandle != nil, device: false, state: .stopped, failure: nil)
+        report(framework: libraryHandle != nil, device: stopped.hadDevice, state: .stopped, failure: nil)
     }
 
     private func prepareStartLocked(generation: UInt64) -> PreparedDeviceStart? {

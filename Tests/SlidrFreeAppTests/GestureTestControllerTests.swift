@@ -1,0 +1,48 @@
+import SlidrFreeCore
+import XCTest
+@testable import SlidrFreeApp
+
+final class GestureTestControllerTests: XCTestCase {
+    func testEdgePreviewConsumesEveryEdgeGestureWithoutProducingActions() {
+        let controller = GestureTestController()
+        let router = GestureDispatchRouter(preview: controller)
+        controller.start(.edge)
+        let gestures: [RecognizedGesture] = [
+            .brightness(direction: .increase, magnitude: 1),
+            .volume(direction: .decrease, magnitude: 1),
+            .browserTab(direction: .next)
+        ]
+        for gesture in gestures {
+            XCTAssertTrue(router.actions(for: gesture, settings: .default).isEmpty)
+        }
+        XCTAssertTrue(controller.didRecognizeGesture)
+        controller.stop()
+    }
+
+    func testMiddleClickPreviewConsumesTapButNotUnrelatedEdgeGesture() {
+        let controller = GestureTestController()
+        let router = GestureDispatchRouter(preview: controller)
+        controller.start(.middleClick)
+        XCTAssertTrue(router.actions(for: .middleClickTap, settings: .default).isEmpty)
+        XCTAssertTrue(router.actions(for: .volume(direction: .increase, magnitude: 1), settings: .default).isEmpty)
+        controller.stop()
+        XCTAssertEqual(router.actions(for: .middleClickTap, settings: .default), [.middleClick])
+    }
+
+    func testEdgeTimeoutDistinguishesNoFramesMissedEdgeAndThreshold() {
+        let controller = GestureTestController()
+        controller.start(.edge)
+        controller.expire()
+        XCTAssertEqual(controller.feedback, NSLocalizedString("gesture_test_timeout_no_frames", comment: ""))
+
+        controller.start(.edge)
+        controller.observe(.physicalTouchFrame(touches: [PhysicalTouch(id: 1, x: 0.5, y: 0.5)], timestamp: 1), settings: .default)
+        controller.expire()
+        XCTAssertEqual(controller.feedback, NSLocalizedString("gesture_test_timeout_no_edge", comment: ""))
+
+        controller.start(.edge)
+        controller.observe(.physicalTouchFrame(touches: [PhysicalTouch(id: 1, x: 0.05, y: 0.5)], timestamp: 1), settings: .default)
+        controller.expire()
+        XCTAssertEqual(controller.feedback, NSLocalizedString("gesture_test_timeout_threshold", comment: ""))
+    }
+}

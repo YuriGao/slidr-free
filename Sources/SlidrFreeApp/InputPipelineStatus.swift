@@ -119,6 +119,7 @@ final class InputPipelineCoordinator {
     private var pipeline: (any InputPipelineInstance)?
     private var settings: AppSettings?
     private var permission: PermissionState = .unknown
+    private var previewMode = false
     private var sleeping = false
     private var terminated = false
     private var isStarting = false
@@ -143,22 +144,24 @@ final class InputPipelineCoordinator {
         self.schedule = schedule
     }
 
-    func update(settings newSettings: AppSettings, permission newPermission: PermissionState) {
-        withLock { updateLocked(settings: newSettings, permission: newPermission) }
+    func update(settings newSettings: AppSettings, permission newPermission: PermissionState, previewMode newPreviewMode: Bool = false) {
+        withLock { updateLocked(settings: newSettings, permission: newPermission, previewMode: newPreviewMode) }
     }
 
-    private func updateLocked(settings newSettings: AppSettings, permission newPermission: PermissionState) {
+    private func updateLocked(settings newSettings: AppSettings, permission newPermission: PermissionState, previewMode newPreviewMode: Bool) {
         let previous = settings
+        let previousPreviewMode = previewMode
         settings = newSettings.validated()
         permission = newPermission
+        previewMode = newPreviewMode
 
         if isStarting { return }
 
         guard !terminated, !sleeping else { return }
         let semanticChange = previous.map {
-            $0.isAppEnabled != newSettings.isAppEnabled || $0.middleClick != newSettings.middleClick
+            $0.isAppEnabled != newSettings.isAppEnabled || $0.middleClick != newSettings.middleClick || previousPreviewMode != newPreviewMode
         } ?? true
-        let eligible = newSettings.isAppEnabled && newPermission == .granted && hasPhysicalGesture(newSettings)
+        let eligible = (newSettings.isAppEnabled || newPreviewMode) && (newPermission == .granted || newPreviewMode) && hasPhysicalGesture(newSettings)
 
         guard eligible else {
             stopActive(completion: {})
@@ -167,7 +170,9 @@ final class InputPipelineCoordinator {
         if pipeline == nil || semanticChange {
             restart()
         } else {
-            pipeline?.updateEdgeSettings(newSettings)
+            var runtimeSettings = newSettings
+            if newPreviewMode { runtimeSettings.isAppEnabled = true }
+            pipeline?.updateEdgeSettings(runtimeSettings)
         }
     }
 
@@ -212,8 +217,8 @@ final class InputPipelineCoordinator {
 
     private func restartIfEligible() {
         guard let settings,
-              settings.isAppEnabled,
-              permission == .granted,
+              (settings.isAppEnabled || previewMode),
+              (permission == .granted || previewMode),
               hasPhysicalGesture(settings) else { return }
         restart()
     }
@@ -225,21 +230,23 @@ final class InputPipelineCoordinator {
 
     private func startFresh() {
         guard !terminated, !sleeping, let initialSettings = settings,
-              initialSettings.isAppEnabled, permission == .granted,
+              (initialSettings.isAppEnabled || previewMode), (permission == .granted || previewMode),
               hasPhysicalGesture(initialSettings) else { return }
         isStarting = true
         permission = refreshPermission()
         isStarting = false
-        guard permission == .granted,
+        guard permission == .granted || previewMode,
               let settings,
-              settings.isAppEnabled,
+              (settings.isAppEnabled || previewMode),
               hasPhysicalGesture(settings) else { return }
         nextGeneration &+= 1
         let generation = nextGeneration
         status.update(generation: generation)
+        var runtimeSettings = settings
+        if previewMode { runtimeSettings.isAppEnabled = true }
         let instance = factory.make(
             generation: generation,
-            settings: settings,
+            settings: runtimeSettings,
             status: status,
             eventTapStatus: { [weak self] eventStatus in
                 self?.withLock { self?.handleEventTapStatus(eventStatus, generation: generation) }
@@ -251,7 +258,7 @@ final class InputPipelineCoordinator {
         } else {
             status.update(touchMonitor: .unavailable, failure: "Physical touch monitor could not start.")
         }
-        if settings.middleClick.isEnabled {
+        if settings.middleClick.isEnabled && !previewMode {
             instance.startEventTap { [weak self, weak instance] success in
                 self?.withLock {
                     guard let self, let instance, self.pipeline === instance else { return }
@@ -318,7 +325,7 @@ final class InputPipelineCoordinator {
     }
 
     private func hasPhysicalGesture(_ settings: AppSettings) -> Bool {
-        settings.middleClick.isEnabled || settings.features.volumeEdgeGesture || settings.features.brightnessEdgeGesture || settings.features.browserTabEdgeGesture
+        settings.hasConfiguredGesture
     }
 
     private func withLock<Result>(_ body: () -> Result) -> Result {
@@ -330,13 +337,18 @@ final class InputPipelineCoordinator {
 
 final class ProductionInputPipelineFactory: InputPipelineFactory {
     private let actionHandler: (RecognizedGesture) -> Void
+    private let inputObserver: (NormalizedInputEvent, AppSettings) -> Void
 
-    init(actionHandler: @escaping (RecognizedGesture) -> Void) {
+    init(
+        actionHandler: @escaping (RecognizedGesture) -> Void,
+        inputObserver: @escaping (NormalizedInputEvent, AppSettings) -> Void = { _, _ in }
+    ) {
         self.actionHandler = actionHandler
+        self.inputObserver = inputObserver
     }
 
     func make(generation: UInt64, settings: AppSettings, status: InputPipelineStatus, eventTapStatus: @escaping (MouseButtonEventTapStatus) -> Void) -> any InputPipelineInstance {
-        ProductionInputPipeline(generation: generation, settings: settings, status: status, actionHandler: actionHandler, eventTapStatus: eventTapStatus)
+        ProductionInputPipeline(generation: generation, settings: settings, status: status, actionHandler: actionHandler, eventTapStatus: eventTapStatus, inputObserver: inputObserver)
     }
 }
 
@@ -374,6 +386,7 @@ final class ProductionInputPipeline: InputPipelineInstance {
     private let bridge: MiddleClickSessionBridge
     private let releaseEmitter: any MiddleClickReleaseEmitting
     private let actionHandler: (RecognizedGesture) -> Void
+    private let inputObserver: (NormalizedInputEvent, AppSettings) -> Void
     private let eventTapStatus: (MouseButtonEventTapStatus) -> Void
     private let monitorFactory: InputTouchMonitorFactory
     private let eventTapFactory: InputEventTapFactory
@@ -399,6 +412,7 @@ final class ProductionInputPipeline: InputPipelineInstance {
         releaseEmitter: any MiddleClickReleaseEmitting = MiddleClickEmitter(),
         actionHandler: @escaping (RecognizedGesture) -> Void,
         eventTapStatus: @escaping (MouseButtonEventTapStatus) -> Void,
+        inputObserver: @escaping (NormalizedInputEvent, AppSettings) -> Void = { _, _ in },
         monitorFactory: InputTouchMonitorFactory? = nil,
         eventTapFactory: InputEventTapFactory? = nil,
         deliverAction: @escaping (@escaping () -> Void) -> Void = { work in DispatchQueue.main.async(execute: work) }
@@ -407,6 +421,7 @@ final class ProductionInputPipeline: InputPipelineInstance {
         self.status = status
         self.releaseEmitter = releaseEmitter
         self.actionHandler = actionHandler
+        self.inputObserver = inputObserver
         self.eventTapStatus = eventTapStatus
         self.bridge = bridge ?? MiddleClickSessionBridge(generation: generation, now: { ProcessInfo.processInfo.systemUptime })
         self.monitorFactory = monitorFactory ?? { statusHandler, middleHandler, edgeHandler in
@@ -513,11 +528,14 @@ final class ProductionInputPipeline: InputPipelineInstance {
     }
 
     func receiveEdge(_ event: NormalizedInputEvent) {
-        let result = withLock { () -> (RecognizedGesture, UInt64)? in
-            guard isActive, let recognized = edgeRecognizer.process(event) else { return nil }
-            return (recognized, activeToken)
+        let result = withLock { () -> (RecognizedGesture?, UInt64, AppSettings)? in
+            guard isActive else { return nil }
+            let settings = edgeRecognizer.settings
+            return (edgeRecognizer.process(event), activeToken, settings)
         }
-        guard let (recognized, token) = result else { return }
+        guard let (recognized, token, settings) = result else { return }
+        inputObserver(event, settings)
+        guard let recognized else { return }
         let shouldDeliver = withLock { isActive && activeToken == token }
         if shouldDeliver { actionHandler(recognized) }
     }

@@ -80,7 +80,7 @@ public struct GestureRecognizer: Sendable {
             previousPrimaryPhysicalTouch = current
 
             if edgeHit == .top {
-                guard settings.features.browserTabEdgeGesture else {
+                guard settings.edgeAssignments.top == .browserTabs else {
                     resetPhysicalStepState()
                     return nil
                 }
@@ -99,17 +99,8 @@ public struct GestureRecognizer: Sendable {
                 return .browserTab(direction: step == .increase ? .next : .previous)
             }
 
-            let leftEdge = edgeHit == .left
-            let rightEdge = edgeHit == .right
-            let controlsBrightness = settings.features.swapSides ? rightEdge : leftEdge
-            let controlsVolume = settings.features.swapSides ? leftEdge : rightEdge
-
-            let recognizedKind: PhysicalStepKind?
-            if controlsBrightness && settings.features.brightnessEdgeGesture {
-                recognizedKind = .brightness
-            } else if controlsVolume && settings.features.volumeEdgeGesture {
-                recognizedKind = .volume
-            } else {
+            let assignment = edgeHit == .left ? settings.edgeAssignments.left : settings.edgeAssignments.right
+            guard assignment != .none else {
                 resetPhysicalStepState()
                 return nil
             }
@@ -124,7 +115,7 @@ public struct GestureRecognizer: Sendable {
                 return nil
             }
 
-            switch recognizedKind {
+            switch assignment {
             case .brightness:
                 return .brightness(direction: step, magnitude: 1.0)
             case .volume:
@@ -198,9 +189,4 @@ private struct PhysicalStepState: Sendable {
     var edge: PhysicalEdgeHit
     var accumulatedDistance: Double
     var lastEmitTimestamp: Double?
-}
-
-private enum PhysicalStepKind: Sendable {
-    case brightness
-    case volume
 }

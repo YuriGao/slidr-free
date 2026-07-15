@@ -63,6 +63,7 @@ private func testDefaultSettingsEnableAllFirstVersionFeaturesIndividually() thro
     try check(settings.features.volumeEdgeGesture, "Volume edge gesture should be enabled by default")
     try check(settings.features.brightnessEdgeGesture, "Brightness edge gesture should be enabled by default")
     try check(!settings.features.swapSides, "Swap sides should be disabled by default")
+    try check(settings.edgeAssignments == EdgeAssignments(left: .brightness, right: .volume, top: .browserTabs), "Direct edge assignments should use the expected defaults")
     try check(!settings.launchAtLogin, "Launch at login should be disabled by default")
     try check(!settings.middleClick.isEnabled, "Middle click should be disabled by default")
     try check(settings.middleClick.tapEnabled, "Middle-click Tap preference should be enabled by default")
@@ -105,6 +106,7 @@ private func testSettingsDecodeMigratesMissingPhysicalStepFields() throws {
     try check(!decoded.isAppEnabled, "Legacy settings should preserve isAppEnabled")
     try check(decoded.launchAtLogin, "Legacy settings should preserve launchAtLogin")
     try check(!decoded.features.brightnessEdgeGesture, "Legacy settings should preserve feature toggles")
+    try check(decoded.edgeAssignments == EdgeAssignments(left: .volume, right: .none, top: .browserTabs), "Legacy toggles should migrate to equivalent direct assignments")
     try checkEqual(decoded.gesture.edgeWidthPercent, 0.12, accuracy: 0.0001, "Legacy gesture settings should preserve existing fields")
     try checkEqual(decoded.gesture.physicalStepDistance, AppSettings.default.gesture.physicalStepDistance, accuracy: 0.0001, "Missing physical step distance should decode to default")
     try checkEqual(decoded.gesture.physicalStepIntervalSeconds, AppSettings.default.gesture.physicalStepIntervalSeconds, accuracy: 0.0001, "Missing physical step interval should decode to default")
@@ -158,13 +160,13 @@ private func testGestureRecognition() throws {
     )
 
     var swappedSettings = AppSettings.default
-    swappedSettings.features.swapSides = true
+    swappedSettings.edgeAssignments = EdgeAssignments(left: .volume, right: .brightness, top: .browserTabs)
     recognizer = GestureRecognizer(settings: swappedSettings)
     _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 3, x: 0.95, y: 0.20)], timestamp: 12.0))
     try checkEqual(
         recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 3, x: 0.95, y: 0.32)], timestamp: 12.1)),
         .brightness(direction: .increase, magnitude: 1.0),
-        "Swap sides should move physical brightness to right edge"
+        "Direct assignment should put physical brightness on the right edge"
     )
 
     recognizer = GestureRecognizer(settings: .default)
@@ -297,7 +299,7 @@ private func testTopEdgeBrowserTabGestureRecognition() throws {
     )
 
     var disabledSettings = AppSettings.default
-    disabledSettings.features.browserTabEdgeGesture = false
+    disabledSettings.edgeAssignments.top = .none
     recognizer = GestureRecognizer(settings: disabledSettings)
     _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 27, x: 0.30, y: 0.95)], timestamp: 76.0))
     try checkEqual(

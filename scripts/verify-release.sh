@@ -5,6 +5,8 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_PATH="${PROJECT_ROOT}/release/Slidr-Free.app"
 ZIP_PATH="${PROJECT_ROOT}/release/Slidr-Free.app.zip"
 ROOT_LICENSE="${PROJECT_ROOT}/LICENSE"
+APP_VERSION="${APP_VERSION:-0.4.0}"
+BUILD_NUMBER="${BUILD_NUMBER:-4000}"
 
 fail() {
   echo "release verification failed: $*" >&2
@@ -36,9 +38,9 @@ verify_app_bundle() {
   cmp -s "${ROOT_LICENSE}" "${packaged_license}" || fail "${label}: packaged LICENSE differs from root LICENSE"
 
   assert_plist_value "${label}" "${info_plist}" "CFBundleIdentifier" "com.slidr.free"
-  assert_plist_value "${label}" "${info_plist}" "CFBundleShortVersionString" "0.3.0"
-  assert_plist_value "${label}" "${info_plist}" "CFBundleVersion" "3001"
-  codesign --verify --verbose=2 "${app_path}" || fail "${label}: code signature verification failed"
+  assert_plist_value "${label}" "${info_plist}" "CFBundleShortVersionString" "${APP_VERSION}"
+  assert_plist_value "${label}" "${info_plist}" "CFBundleVersion" "${BUILD_NUMBER}"
+  codesign --verify --deep --strict --verbose=2 "${app_path}" || fail "${label}: code signature verification failed"
   local signature_details
   local signature=""
   signature_details="$(codesign -dv --verbose=4 "${app_path}" 2>&1)" || fail "${label}: cannot inspect code signature"
@@ -47,8 +49,8 @@ verify_app_bundle() {
       Signature=*) signature="${line#Signature=}" ;;
     esac
   done <<< "${signature_details}"
-  [[ "${signature}" == "adhoc" ]] || fail "${label}: expected ad-hoc signature, got '${signature:-missing}'"
-  echo "verified ${label}: Signature=${signature}"
+  [[ "${signature}" == "adhoc" ]] || fail "${label}: development builds must be explicitly ad-hoc, got '${signature:-missing}'"
+  echo "verified ${label}: DEVELOPMENT-ONLY Signature=${signature}, bundle identifier checked"
 }
 
 verify_app_bundle "loose app" "${APP_PATH}"
