@@ -16,6 +16,7 @@ This project is independent and non-affiliated with any similarly named commerci
 - **Left and right edge gestures** — Slide vertically along the physical trackpad left or right edge to adjust brightness and volume. By default, the left edge controls brightness and the right edge controls volume.
 - **Direct edge assignments** — Choose Brightness, Volume, or None independently for each side; choose Browser Tabs or None for the top edge.
 - **Top-edge browser tab gesture** — Slide horizontally along the physical trackpad top edge to switch Safari, Google Chrome, and Microsoft Edge tabs, with haptic feedback for each switch.
+- **Edge-origin gate** — Each contact must begin inside the configured edge width. Sliding into an edge from elsewhere is ignored until all touches lift.
 - **Configurable middle click (beta)** — Use exactly 2, 3, or 4 fingers to produce a middle click by Tap or physical Click. The default is 4.
 - **Guided setup and safe tests** — First run checks compatibility and permission, then verifies a gesture without dispatching a system action.
 - **Unified health and diagnostics** — The menu bar and Overview share one actionable status; Diagnostics can preview a privacy-safe support summary before copying.

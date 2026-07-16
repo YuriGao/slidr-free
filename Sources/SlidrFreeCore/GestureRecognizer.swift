@@ -22,41 +22,65 @@ public struct GestureRecognizer: Sendable {
     private var previousPrimaryPhysicalTouch: PhysicalTouch?
     private var activePhysicalStep: PhysicalStepState?
     private var isSuppressingEdgesUntilEmpty: Bool
+    private var physicalEdgeSession: PhysicalEdgeSession
 
     public init(settings: AppSettings = .default) {
         self.settings = settings.validated()
         self.previousPrimaryPhysicalTouch = nil
         self.activePhysicalStep = nil
         self.isSuppressingEdgesUntilEmpty = false
+        self.physicalEdgeSession = .idle
     }
 
     public mutating func process(_ event: NormalizedInputEvent) -> RecognizedGesture? {
         switch event {
         case .physicalTouchCancelled:
             isSuppressingEdgesUntilEmpty = false
-            resetPhysicalContinuity()
+            resetPhysicalContact()
             return nil
         case .physicalTouchFrame(let touches, let timestamp):
             guard !touches.isEmpty else {
                 isSuppressingEdgesUntilEmpty = false
-                resetPhysicalContinuity()
+                resetPhysicalContact()
                 return nil
             }
 
             if touches.count > 1 {
                 isSuppressingEdgesUntilEmpty = true
+                physicalEdgeSession = .blocked
                 resetPhysicalContinuity()
                 return nil
             }
 
-            guard !isSuppressingEdgesUntilEmpty, settings.isAppEnabled else { return nil }
+            guard !isSuppressingEdgesUntilEmpty else { return nil }
             let current = touches[0]
 
-            let edgeHit = physicalEdgeHit(for: current)
-            guard let edgeHit else {
+            if physicalEdgeSession == .idle {
+                if let originEdge = physicalEdgeHit(for: current), settings.isAppEnabled {
+                    physicalEdgeSession = .eligible(touchID: current.id, edge: originEdge)
+                } else {
+                    physicalEdgeSession = .blocked
+                }
+            }
+
+            guard settings.isAppEnabled else {
+                physicalEdgeSession = .blocked
                 resetPhysicalContinuity()
                 return nil
             }
+
+            guard case .eligible(let originTouchID, let originEdge) = physicalEdgeSession,
+                  originTouchID == current.id else {
+                physicalEdgeSession = .blocked
+                resetPhysicalContinuity()
+                return nil
+            }
+
+            guard physicalEdgeHit(for: current) == originEdge else {
+                resetPhysicalContinuity()
+                return nil
+            }
+            let edgeHit = originEdge
 
             guard let previous = previousPrimaryPhysicalTouch, previous.id == current.id else {
                 resetPhysicalStepState()
@@ -148,6 +172,11 @@ public struct GestureRecognizer: Sendable {
         resetPhysicalStepState()
     }
 
+    private mutating func resetPhysicalContact() {
+        physicalEdgeSession = .idle
+        resetPhysicalContinuity()
+    }
+
     private mutating func physicalStep(
         delta: Double,
         touchID: Int,
@@ -189,4 +218,10 @@ private struct PhysicalStepState: Sendable {
     var edge: PhysicalEdgeHit
     var accumulatedDistance: Double
     var lastEmitTimestamp: Double?
+}
+
+private enum PhysicalEdgeSession: Equatable, Sendable {
+    case idle
+    case blocked
+    case eligible(touchID: Int, edge: PhysicalEdgeHit)
 }
