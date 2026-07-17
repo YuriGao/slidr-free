@@ -215,12 +215,19 @@ private func testGestureRecognition() throws {
     try checkEqual(
         recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 13, x: 0.95, y: 0.35)], timestamp: 61.5)),
         nil,
-        "Direct physical edge change should establish a fresh baseline"
+        "A contact must stay locked to its starting physical edge"
     )
     try checkEqual(
         recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 13, x: 0.95, y: 0.23)], timestamp: 61.6)),
+        nil,
+        "Movement on another edge must stay blocked until all touches lift"
+    )
+    _ = recognizer.process(.physicalTouchFrame(touches: [], timestamp: 61.7))
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 14, x: 0.95, y: 0.35)], timestamp: 61.8))
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 14, x: 0.95, y: 0.23)], timestamp: 61.9)),
         .volume(direction: .decrease, magnitude: 1.0),
-        "Movement after direct physical edge change baseline should emit"
+        "A new right-edge contact should emit after the previous contact ends"
     )
 
     recognizer = GestureRecognizer(settings: .default)
@@ -228,12 +235,19 @@ private func testGestureRecognition() throws {
     try checkEqual(
         recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 12, x: 0.05, y: 0.35)], timestamp: 63.1)),
         nil,
-        "Changing physical touch ID should reset accumulated movement"
+        "Changing physical touch ID without an empty frame should block the contact"
     )
     try checkEqual(
         recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 12, x: 0.05, y: 0.46)], timestamp: 63.2)),
+        nil,
+        "A replacement touch ID must remain blocked until all touches lift"
+    )
+    _ = recognizer.process(.physicalTouchFrame(touches: [], timestamp: 63.3))
+    _ = recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 12, x: 0.05, y: 0.35)], timestamp: 63.4))
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [PhysicalTouch(id: 12, x: 0.05, y: 0.46)], timestamp: 63.5)),
         .brightness(direction: .increase, magnitude: 1.0),
-        "Movement after physical touch ID baseline should emit"
+        "A replacement touch ID may start a new edge contact after an empty frame"
     )
 
 }

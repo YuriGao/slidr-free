@@ -43,6 +43,56 @@ final class EdgeGestureArbitrationTests: XCTestCase {
         )
     }
 
+    func testTouchStartingOutsideSideEdgeStaysBlockedUntilEmpty() {
+        var recognizer = GestureRecognizer(settings: .default)
+
+        XCTAssertNil(recognizer.process(frame([touch(1, x: 0.50, y: 0.20)], timestamp: 1.0)))
+        XCTAssertNil(recognizer.process(frame([touch(1, x: 0.05, y: 0.20)], timestamp: 1.1)))
+        XCTAssertNil(
+            recognizer.process(frame([touch(1, x: 0.05, y: 0.31)], timestamp: 1.2)),
+            "entering the edge after a center start must not arm the gesture"
+        )
+        XCTAssertNil(recognizer.process(frame([touch(1, x: 0.05, y: 0.42)], timestamp: 1.3)))
+
+        XCTAssertNil(recognizer.process(frame([], timestamp: 1.4)))
+        XCTAssertNil(recognizer.process(frame([touch(2, x: 0.05, y: 0.20)], timestamp: 1.5)))
+        XCTAssertEqual(
+            recognizer.process(frame([touch(2, x: 0.05, y: 0.31)], timestamp: 1.6)),
+            .brightness(direction: .increase, magnitude: 1.0),
+            "empty must allow the next edge-originating contact to arm normally"
+        )
+    }
+
+    func testTouchStartingOutsideTopEdgeCannotSwitchBrowserTabsAfterEntering() {
+        var recognizer = GestureRecognizer(settings: .default)
+
+        XCTAssertNil(recognizer.process(frame([touch(1, x: 0.30, y: 0.50)], timestamp: 1.0)))
+        XCTAssertNil(recognizer.process(frame([touch(1, x: 0.30, y: 0.95)], timestamp: 1.1)))
+        XCTAssertNil(
+            recognizer.process(frame([touch(1, x: 0.41, y: 0.95)], timestamp: 1.2)),
+            "top-edge tab switching must use the same contact-origin gate"
+        )
+    }
+
+    func testEdgeOriginLocksContactToItsStartingEdge() {
+        var recognizer = GestureRecognizer(settings: .default)
+
+        XCTAssertNil(recognizer.process(frame([touch(1, x: 0.05, y: 0.20)], timestamp: 1.0)))
+        XCTAssertNil(recognizer.process(frame([touch(1, x: 0.05, y: 0.22)], timestamp: 1.1)))
+        XCTAssertNil(recognizer.process(frame([touch(1, x: 0.30, y: 0.95)], timestamp: 1.2)))
+        XCTAssertNil(
+            recognizer.process(frame([touch(1, x: 0.41, y: 0.95)], timestamp: 1.3)),
+            "a left-edge contact must not become a top-edge gesture without lifting"
+        )
+
+        XCTAssertNil(recognizer.process(frame([touch(1, x: 0.05, y: 0.30)], timestamp: 1.4)))
+        XCTAssertEqual(
+            recognizer.process(frame([touch(1, x: 0.05, y: 0.41)], timestamp: 1.5)),
+            .brightness(direction: .increase, magnitude: 1.0),
+            "returning to the original edge may resume after continuity is re-established"
+        )
+    }
+
     private func assertMultitouchLatch(touchCount: Int) {
         var recognizer = GestureRecognizer(settings: .default)
         let multipleTouches = (1...touchCount).map { id in
