@@ -24,6 +24,11 @@
 "browser_tab_edge_gesture" = "上边缘切换浏览器标签页";
 "swap_sides" = "左右互换";
 "edge_width" = "边缘宽度";
+"edge_step_distances" = "触发移动距离";
+"left_edge_step_distance" = "左边缘";
+"right_edge_step_distance" = "右边缘";
+"top_edge_step_distance" = "上边缘";
+"edge_step_distance_help" = "每移动所选距离会触发一步调节；数值越小越灵敏。百分比基于触控板对应方向的尺寸。";
 
 /* Middle Click */
 "middle_click_enable" = "启用中键点击";

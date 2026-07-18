@@ -24,6 +24,11 @@
 "browser_tab_edge_gesture" = "Top edge browser tab switching";
 "swap_sides" = "Swap sides";
 "edge_width" = "Edge width";
+"edge_step_distances" = "Movement distance per step";
+"left_edge_step_distance" = "Left edge";
+"right_edge_step_distance" = "Right edge";
+"top_edge_step_distance" = "Top edge";
+"edge_step_distance_help" = "Each selected distance triggers one adjustment step. Lower values are more sensitive. Percentages use the trackpad size in the gesture direction.";
 
 /* Middle Click */
 "middle_click_enable" = "Enable middle click";

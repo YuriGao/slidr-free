@@ -184,7 +184,15 @@ public struct GestureRecognizer: Sendable {
         timestamp: Double,
         intervalSeconds: Double
     ) -> GestureDirection? {
-        let stepDistance = settings.gesture.physicalStepDistance
+        let stepDistance: Double
+        switch edge {
+        case .left:
+            stepDistance = settings.gesture.leftPhysicalStepDistance
+        case .right:
+            stepDistance = settings.gesture.rightPhysicalStepDistance
+        case .top:
+            stepDistance = settings.gesture.topPhysicalStepDistance
+        }
         if activePhysicalStep?.touchID != touchID || activePhysicalStep?.edge != edge {
             activePhysicalStep = PhysicalStepState(touchID: touchID, edge: edge, accumulatedDistance: 0, lastEmitTimestamp: nil)
         }

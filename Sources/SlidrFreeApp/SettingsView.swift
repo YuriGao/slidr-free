@@ -178,6 +178,32 @@ struct SettingsView: View {
                     .font(.callout).foregroundStyle(.secondary)
             }
             labeledSlider(NSLocalizedString("edge_width", comment: ""), value: binding(\.gesture.edgeWidthPercent), range: 0.04...0.20, isPercent: true)
+            GroupBox(NSLocalizedString("edge_step_distances", comment: "")) {
+                VStack(alignment: .leading, spacing: 12) {
+                    labeledSlider(
+                        NSLocalizedString("left_edge_step_distance", comment: ""),
+                        value: binding(\.gesture.leftPhysicalStepDistance),
+                        range: GestureSettings.physicalStepDistanceRange,
+                        isPercent: true
+                    )
+                    labeledSlider(
+                        NSLocalizedString("right_edge_step_distance", comment: ""),
+                        value: binding(\.gesture.rightPhysicalStepDistance),
+                        range: GestureSettings.physicalStepDistanceRange,
+                        isPercent: true
+                    )
+                    labeledSlider(
+                        NSLocalizedString("top_edge_step_distance", comment: ""),
+                        value: binding(\.gesture.topPhysicalStepDistance),
+                        range: GestureSettings.physicalStepDistanceRange,
+                        isPercent: true
+                    )
+                    Text(NSLocalizedString("edge_step_distance_help", comment: ""))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(8)
+            }
             GestureTestPanel(controller: gestureTestController, kind: .edge)
         }
     }
@@ -319,7 +345,7 @@ struct SettingsView: View {
     private func labeledSlider(_ title: String, value: Binding<Double>, range: ClosedRange<Double>, isPercent: Bool) -> some View {
         VStack(alignment: .leading) {
             HStack { Text(title); Spacer(); Text(value.wrappedValue.formatted(.percent.precision(.fractionLength(0)))).foregroundStyle(.secondary) }
-            Slider(value: value, in: range)
+            Slider(value: value, in: range, step: 0.01)
         }
     }
 
