@@ -121,7 +121,14 @@
 "corner_app_picker_prompt" = "Choose";
 "corner_app_picker_message" = "Choose the macOS app to bind to this corner.";
 "corner_app_picker_error" = "The selected app could not be read. Choose an app with a valid bundle identifier.";
-"corner_double_tap_help" = "Tap the same corner twice quickly to open its app. If that app is already frontmost, its focused window toggles between minimized and restored. Corner size follows Edge width; multi-touch, significant movement, and cross-corner taps do not trigger.";
+"corner_trigger_percent" = "Corner trigger ratio";
+"corner_trigger_percent_help" = "Sets how far each corner trigger area extends along both trackpad axes. This setting is independent of Edge width.";
+"corner_movement_tolerance" = "Corner movement limit";
+"corner_movement_tolerance_help" = "Maximum distance a finger may drift from its starting point during a double tap. A larger value is easier to trigger but adds more travel before a corner-origin edge swipe begins.";
+"corner_double_tap_interval" = "Double-tap interval";
+"corner_double_tap_interval_help" = "Maximum time from the first lift to the second touch. A longer interval is easier to trigger but may accept two separate taps.";
+"corner_double_tap_help" = "Double-tap the same corner to open its app. If that app is already frontmost, its focused window toggles between minimized and restored. Multi-touch, significant movement, and cross-corner taps do not trigger.";
+"seconds_value" = "%.2f s";
 "corner_mapping_diagram" = "Four trackpad corners and their bound apps";
 "side_action_none" = "None";
 "side_action_brightness" = "Brightness";
@@ -141,7 +148,7 @@
 "gesture_test_timeout_no_gesture" = "No qualifying gesture was detected. Check the edge and movement distance, then try again.";
 "gesture_test_timeout_no_frames" = "No touch frames were received. Check trackpad compatibility and try again.";
 "gesture_test_timeout_no_edge" = "Touch was detected, but it did not enter an assigned edge region. Follow the highlighted edge or increase edge width.";
-"gesture_test_timeout_no_corner" = "Touch was detected, but it did not start inside a corner. Tap within a corner or increase Edge width.";
+"gesture_test_timeout_no_corner" = "Touch was detected, but it did not start inside a corner. Tap within a corner or increase the Corner trigger ratio.";
 "gesture_test_timeout_threshold" = "The edge was detected, but direction or movement distance did not reach the gesture threshold.";
 "assigned_edge" = "Assigned edge";
 "gesture_test_brightness" = "Detected %@ · Brightness %@";
@@ -173,7 +180,7 @@
 "rerun_onboarding" = "Run Setup Assistant Again";
 "restore_defaults" = "Restore Defaults…";
 "reset_settings_title" = "Restore default settings?";
-"reset_settings_message" = "Edge assignments, trigger distances, corner app bindings, middle click, and launch preferences will be reset. Setup completion is retained.";
+"reset_settings_message" = "Edge assignments, trigger distances, corner trigger settings and app bindings, middle click, and launch preferences will be reset. Setup completion is retained.";
 "reset_settings_confirm" = "Restore Defaults";
 "settings_restored_banner" = "Stored settings were unreadable and have been restored to safe defaults.";
 "settings_save_error" = "Settings could not be saved. Your latest change may not persist.";

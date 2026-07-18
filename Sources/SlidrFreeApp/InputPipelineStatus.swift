@@ -350,7 +350,14 @@ final class ProductionInputPipelineFactory: InputPipelineFactory {
     }
 
     func make(generation: UInt64, settings: AppSettings, status: InputPipelineStatus, eventTapStatus: @escaping (MouseButtonEventTapStatus) -> Void) -> any InputPipelineInstance {
-        ProductionInputPipeline(generation: generation, settings: settings, status: status, actionHandler: actionHandler, eventTapStatus: eventTapStatus, inputObserver: inputObserver)
+        ProductionInputPipeline(
+            generation: generation,
+            settings: settings,
+            status: status,
+            actionHandler: actionHandler,
+            eventTapStatus: eventTapStatus,
+            inputObserver: inputObserver
+        )
     }
 }
 
@@ -442,7 +449,11 @@ final class ProductionInputPipeline: InputPipelineInstance {
             tapEnabled: settings.middleClick.tapEnabled,
             fingerCount: settings.middleClick.fingerCount
         )
-        edgeRecognizer = GestureRecognizer(settings: settings)
+        edgeRecognizer = GestureRecognizer(
+            settings: settings,
+            cornerMovementTolerance: settings.gesture.cornerMovementTolerancePercent,
+            cornerDoubleTapInterval: settings.gesture.cornerDoubleTapIntervalSeconds
+        )
     }
 
     func startTouchMonitor() -> Bool {
@@ -472,7 +483,11 @@ final class ProductionInputPipeline: InputPipelineInstance {
     func updateEdgeSettings(_ settings: AppSettings) {
         withLock {
             guard isActive else { return }
-            edgeRecognizer.updateSettings(settings)
+            edgeRecognizer.updateSettings(
+                settings,
+                cornerMovementTolerance: settings.gesture.cornerMovementTolerancePercent,
+                cornerDoubleTapInterval: settings.gesture.cornerDoubleTapIntervalSeconds
+            )
         }
     }
 

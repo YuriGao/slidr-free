@@ -121,7 +121,14 @@
 "corner_app_picker_prompt" = "选择";
 "corner_app_picker_message" = "选择要绑定到此角点的 macOS App。";
 "corner_app_picker_error" = "无法读取所选 App，请选择包含有效 Bundle Identifier 的应用。";
-"corner_double_tap_help" = "在同一角点快速轻点两次即可打开绑定的 App；该 App 已在前台时，会在最小化和恢复其焦点窗口之间切换。角点范围沿用边缘宽度；多指、明显移动或跨角点不会触发。";
+"corner_trigger_percent" = "角点触发比例";
+"corner_trigger_percent_help" = "控制每个角点触发区域沿触控板横向和纵向延伸的比例；此设置独立于边缘宽度。";
+"corner_movement_tolerance" = "角点移动上限";
+"corner_movement_tolerance_help" = "双击期间允许手指偏离落点的最大距离；数值越大越容易触发，但从角点开始的边缘滑动需要移动更远才会生效。";
+"corner_double_tap_interval" = "双击间隔";
+"corner_double_tap_interval_help" = "第一次抬手到第二次落指之间允许的最长时间；间隔越长越容易触发，但也可能把两次独立轻点识别为双击。";
+"corner_double_tap_help" = "在同一角点轻点两次即可打开绑定的 App；该 App 已在前台时，会在最小化和恢复其焦点窗口之间切换。多指、明显移动或跨角点不会触发。";
+"seconds_value" = "%.2f 秒";
 "corner_mapping_diagram" = "四个触控板角点与已绑定 App";
 "side_action_none" = "无";
 "side_action_brightness" = "亮度";
@@ -141,7 +148,7 @@
 "gesture_test_timeout_no_gesture" = "未检测到符合条件的手势。请检查边缘位置和移动距离后重试。";
 "gesture_test_timeout_no_frames" = "未收到触摸帧，请检查触控板兼容性后重试。";
 "gesture_test_timeout_no_edge" = "已检测到触摸，但没有进入已分配的边缘区域。请沿高亮边缘操作或增大边缘宽度。";
-"gesture_test_timeout_no_corner" = "已检测到触摸，但没有从角点区域开始。请在任一角点内轻点或增大边缘宽度。";
+"gesture_test_timeout_no_corner" = "已检测到触摸，但没有从角点区域开始。请在任一角点内轻点或增大角点触发比例。";
 "gesture_test_timeout_threshold" = "已命中边缘，但方向或移动距离未达到手势阈值。";
 "assigned_edge" = "已分配边缘";
 "gesture_test_brightness" = "检测到%@ · 亮度 %@";
@@ -173,7 +180,7 @@
 "rerun_onboarding" = "重新运行设置向导";
 "restore_defaults" = "恢复默认设置…";
 "reset_settings_title" = "恢复默认设置？";
-"reset_settings_message" = "边缘分配、触发距离、角点 App 绑定、中键点击和登录偏好将被重置；已完成设置的状态会保留。";
+"reset_settings_message" = "边缘分配、触发距离、角点触发设置与 App 绑定、中键点击和登录偏好将被重置；已完成设置的状态会保留。";
 "reset_settings_confirm" = "恢复默认设置";
 "settings_restored_banner" = "原设置无法读取，已恢复为安全默认值。";
 "settings_save_error" = "设置无法保存，最近的更改可能不会保留。";

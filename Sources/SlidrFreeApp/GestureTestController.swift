@@ -76,12 +76,15 @@ final class GestureTestController: ObservableObject {
         sawTouchFrame = true
         guard touches.count == 1 else { return }
         let touch = touches[0]
-        let width = settings.gesture.edgeWidthPercent
         if kind == .corner {
-            sawCorner = sawCorner || TrackpadCorner.hit(for: touch, widthPercent: width) != nil
+            sawCorner = sawCorner || TrackpadCorner.hit(
+                for: touch,
+                widthPercent: settings.gesture.cornerTriggerPercent
+            ) != nil
             return
         }
         guard kind == .edge else { return }
+        let width = settings.gesture.edgeWidthPercent
         if touch.x <= width, settings.edgeAssignments.left != .none {
             sawAssignedEdge = true
             lastObservedEdgeKey = "left_edge"

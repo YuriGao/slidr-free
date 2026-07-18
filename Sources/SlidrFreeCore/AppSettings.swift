@@ -157,9 +157,19 @@ public struct FeatureToggles: Codable, Equatable, Sendable {
 }
 
 public struct GestureSettings: Codable, Equatable, Sendable {
+    public static let edgeWidthPercentRange = 0.04...0.20
+    public static let cornerTriggerPercentRange = 0.04...0.20
+    public static let defaultCornerTriggerPercent = 0.10
+    public static let cornerMovementTolerancePercentRange = 0.01...0.10
+    public static let defaultCornerMovementTolerancePercent = 0.03
+    public static let cornerDoubleTapIntervalRange = 0.30...1.20
+    public static let defaultCornerDoubleTapIntervalSeconds = 0.75
     public static let physicalStepDistanceRange = 0.02...0.50
 
     public var edgeWidthPercent: Double
+    public var cornerTriggerPercent: Double
+    public var cornerMovementTolerancePercent: Double
+    public var cornerDoubleTapIntervalSeconds: Double
     public var leftPhysicalStepDistance: Double
     public var rightPhysicalStepDistance: Double
     public var topPhysicalStepDistance: Double
@@ -169,6 +179,9 @@ public struct GestureSettings: Codable, Equatable, Sendable {
 
     public init(
         edgeWidthPercent: Double,
+        cornerTriggerPercent: Double = GestureSettings.defaultCornerTriggerPercent,
+        cornerMovementTolerancePercent: Double = GestureSettings.defaultCornerMovementTolerancePercent,
+        cornerDoubleTapIntervalSeconds: Double = GestureSettings.defaultCornerDoubleTapIntervalSeconds,
         leftPhysicalStepDistance: Double,
         rightPhysicalStepDistance: Double,
         topPhysicalStepDistance: Double,
@@ -177,6 +190,9 @@ public struct GestureSettings: Codable, Equatable, Sendable {
         horizontalDominanceRatio: Double
     ) {
         self.edgeWidthPercent = edgeWidthPercent
+        self.cornerTriggerPercent = cornerTriggerPercent
+        self.cornerMovementTolerancePercent = cornerMovementTolerancePercent
+        self.cornerDoubleTapIntervalSeconds = cornerDoubleTapIntervalSeconds
         self.leftPhysicalStepDistance = leftPhysicalStepDistance
         self.rightPhysicalStepDistance = rightPhysicalStepDistance
         self.topPhysicalStepDistance = topPhysicalStepDistance
@@ -189,6 +205,9 @@ public struct GestureSettings: Codable, Equatable, Sendable {
     /// shared distance. Persisted legacy values are migrated the same way.
     public init(
         edgeWidthPercent: Double,
+        cornerTriggerPercent: Double = GestureSettings.defaultCornerTriggerPercent,
+        cornerMovementTolerancePercent: Double = GestureSettings.defaultCornerMovementTolerancePercent,
+        cornerDoubleTapIntervalSeconds: Double = GestureSettings.defaultCornerDoubleTapIntervalSeconds,
         physicalStepDistance: Double,
         physicalStepIntervalSeconds: Double,
         tabSwitchStepIntervalSeconds: Double,
@@ -196,6 +215,9 @@ public struct GestureSettings: Codable, Equatable, Sendable {
     ) {
         self.init(
             edgeWidthPercent: edgeWidthPercent,
+            cornerTriggerPercent: cornerTriggerPercent,
+            cornerMovementTolerancePercent: cornerMovementTolerancePercent,
+            cornerDoubleTapIntervalSeconds: cornerDoubleTapIntervalSeconds,
             leftPhysicalStepDistance: physicalStepDistance,
             rightPhysicalStepDistance: physicalStepDistance,
             topPhysicalStepDistance: physicalStepDistance,
@@ -207,6 +229,9 @@ public struct GestureSettings: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case edgeWidthPercent
+        case cornerTriggerPercent
+        case cornerMovementTolerancePercent
+        case cornerDoubleTapIntervalSeconds
         case leftPhysicalStepDistance
         case rightPhysicalStepDistance
         case topPhysicalStepDistance
@@ -219,6 +244,12 @@ public struct GestureSettings: Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.edgeWidthPercent = try container.decode(Double.self, forKey: .edgeWidthPercent)
+        self.cornerTriggerPercent = try container.decodeIfPresent(Double.self, forKey: .cornerTriggerPercent)
+            ?? Self.defaultCornerTriggerPercent
+        self.cornerMovementTolerancePercent = try container.decodeIfPresent(Double.self, forKey: .cornerMovementTolerancePercent)
+            ?? Self.defaultCornerMovementTolerancePercent
+        self.cornerDoubleTapIntervalSeconds = try container.decodeIfPresent(Double.self, forKey: .cornerDoubleTapIntervalSeconds)
+            ?? Self.defaultCornerDoubleTapIntervalSeconds
         let legacyPhysicalStepDistance = try container.decodeIfPresent(Double.self, forKey: .physicalStepDistance)
         self.leftPhysicalStepDistance = try container.decodeIfPresent(Double.self, forKey: .leftPhysicalStepDistance)
             ?? legacyPhysicalStepDistance
@@ -237,6 +268,9 @@ public struct GestureSettings: Codable, Equatable, Sendable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(edgeWidthPercent, forKey: .edgeWidthPercent)
+        try container.encode(cornerTriggerPercent, forKey: .cornerTriggerPercent)
+        try container.encode(cornerMovementTolerancePercent, forKey: .cornerMovementTolerancePercent)
+        try container.encode(cornerDoubleTapIntervalSeconds, forKey: .cornerDoubleTapIntervalSeconds)
         try container.encode(leftPhysicalStepDistance, forKey: .leftPhysicalStepDistance)
         try container.encode(rightPhysicalStepDistance, forKey: .rightPhysicalStepDistance)
         try container.encode(topPhysicalStepDistance, forKey: .topPhysicalStepDistance)
@@ -286,6 +320,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
         ),
         gesture: GestureSettings(
             edgeWidthPercent: 0.10,
+            cornerTriggerPercent: GestureSettings.defaultCornerTriggerPercent,
+            cornerMovementTolerancePercent: GestureSettings.defaultCornerMovementTolerancePercent,
+            cornerDoubleTapIntervalSeconds: GestureSettings.defaultCornerDoubleTapIntervalSeconds,
             leftPhysicalStepDistance: 0.05,
             rightPhysicalStepDistance: 0.05,
             topPhysicalStepDistance: 0.05,
@@ -351,7 +388,20 @@ public struct AppSettings: Codable, Equatable, Sendable {
 
     public func validated() -> AppSettings {
         var copy = self
-        copy.gesture.edgeWidthPercent = min(max(copy.gesture.edgeWidthPercent, 0.04), 0.20)
+        let edgeWidthRange = GestureSettings.edgeWidthPercentRange
+        copy.gesture.edgeWidthPercent = min(max(copy.gesture.edgeWidthPercent, edgeWidthRange.lowerBound), edgeWidthRange.upperBound)
+        let cornerTriggerRange = GestureSettings.cornerTriggerPercentRange
+        copy.gesture.cornerTriggerPercent = min(max(copy.gesture.cornerTriggerPercent, cornerTriggerRange.lowerBound), cornerTriggerRange.upperBound)
+        let cornerMovementToleranceRange = GestureSettings.cornerMovementTolerancePercentRange
+        copy.gesture.cornerMovementTolerancePercent = min(
+            max(copy.gesture.cornerMovementTolerancePercent, cornerMovementToleranceRange.lowerBound),
+            cornerMovementToleranceRange.upperBound
+        )
+        let cornerDoubleTapIntervalRange = GestureSettings.cornerDoubleTapIntervalRange
+        copy.gesture.cornerDoubleTapIntervalSeconds = min(
+            max(copy.gesture.cornerDoubleTapIntervalSeconds, cornerDoubleTapIntervalRange.lowerBound),
+            cornerDoubleTapIntervalRange.upperBound
+        )
         let distanceRange = GestureSettings.physicalStepDistanceRange
         copy.gesture.leftPhysicalStepDistance = min(max(copy.gesture.leftPhysicalStepDistance, distanceRange.lowerBound), distanceRange.upperBound)
         copy.gesture.rightPhysicalStepDistance = min(max(copy.gesture.rightPhysicalStepDistance, distanceRange.lowerBound), distanceRange.upperBound)

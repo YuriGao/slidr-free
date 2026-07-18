@@ -25,11 +25,15 @@ public enum TrackpadCorner: String, Codable, CaseIterable, Hashable, Sendable {
 }
 
 public struct CornerDoubleTapRecognizer: Sendable {
-    private static let maximumTapDuration = 0.30
-    // Keep this below the minimum configurable edge step distance (0.02) so a
-    // qualifying corner tap can never emit an edge adjustment at the same time.
-    private static let maximumTapMovement = 0.015
-    private static let maximumInterTapInterval = 0.40
+    public static let defaultMaximumInterTapInterval = 0.75
+    public static let defaultMaximumMovement = 0.03
+
+    private static let maximumTapDuration = 0.45
+    private static let timestampComparisonTolerance = 1e-9
+    // The app supplies the user-configured interval while the core recognizer
+    // remains independent of persistence and UI concerns.
+    private let maximumInterTapInterval: Double
+    private let maximumMovement: Double
 
     private struct TapSession: Sendable {
         let corner: TrackpadCorner
@@ -53,7 +57,18 @@ public struct CornerDoubleTapRecognizer: Sendable {
     private var activeContact: ActiveContact?
     private var firstTap: CompletedTap?
 
-    public init() {}
+    public var isTrackingCandidate: Bool {
+        if case .candidate = activeContact { return true }
+        return false
+    }
+
+    public init(
+        maximumInterTapInterval: Double = Self.defaultMaximumInterTapInterval,
+        maximumMovement: Double = Self.defaultMaximumMovement
+    ) {
+        self.maximumInterTapInterval = Self.validatedInterTapInterval(maximumInterTapInterval)
+        self.maximumMovement = Self.validatedMovement(maximumMovement)
+    }
 
     public mutating func process(
         _ event: NormalizedInputEvent,
@@ -71,7 +86,12 @@ public struct CornerDoubleTapRecognizer: Sendable {
             return nil
 
         case .physicalTouchFrame(let touches, let timestamp):
-            expireFirstTapIfNeeded(at: timestamp)
+            // Once a possible second tap has started, its start time owns the
+            // inter-tap decision. Do not expire the first tap while that second
+            // contact is still being evaluated.
+            if activeContact == nil {
+                expireFirstTapIfNeeded(at: timestamp)
+            }
             guard !touches.isEmpty else { return finishContact(at: timestamp) }
 
             if activeContact == nil {
@@ -122,7 +142,7 @@ public struct CornerDoubleTapRecognizer: Sendable {
               touch.id == session.touchID,
               timestamp > session.lastTimestamp,
               timestamp - session.startedAt <= Self.maximumTapDuration,
-              hypot(touch.x - session.initialX, touch.y - session.initialY) <= Self.maximumTapMovement else {
+              hypot(touch.x - session.initialX, touch.y - session.initialY) <= maximumMovement else {
             activeContact = .blocked
             firstTap = nil
             return nil
@@ -147,7 +167,7 @@ public struct CornerDoubleTapRecognizer: Sendable {
         if let firstTap,
            firstTap.corner == session.corner,
            session.startedAt > firstTap.endedAt,
-           session.startedAt - firstTap.endedAt <= Self.maximumInterTapInterval {
+           isWithinInterTapInterval(session.startedAt - firstTap.endedAt) {
             self.firstTap = nil
             return session.corner
         }
@@ -158,8 +178,22 @@ public struct CornerDoubleTapRecognizer: Sendable {
 
     private mutating func expireFirstTapIfNeeded(at timestamp: Double) {
         guard let firstTap,
-              timestamp - firstTap.endedAt > Self.maximumInterTapInterval else { return }
+              !isWithinInterTapInterval(timestamp - firstTap.endedAt) else { return }
         self.firstTap = nil
+    }
+
+    private func isWithinInterTapInterval(_ elapsed: Double) -> Bool {
+        elapsed <= maximumInterTapInterval + Self.timestampComparisonTolerance
+    }
+
+    private static func validatedInterTapInterval(_ value: Double) -> Double {
+        guard value.isFinite, value > 0 else { return defaultMaximumInterTapInterval }
+        return value
+    }
+
+    private static func validatedMovement(_ value: Double) -> Double {
+        guard value.isFinite, value > 0 else { return defaultMaximumMovement }
+        return value
     }
 
 }

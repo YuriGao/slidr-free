@@ -26,33 +26,57 @@ public struct GestureRecognizer: Sendable {
     private var physicalEdgeSession: PhysicalEdgeSession
     private var cornerDoubleTapRecognizer: CornerDoubleTapRecognizer
 
-    public init(settings: AppSettings = .default) {
+    public init(
+        settings: AppSettings = .default,
+        cornerMovementTolerance: Double? = nil,
+        cornerDoubleTapInterval: Double? = nil
+    ) {
         self.settings = settings.validated()
         self.previousPrimaryPhysicalTouch = nil
         self.activePhysicalStep = nil
         self.isSuppressingEdgesUntilEmpty = false
         self.physicalEdgeSession = .idle
-        self.cornerDoubleTapRecognizer = CornerDoubleTapRecognizer()
+        self.cornerDoubleTapRecognizer = CornerDoubleTapRecognizer(
+            maximumInterTapInterval: cornerDoubleTapInterval
+                ?? self.settings.gesture.cornerDoubleTapIntervalSeconds,
+            maximumMovement: cornerMovementTolerance
+                ?? self.settings.gesture.cornerMovementTolerancePercent
+        )
     }
 
-    public mutating func updateSettings(_ settings: AppSettings) {
+    public mutating func updateSettings(
+        _ settings: AppSettings,
+        cornerMovementTolerance: Double? = nil,
+        cornerDoubleTapInterval: Double? = nil
+    ) {
         self.settings = settings.validated()
-        cornerDoubleTapRecognizer.reset()
+        cornerDoubleTapRecognizer = CornerDoubleTapRecognizer(
+            maximumInterTapInterval: cornerDoubleTapInterval
+                ?? self.settings.gesture.cornerDoubleTapIntervalSeconds,
+            maximumMovement: cornerMovementTolerance
+                ?? self.settings.gesture.cornerMovementTolerancePercent
+        )
         isSuppressingEdgesUntilEmpty = false
         resetPhysicalContact()
     }
 
     public mutating func process(_ event: NormalizedInputEvent) -> RecognizedGesture? {
-        let corner = cornerDoubleTapRecognizer.process(
+        let doubleTapCorner = cornerDoubleTapRecognizer.process(
             event,
-            cornerWidthPercent: settings.gesture.edgeWidthPercent,
+            cornerWidthPercent: settings.gesture.cornerTriggerPercent,
             isEnabled: settings.isAppEnabled
         )
-        let edgeGesture = processEdge(event)
-        return corner.map { .cornerDoubleTap(corner: $0) } ?? edgeGesture
+        let shouldDeferEdgeEmission = doubleTapCorner == nil
+            && cornerDoubleTapRecognizer.isTrackingCandidate
+        let edgeGesture = processEdge(event, deferEmission: shouldDeferEdgeEmission)
+        if let doubleTapCorner { return .cornerDoubleTap(corner: doubleTapCorner) }
+        return edgeGesture
     }
 
-    private mutating func processEdge(_ event: NormalizedInputEvent) -> RecognizedGesture? {
+    private mutating func processEdge(
+        _ event: NormalizedInputEvent,
+        deferEmission: Bool
+    ) -> RecognizedGesture? {
         switch event {
         case .physicalTouchCancelled:
             isSuppressingEdgesUntilEmpty = false
@@ -136,7 +160,8 @@ public struct GestureRecognizer: Sendable {
                     touchID: current.id,
                     edge: edgeHit,
                     timestamp: timestamp,
-                    intervalSeconds: settings.gesture.tabSwitchStepIntervalSeconds
+                    intervalSeconds: settings.gesture.tabSwitchStepIntervalSeconds,
+                    deferEmission: deferEmission
                 ) else {
                     return nil
                 }
@@ -154,7 +179,8 @@ public struct GestureRecognizer: Sendable {
                 touchID: current.id,
                 edge: edgeHit,
                 timestamp: timestamp,
-                intervalSeconds: settings.gesture.physicalStepIntervalSeconds
+                intervalSeconds: settings.gesture.physicalStepIntervalSeconds,
+                deferEmission: deferEmission
             ) else {
                 return nil
             }
@@ -202,7 +228,8 @@ public struct GestureRecognizer: Sendable {
         touchID: Int,
         edge: PhysicalEdgeHit,
         timestamp: Double,
-        intervalSeconds: Double
+        intervalSeconds: Double,
+        deferEmission: Bool
     ) -> GestureDirection? {
         let stepDistance: Double
         switch edge {
@@ -219,6 +246,7 @@ public struct GestureRecognizer: Sendable {
 
         activePhysicalStep?.accumulatedDistance += delta
         guard let state = activePhysicalStep else { return nil }
+        guard !deferEmission else { return nil }
 
         let direction: GestureDirection
         if state.accumulatedDistance >= stepDistance {

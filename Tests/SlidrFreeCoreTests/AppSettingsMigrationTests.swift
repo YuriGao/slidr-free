@@ -50,6 +50,10 @@ final class AppSettingsMigrationTests: XCTestCase {
         )
         XCTAssertEqual(decoded.middleClick, MiddleClickSettings(isEnabled: false, tapEnabled: true, fingerCount: 4))
         XCTAssertEqual(decoded.cornerAppBindings, .empty)
+        XCTAssertEqual(decoded.gesture.cornerTriggerPercent, GestureSettings.defaultCornerTriggerPercent)
+        XCTAssertEqual(decoded.gesture.cornerMovementTolerancePercent, GestureSettings.defaultCornerMovementTolerancePercent)
+        XCTAssertEqual(decoded.gesture.cornerDoubleTapIntervalSeconds, GestureSettings.defaultCornerDoubleTapIntervalSeconds)
+        XCTAssertNotEqual(decoded.gesture.cornerTriggerPercent, decoded.gesture.edgeWidthPercent)
     }
 
     func testCornerAppBindingsRoundTripIndependently() throws {
@@ -140,6 +144,43 @@ final class AppSettingsMigrationTests: XCTestCase {
         XCTAssertEqual(gesture["rightPhysicalStepDistance"] as? Double, 0.11)
         XCTAssertEqual(gesture["topPhysicalStepDistance"] as? Double, 0.23)
         XCTAssertNil(gesture["physicalStepDistance"])
+    }
+
+    func testCornerTriggerPercentRoundTripsIndependentlyFromEdgeWidth() throws {
+        var original = AppSettings.default
+        original.gesture.edgeWidthPercent = 0.06
+        original.gesture.cornerTriggerPercent = 0.18
+        original.gesture.cornerMovementTolerancePercent = 0.08
+        original.gesture.cornerDoubleTapIntervalSeconds = 0.95
+
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
+        let root = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let gesture = try XCTUnwrap(root["gesture"] as? [String: Any])
+
+        XCTAssertEqual(decoded.gesture.edgeWidthPercent, 0.06)
+        XCTAssertEqual(decoded.gesture.cornerTriggerPercent, 0.18)
+        XCTAssertEqual(decoded.gesture.cornerMovementTolerancePercent, 0.08)
+        XCTAssertEqual(decoded.gesture.cornerDoubleTapIntervalSeconds, 0.95)
+        XCTAssertEqual(gesture["edgeWidthPercent"] as? Double, 0.06)
+        XCTAssertEqual(gesture["cornerTriggerPercent"] as? Double, 0.18)
+        XCTAssertEqual(gesture["cornerMovementTolerancePercent"] as? Double, 0.08)
+        XCTAssertEqual(gesture["cornerDoubleTapIntervalSeconds"] as? Double, 0.95)
+    }
+
+    func testValidationClampsCornerTriggerPercentWithoutChangingEdgeWidth() {
+        var settings = AppSettings.default
+        settings.gesture.edgeWidthPercent = 0.08
+        settings.gesture.cornerTriggerPercent = 0.50
+        settings.gesture.cornerMovementTolerancePercent = 0.50
+        settings.gesture.cornerDoubleTapIntervalSeconds = 2.0
+
+        let validated = settings.validated()
+
+        XCTAssertEqual(validated.gesture.edgeWidthPercent, 0.08)
+        XCTAssertEqual(validated.gesture.cornerTriggerPercent, GestureSettings.cornerTriggerPercentRange.upperBound)
+        XCTAssertEqual(validated.gesture.cornerMovementTolerancePercent, GestureSettings.cornerMovementTolerancePercentRange.upperBound)
+        XCTAssertEqual(validated.gesture.cornerDoubleTapIntervalSeconds, GestureSettings.cornerDoubleTapIntervalRange.upperBound)
     }
 
     func testDecodingMiddleClickWithOnlyIsEnabledDefaultsTapEnabled() throws {
