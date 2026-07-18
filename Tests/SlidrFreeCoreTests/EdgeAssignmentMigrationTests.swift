@@ -13,6 +13,14 @@ final class EdgeAssignmentMigrationTests: XCTestCase {
         settings.edgeAssignments.left = .none
         settings.middleClick.isEnabled = true
         XCTAssertTrue(settings.hasConfiguredGesture)
+
+        settings.middleClick.isEnabled = false
+        settings.cornerAppBindings.topLeft = ApplicationBinding(
+            bundleIdentifier: "com.example.app",
+            displayName: "Example",
+            applicationPath: "/Applications/Example.app"
+        )
+        XCTAssertTrue(settings.hasConfiguredGesture)
     }
 
     func testEveryLegacyToggleCombinationMapsWithoutChangingBehavior() throws {

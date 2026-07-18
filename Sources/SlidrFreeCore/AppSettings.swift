@@ -34,6 +34,83 @@ public struct EdgeAssignments: Codable, Equatable, Sendable {
     }
 }
 
+public struct ApplicationBinding: Codable, Equatable, Sendable {
+    public var bundleIdentifier: String
+    public var displayName: String
+    public var applicationPath: String
+
+    public init(bundleIdentifier: String, displayName: String, applicationPath: String) {
+        self.bundleIdentifier = bundleIdentifier
+        self.displayName = displayName
+        self.applicationPath = applicationPath
+    }
+
+    fileprivate func validated() -> ApplicationBinding? {
+        let identifier = bundleIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let path = applicationPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !identifier.isEmpty,
+              !name.isEmpty,
+              !path.isEmpty,
+              path.hasPrefix("/"),
+              URL(fileURLWithPath: path).pathExtension.lowercased() == "app" else { return nil }
+        return ApplicationBinding(bundleIdentifier: identifier, displayName: name, applicationPath: path)
+    }
+}
+
+public struct CornerAppBindings: Codable, Equatable, Sendable {
+    public var topLeft: ApplicationBinding?
+    public var topRight: ApplicationBinding?
+    public var bottomLeft: ApplicationBinding?
+    public var bottomRight: ApplicationBinding?
+
+    public static let empty = CornerAppBindings()
+
+    public init(
+        topLeft: ApplicationBinding? = nil,
+        topRight: ApplicationBinding? = nil,
+        bottomLeft: ApplicationBinding? = nil,
+        bottomRight: ApplicationBinding? = nil
+    ) {
+        self.topLeft = topLeft
+        self.topRight = topRight
+        self.bottomLeft = bottomLeft
+        self.bottomRight = bottomRight
+    }
+
+    public subscript(corner: TrackpadCorner) -> ApplicationBinding? {
+        get {
+            switch corner {
+            case .topLeft: return topLeft
+            case .topRight: return topRight
+            case .bottomLeft: return bottomLeft
+            case .bottomRight: return bottomRight
+            }
+        }
+        set {
+            switch corner {
+            case .topLeft: topLeft = newValue
+            case .topRight: topRight = newValue
+            case .bottomLeft: bottomLeft = newValue
+            case .bottomRight: bottomRight = newValue
+            }
+        }
+    }
+
+    public var hasAnyBinding: Bool {
+        TrackpadCorner.allCases.contains { self[$0] != nil }
+    }
+
+    fileprivate func validated() -> CornerAppBindings {
+        CornerAppBindings(
+            topLeft: topLeft?.validated(),
+            topRight: topRight?.validated(),
+            bottomLeft: bottomLeft?.validated(),
+            bottomRight: bottomRight?.validated()
+        )
+    }
+}
+
 public struct ExperienceSettings: Codable, Equatable, Sendable {
     public static let currentOnboardingVersion = 1
     public var onboardingVersion: Int
@@ -176,10 +253,15 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var gesture: GestureSettings
     public var middleClick: MiddleClickSettings
     public var edgeAssignments: EdgeAssignments
+    public var cornerAppBindings: CornerAppBindings
     public var experience: ExperienceSettings
 
     public var hasConfiguredGesture: Bool {
-        middleClick.isEnabled || edgeAssignments.left != .none || edgeAssignments.right != .none || edgeAssignments.top != .none
+        middleClick.isEnabled
+            || edgeAssignments.left != .none
+            || edgeAssignments.right != .none
+            || edgeAssignments.top != .none
+            || cornerAppBindings.hasAnyBinding
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -189,6 +271,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case gesture
         case middleClick
         case edgeAssignments
+        case cornerAppBindings
         case experience
     }
 
@@ -212,6 +295,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         ),
         middleClick: .default,
         edgeAssignments: EdgeAssignments(left: .brightness, right: .volume, top: .browserTabs),
+        cornerAppBindings: .empty,
         experience: ExperienceSettings(onboardingVersion: ExperienceSettings.currentOnboardingVersion, hasSeenV04Welcome: true)
     )
 
@@ -227,6 +311,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         gesture: AppSettings.default.gesture,
         middleClick: .default,
         edgeAssignments: EdgeAssignments(left: .brightness, right: .volume, top: .browserTabs),
+        cornerAppBindings: .empty,
         experience: ExperienceSettings(onboardingVersion: 0)
     )
 
@@ -237,6 +322,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         gesture: GestureSettings,
         middleClick: MiddleClickSettings,
         edgeAssignments: EdgeAssignments? = nil,
+        cornerAppBindings: CornerAppBindings = .empty,
         experience: ExperienceSettings = ExperienceSettings(onboardingVersion: ExperienceSettings.currentOnboardingVersion, hasSeenV04Welcome: false)
     ) {
         self.isAppEnabled = isAppEnabled
@@ -245,6 +331,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.gesture = gesture
         self.middleClick = middleClick
         self.edgeAssignments = edgeAssignments ?? EdgeAssignments(legacyFeatures: features)
+        self.cornerAppBindings = cornerAppBindings
         self.experience = experience
     }
 
@@ -257,6 +344,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.middleClick = try container.decodeIfPresent(MiddleClickSettings.self, forKey: .middleClick) ?? Self.default.middleClick
         self.edgeAssignments = try container.decodeIfPresent(EdgeAssignments.self, forKey: .edgeAssignments)
             ?? EdgeAssignments(legacyFeatures: features)
+        self.cornerAppBindings = try container.decodeIfPresent(CornerAppBindings.self, forKey: .cornerAppBindings) ?? .empty
         self.experience = try container.decodeIfPresent(ExperienceSettings.self, forKey: .experience)
             ?? ExperienceSettings(onboardingVersion: ExperienceSettings.currentOnboardingVersion)
     }
@@ -271,6 +359,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         copy.gesture.physicalStepIntervalSeconds = min(max(copy.gesture.physicalStepIntervalSeconds, 0.0), 0.50)
         copy.gesture.tabSwitchStepIntervalSeconds = min(max(copy.gesture.tabSwitchStepIntervalSeconds, 0.05), 0.80)
         copy.gesture.horizontalDominanceRatio = min(max(copy.gesture.horizontalDominanceRatio, 1.0), 4.0)
+        copy.cornerAppBindings = copy.cornerAppBindings.validated()
         return copy
     }
 }

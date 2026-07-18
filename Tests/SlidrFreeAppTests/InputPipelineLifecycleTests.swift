@@ -40,6 +40,23 @@ final class InputPipelineLifecycleTests: XCTestCase {
         XCTAssertFalse(harness.factory.last!.eventTapRequested)
     }
 
+    func testMonitorStartsForCornerBindingOnlyButEventTapDoesNot() {
+        let harness = Harness()
+        var settings = AppSettings.default
+        settings.edgeAssignments = EdgeAssignments(left: .none, right: .none, top: .none)
+        settings.middleClick.isEnabled = false
+        settings.cornerAppBindings.bottomRight = ApplicationBinding(
+            bundleIdentifier: "com.example.app",
+            displayName: "Example",
+            applicationPath: "/Applications/Example.app"
+        )
+
+        harness.coordinator.update(settings: settings, permission: .granted)
+
+        XCTAssertTrue(harness.factory.last!.touchRequested)
+        XCTAssertFalse(harness.factory.last!.eventTapRequested)
+    }
+
     func testPermissionLossQuiescesAndFactoryFailureRefreshesPermission() {
         let harness = Harness()
         harness.coordinator.update(settings: enabledSettings(), permission: .granted)

@@ -4,6 +4,7 @@ public enum SystemAction: Equatable, Sendable {
     case adjustBrightness(delta: Double)
     case adjustVolume(delta: Double)
     case switchBrowserTab(direction: BrowserTabDirection)
+    case toggleApplication(ApplicationBinding)
     case middleClick
 }
 
@@ -22,6 +23,9 @@ public struct ActionDispatcher: Sendable {
             return [.adjustVolume(delta: signedDelta(direction: direction, magnitude: magnitude))]
         case .browserTab(let direction):
             return [.switchBrowserTab(direction: direction)]
+        case .cornerDoubleTap(let corner):
+            guard let binding = settings.cornerAppBindings[corner] else { return [] }
+            return [.toggleApplication(binding)]
         case .middleClickTap:
             return [.middleClick]
         }

@@ -4,6 +4,7 @@ public enum RecognizedGesture: Equatable, Sendable {
     case brightness(direction: GestureDirection, magnitude: Double)
     case volume(direction: GestureDirection, magnitude: Double)
     case browserTab(direction: BrowserTabDirection)
+    case cornerDoubleTap(corner: TrackpadCorner)
     case middleClickTap
 }
 
@@ -23,6 +24,7 @@ public struct GestureRecognizer: Sendable {
     private var activePhysicalStep: PhysicalStepState?
     private var isSuppressingEdgesUntilEmpty: Bool
     private var physicalEdgeSession: PhysicalEdgeSession
+    private var cornerDoubleTapRecognizer: CornerDoubleTapRecognizer
 
     public init(settings: AppSettings = .default) {
         self.settings = settings.validated()
@@ -30,9 +32,27 @@ public struct GestureRecognizer: Sendable {
         self.activePhysicalStep = nil
         self.isSuppressingEdgesUntilEmpty = false
         self.physicalEdgeSession = .idle
+        self.cornerDoubleTapRecognizer = CornerDoubleTapRecognizer()
+    }
+
+    public mutating func updateSettings(_ settings: AppSettings) {
+        self.settings = settings.validated()
+        cornerDoubleTapRecognizer.reset()
+        isSuppressingEdgesUntilEmpty = false
+        resetPhysicalContact()
     }
 
     public mutating func process(_ event: NormalizedInputEvent) -> RecognizedGesture? {
+        let corner = cornerDoubleTapRecognizer.process(
+            event,
+            cornerWidthPercent: settings.gesture.edgeWidthPercent,
+            isEnabled: settings.isAppEnabled
+        )
+        let edgeGesture = processEdge(event)
+        return corner.map { .cornerDoubleTap(corner: $0) } ?? edgeGesture
+    }
+
+    private mutating func processEdge(_ event: NormalizedInputEvent) -> RecognizedGesture? {
         switch event {
         case .physicalTouchCancelled:
             isSuppressingEdgesUntilEmpty = false

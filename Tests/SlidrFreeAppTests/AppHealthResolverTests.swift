@@ -57,6 +57,18 @@ final class AppHealthResolverTests: XCTestCase {
         }, .ready)
     }
 
+    func testCornerBindingAloneCountsAsConfiguredGesture() {
+        XCTAssertEqual(resolve {
+            $0.settings.edgeAssignments = EdgeAssignments(left: .none, right: .none, top: .none)
+            $0.settings.middleClick.isEnabled = false
+            $0.settings.cornerAppBindings.topLeft = ApplicationBinding(
+                bundleIdentifier: "com.example.app",
+                displayName: "Example",
+                applicationPath: "/Applications/Example.app"
+            )
+        }, .ready)
+    }
+
     private func resolve(_ mutate: (inout AppHealthInput) -> Void = { _ in }) -> AppHealthState {
         var input = AppHealthInput(
             settings: .default,

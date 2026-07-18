@@ -186,6 +186,31 @@ final class ProductionInputPipelineTests: XCTestCase {
         XCTAssertEqual(actions, [.middleClickTap])
     }
 
+    func testCornerDoubleTapFlowsThroughProductionEdgePipeline() {
+        let monitor = PipelineMonitorSpy()
+        var actions: [RecognizedGesture] = []
+        var settings = AppSettings.default
+        settings.cornerAppBindings.topLeft = ApplicationBinding(
+            bundleIdentifier: "com.example.app",
+            displayName: "Example",
+            applicationPath: "/Applications/Example.app"
+        )
+        let pipeline = makePipeline(settings: settings, monitor: monitor, actionHandler: { actions.append($0) })
+
+        pipeline.receiveEdge(.physicalTouchFrame(
+            touches: [PhysicalTouch(id: 1, x: 0.05, y: 0.95)],
+            timestamp: 1.00
+        ))
+        pipeline.receiveEdge(.physicalTouchFrame(touches: [], timestamp: 1.10))
+        pipeline.receiveEdge(.physicalTouchFrame(
+            touches: [PhysicalTouch(id: 2, x: 0.05, y: 0.95)],
+            timestamp: 1.20
+        ))
+        pipeline.receiveEdge(.physicalTouchFrame(touches: [], timestamp: 1.30))
+
+        XCTAssertEqual(actions, [.cornerDoubleTap(corner: .topLeft)])
+    }
+
     private func makePipeline(
         bridge: MiddleClickSessionBridge = MiddleClickSessionBridge(generation: 7, now: { 1.1 }),
         settings: AppSettings = enabledSettingsForProduction(fingerCount: 3),

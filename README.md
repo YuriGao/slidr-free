@@ -16,6 +16,7 @@ This project is independent and non-affiliated with any similarly named commerci
 - **Left and right edge gestures** — Slide vertically along the physical trackpad left or right edge to adjust brightness and volume. By default, the left edge controls brightness and the right edge controls volume.
 - **Direct edge assignments** — Choose Brightness, Volume, or None independently for each side; choose Browser Tabs or None for the top edge.
 - **Independent trigger distances** — Configure the physical movement required per step separately for the left, right, and top edges; lower values are more sensitive.
+- **Four-corner app shortcuts** — Bind a separate macOS app to each corner, then double-tap to open or activate it. While that app remains frontmost, later double taps toggle its focused window between minimized and restored.
 - **Top-edge browser tab gesture** — Slide horizontally along the physical trackpad top edge to switch Safari, Google Chrome, and Microsoft Edge tabs, with haptic feedback for each switch.
 - **Edge-origin gate** — Each contact must begin inside the configured edge width. Sliding into an edge from elsewhere is ignored until all touches lift.
 - **Configurable middle click (beta)** — Use exactly 2, 3, or 4 fingers to produce a middle click by Tap or physical Click. The default is 4.
@@ -43,7 +44,9 @@ Physical trackpad gestures use Apple's private `MultitouchSupport` framework bec
 
 ## Settings and permissions
 
-The menu bar **Settings…** window has Overview, Edge Gestures, Middle Click, and Diagnostics sections. New installs stay disabled until the setup assistant is completed; existing v0.3 edge behavior is migrated to direct assignments.
+The menu bar **Settings…** window has Overview, Edge Gestures, Corner Shortcuts, Middle Click, and Diagnostics sections. New installs stay disabled until the setup assistant is completed; existing v0.3 edge behavior is migrated to direct assignments.
+
+Corner shortcuts use the same corner area as the configured Edge width. Each tap must be a short one-finger tap and both taps must start in the same corner; multi-touch, significant movement, cross-corner taps, and timeouts do not perform an action. If the bound app is not frontmost, Slidr Free resolves it by bundle identifier first and uses the selected path only as a fallback. If that exact app is already frontmost, Slidr Free minimizes its focused window, or restores and raises it when it is already minimized.
 
 Slidr Free requires **Accessibility** permission to listen to the global input stream used by physical gestures. Grant it in **System Settings → Privacy & Security → Accessibility**. After replacing or rebuilding the ad-hoc-signed app, macOS may retain a stale TCC entry; quit Slidr Free, remove and re-add the current app in Accessibility settings, then relaunch and refresh the status if needed.
 
@@ -66,6 +69,7 @@ Packaging produces `release/Slidr-Free.app` and `release/Slidr-Free.app.zip`, ve
 - Middle click supports exact 2–4-finger gestures on the default physical touch device only. Higher counts, “at least N” matching, multi-device routing, and per-application exclusions are not included.
 - The global mouse-source limitation described above means an external mouse click can be converted while the chord is active.
 - Top-edge tab switching only runs when Safari, Google Chrome, or Microsoft Edge is frontmost.
+- Corner shortcuts accept local `.app` bundles only. They do not execute scripts, shell commands, or general automations; if an app is removed and cannot be resolved, or its frontmost window cannot be toggled, no fallback action runs.
 - Automated tests do not require live Accessibility/TCC or physical hardware. Built-in and external trackpad checks on other Macs are welcome community validation, not a v0.4 release gate.
 
 ## Rollback
