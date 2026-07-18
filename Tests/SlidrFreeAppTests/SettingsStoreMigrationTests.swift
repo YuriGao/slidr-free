@@ -30,6 +30,14 @@ final class SettingsStoreMigrationTests: XCTestCase {
 
         store.save(store.settings)
         XCTAssertEqual(SettingsStore(defaults: defaults).settings, store.settings)
+
+        let savedData = try XCTUnwrap(defaults.data(forKey: SettingsStore.defaultsKey))
+        let savedRoot = try XCTUnwrap(JSONSerialization.jsonObject(with: savedData) as? [String: Any])
+        let savedGesture = try XCTUnwrap(savedRoot["gesture"] as? [String: Any])
+        XCTAssertEqual(savedGesture["leftPhysicalStepDistance"] as? Double, 0.13)
+        XCTAssertEqual(savedGesture["rightPhysicalStepDistance"] as? Double, 0.13)
+        XCTAssertEqual(savedGesture["topPhysicalStepDistance"] as? Double, 0.13)
+        XCTAssertNil(savedGesture["physicalStepDistance"])
     }
 
     func testCorruptPayloadFallsBackAndRecordsBoundedNonSensitiveDiagnostic() {

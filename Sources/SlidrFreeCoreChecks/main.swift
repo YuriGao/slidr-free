@@ -68,20 +68,26 @@ private func testDefaultSettingsEnableAllFirstVersionFeaturesIndividually() thro
     try check(!settings.middleClick.isEnabled, "Middle click should be disabled by default")
     try check(settings.middleClick.tapEnabled, "Middle-click Tap preference should be enabled by default")
     try check(settings.middleClick.fingerCount == 4, "Middle click should default to four fingers")
-    try checkEqual(settings.gesture.physicalStepDistance, 0.05, accuracy: 0.0001, "Physical step distance should default to 0.05")
+    try checkEqual(settings.gesture.leftPhysicalStepDistance, 0.05, accuracy: 0.0001, "Left physical step distance should default to 0.05")
+    try checkEqual(settings.gesture.rightPhysicalStepDistance, 0.05, accuracy: 0.0001, "Right physical step distance should default to 0.05")
+    try checkEqual(settings.gesture.topPhysicalStepDistance, 0.05, accuracy: 0.0001, "Top physical step distance should default to 0.05")
     try checkEqual(settings.gesture.physicalStepIntervalSeconds, 0.08, accuracy: 0.0001, "Physical step interval should default to 0.08s")
 }
 
 private func testValidationClampsGestureSettings() throws {
     var settings = AppSettings.default
     settings.gesture.edgeWidthPercent = 0.50
-    settings.gesture.physicalStepDistance = 2.0
+    settings.gesture.leftPhysicalStepDistance = 2.0
+    settings.gesture.rightPhysicalStepDistance = -1.0
+    settings.gesture.topPhysicalStepDistance = 0.75
     settings.gesture.physicalStepIntervalSeconds = -1.0
 
     let validated = settings.validated()
 
     try checkEqual(validated.gesture.edgeWidthPercent, 0.20, accuracy: 0.0001, "Edge width percent should clamp")
-    try checkEqual(validated.gesture.physicalStepDistance, 0.50, accuracy: 0.0001, "Physical step distance should clamp")
+    try checkEqual(validated.gesture.leftPhysicalStepDistance, 0.50, accuracy: 0.0001, "Left physical step distance should clamp")
+    try checkEqual(validated.gesture.rightPhysicalStepDistance, 0.02, accuracy: 0.0001, "Right physical step distance should clamp")
+    try checkEqual(validated.gesture.topPhysicalStepDistance, 0.50, accuracy: 0.0001, "Top physical step distance should clamp")
     try checkEqual(validated.gesture.physicalStepIntervalSeconds, 0.0, accuracy: 0.0001, "Physical step interval should clamp")
 }
 
@@ -108,7 +114,9 @@ private func testSettingsDecodeMigratesMissingPhysicalStepFields() throws {
     try check(!decoded.features.brightnessEdgeGesture, "Legacy settings should preserve feature toggles")
     try check(decoded.edgeAssignments == EdgeAssignments(left: .volume, right: .none, top: .browserTabs), "Legacy toggles should migrate to equivalent direct assignments")
     try checkEqual(decoded.gesture.edgeWidthPercent, 0.12, accuracy: 0.0001, "Legacy gesture settings should preserve existing fields")
-    try checkEqual(decoded.gesture.physicalStepDistance, AppSettings.default.gesture.physicalStepDistance, accuracy: 0.0001, "Missing physical step distance should decode to default")
+    try checkEqual(decoded.gesture.leftPhysicalStepDistance, AppSettings.default.gesture.leftPhysicalStepDistance, accuracy: 0.0001, "Missing left physical step distance should decode to default")
+    try checkEqual(decoded.gesture.rightPhysicalStepDistance, AppSettings.default.gesture.rightPhysicalStepDistance, accuracy: 0.0001, "Missing right physical step distance should decode to default")
+    try checkEqual(decoded.gesture.topPhysicalStepDistance, AppSettings.default.gesture.topPhysicalStepDistance, accuracy: 0.0001, "Missing top physical step distance should decode to default")
     try checkEqual(decoded.gesture.physicalStepIntervalSeconds, AppSettings.default.gesture.physicalStepIntervalSeconds, accuracy: 0.0001, "Missing physical step interval should decode to default")
     try check(decoded.middleClick == .default, "Legacy settings should decode missing middle-click settings to default")
 }

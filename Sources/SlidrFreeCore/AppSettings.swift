@@ -80,12 +80,36 @@ public struct FeatureToggles: Codable, Equatable, Sendable {
 }
 
 public struct GestureSettings: Codable, Equatable, Sendable {
+    public static let physicalStepDistanceRange = 0.02...0.50
+
     public var edgeWidthPercent: Double
-    public var physicalStepDistance: Double
+    public var leftPhysicalStepDistance: Double
+    public var rightPhysicalStepDistance: Double
+    public var topPhysicalStepDistance: Double
     public var physicalStepIntervalSeconds: Double
     public var tabSwitchStepIntervalSeconds: Double
     public var horizontalDominanceRatio: Double
 
+    public init(
+        edgeWidthPercent: Double,
+        leftPhysicalStepDistance: Double,
+        rightPhysicalStepDistance: Double,
+        topPhysicalStepDistance: Double,
+        physicalStepIntervalSeconds: Double,
+        tabSwitchStepIntervalSeconds: Double,
+        horizontalDominanceRatio: Double
+    ) {
+        self.edgeWidthPercent = edgeWidthPercent
+        self.leftPhysicalStepDistance = leftPhysicalStepDistance
+        self.rightPhysicalStepDistance = rightPhysicalStepDistance
+        self.topPhysicalStepDistance = topPhysicalStepDistance
+        self.physicalStepIntervalSeconds = physicalStepIntervalSeconds
+        self.tabSwitchStepIntervalSeconds = tabSwitchStepIntervalSeconds
+        self.horizontalDominanceRatio = horizontalDominanceRatio
+    }
+
+    /// Source-compatible initializer for callers that still provide the legacy
+    /// shared distance. Persisted legacy values are migrated the same way.
     public init(
         edgeWidthPercent: Double,
         physicalStepDistance: Double,
@@ -93,15 +117,22 @@ public struct GestureSettings: Codable, Equatable, Sendable {
         tabSwitchStepIntervalSeconds: Double,
         horizontalDominanceRatio: Double
     ) {
-        self.edgeWidthPercent = edgeWidthPercent
-        self.physicalStepDistance = physicalStepDistance
-        self.physicalStepIntervalSeconds = physicalStepIntervalSeconds
-        self.tabSwitchStepIntervalSeconds = tabSwitchStepIntervalSeconds
-        self.horizontalDominanceRatio = horizontalDominanceRatio
+        self.init(
+            edgeWidthPercent: edgeWidthPercent,
+            leftPhysicalStepDistance: physicalStepDistance,
+            rightPhysicalStepDistance: physicalStepDistance,
+            topPhysicalStepDistance: physicalStepDistance,
+            physicalStepIntervalSeconds: physicalStepIntervalSeconds,
+            tabSwitchStepIntervalSeconds: tabSwitchStepIntervalSeconds,
+            horizontalDominanceRatio: horizontalDominanceRatio
+        )
     }
 
     private enum CodingKeys: String, CodingKey {
         case edgeWidthPercent
+        case leftPhysicalStepDistance
+        case rightPhysicalStepDistance
+        case topPhysicalStepDistance
         case physicalStepDistance
         case physicalStepIntervalSeconds
         case tabSwitchStepIntervalSeconds
@@ -111,10 +142,30 @@ public struct GestureSettings: Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.edgeWidthPercent = try container.decode(Double.self, forKey: .edgeWidthPercent)
-        self.physicalStepDistance = try container.decodeIfPresent(Double.self, forKey: .physicalStepDistance) ?? AppSettings.default.gesture.physicalStepDistance
+        let legacyPhysicalStepDistance = try container.decodeIfPresent(Double.self, forKey: .physicalStepDistance)
+        self.leftPhysicalStepDistance = try container.decodeIfPresent(Double.self, forKey: .leftPhysicalStepDistance)
+            ?? legacyPhysicalStepDistance
+            ?? AppSettings.default.gesture.leftPhysicalStepDistance
+        self.rightPhysicalStepDistance = try container.decodeIfPresent(Double.self, forKey: .rightPhysicalStepDistance)
+            ?? legacyPhysicalStepDistance
+            ?? AppSettings.default.gesture.rightPhysicalStepDistance
+        self.topPhysicalStepDistance = try container.decodeIfPresent(Double.self, forKey: .topPhysicalStepDistance)
+            ?? legacyPhysicalStepDistance
+            ?? AppSettings.default.gesture.topPhysicalStepDistance
         self.physicalStepIntervalSeconds = try container.decodeIfPresent(Double.self, forKey: .physicalStepIntervalSeconds) ?? AppSettings.default.gesture.physicalStepIntervalSeconds
         self.tabSwitchStepIntervalSeconds = try container.decodeIfPresent(Double.self, forKey: .tabSwitchStepIntervalSeconds) ?? AppSettings.default.gesture.tabSwitchStepIntervalSeconds
         self.horizontalDominanceRatio = try container.decodeIfPresent(Double.self, forKey: .horizontalDominanceRatio) ?? AppSettings.default.gesture.horizontalDominanceRatio
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(edgeWidthPercent, forKey: .edgeWidthPercent)
+        try container.encode(leftPhysicalStepDistance, forKey: .leftPhysicalStepDistance)
+        try container.encode(rightPhysicalStepDistance, forKey: .rightPhysicalStepDistance)
+        try container.encode(topPhysicalStepDistance, forKey: .topPhysicalStepDistance)
+        try container.encode(physicalStepIntervalSeconds, forKey: .physicalStepIntervalSeconds)
+        try container.encode(tabSwitchStepIntervalSeconds, forKey: .tabSwitchStepIntervalSeconds)
+        try container.encode(horizontalDominanceRatio, forKey: .horizontalDominanceRatio)
     }
 }
 
@@ -152,7 +203,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
         ),
         gesture: GestureSettings(
             edgeWidthPercent: 0.10,
-            physicalStepDistance: 0.05,
+            leftPhysicalStepDistance: 0.05,
+            rightPhysicalStepDistance: 0.05,
+            topPhysicalStepDistance: 0.05,
             physicalStepIntervalSeconds: 0.08,
             tabSwitchStepIntervalSeconds: 0.20,
             horizontalDominanceRatio: 1.5
@@ -211,7 +264,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public func validated() -> AppSettings {
         var copy = self
         copy.gesture.edgeWidthPercent = min(max(copy.gesture.edgeWidthPercent, 0.04), 0.20)
-        copy.gesture.physicalStepDistance = min(max(copy.gesture.physicalStepDistance, 0.02), 0.50)
+        let distanceRange = GestureSettings.physicalStepDistanceRange
+        copy.gesture.leftPhysicalStepDistance = min(max(copy.gesture.leftPhysicalStepDistance, distanceRange.lowerBound), distanceRange.upperBound)
+        copy.gesture.rightPhysicalStepDistance = min(max(copy.gesture.rightPhysicalStepDistance, distanceRange.lowerBound), distanceRange.upperBound)
+        copy.gesture.topPhysicalStepDistance = min(max(copy.gesture.topPhysicalStepDistance, distanceRange.lowerBound), distanceRange.upperBound)
         copy.gesture.physicalStepIntervalSeconds = min(max(copy.gesture.physicalStepIntervalSeconds, 0.0), 0.50)
         copy.gesture.tabSwitchStepIntervalSeconds = min(max(copy.gesture.tabSwitchStepIntervalSeconds, 0.05), 0.80)
         copy.gesture.horizontalDominanceRatio = min(max(copy.gesture.horizontalDominanceRatio, 1.0), 4.0)

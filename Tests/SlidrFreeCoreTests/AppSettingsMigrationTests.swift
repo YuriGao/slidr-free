@@ -51,6 +51,40 @@ final class AppSettingsMigrationTests: XCTestCase {
         XCTAssertEqual(decoded.middleClick, MiddleClickSettings(isEnabled: false, tapEnabled: true, fingerCount: 4))
     }
 
+    func testLegacySharedStepDistanceMigratesToEveryEdge() throws {
+        let decoded = try decodeSettings(gestureJSON: """
+        {
+          "edgeWidthPercent": 0.10,
+          "physicalStepDistance": 0.17,
+          "physicalStepIntervalSeconds": 0.08,
+          "tabSwitchStepIntervalSeconds": 0.20,
+          "horizontalDominanceRatio": 1.5
+        }
+        """)
+
+        XCTAssertEqual(decoded.gesture.leftPhysicalStepDistance, 0.17)
+        XCTAssertEqual(decoded.gesture.rightPhysicalStepDistance, 0.17)
+        XCTAssertEqual(decoded.gesture.topPhysicalStepDistance, 0.17)
+    }
+
+    func testIndependentEdgeStepDistancesRoundTripWithoutLegacyField() throws {
+        var original = AppSettings.default
+        original.gesture.leftPhysicalStepDistance = 0.04
+        original.gesture.rightPhysicalStepDistance = 0.11
+        original.gesture.topPhysicalStepDistance = 0.23
+
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
+        let root = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let gesture = try XCTUnwrap(root["gesture"] as? [String: Any])
+
+        XCTAssertEqual(decoded, original)
+        XCTAssertEqual(gesture["leftPhysicalStepDistance"] as? Double, 0.04)
+        XCTAssertEqual(gesture["rightPhysicalStepDistance"] as? Double, 0.11)
+        XCTAssertEqual(gesture["topPhysicalStepDistance"] as? Double, 0.23)
+        XCTAssertNil(gesture["physicalStepDistance"])
+    }
+
     func testDecodingMiddleClickWithOnlyIsEnabledDefaultsTapEnabled() throws {
         let decoded = try decodeSettings(middleClickJSON: """
         {"isEnabled": true}
@@ -113,6 +147,24 @@ final class AppSettingsMigrationTests: XCTestCase {
     }
 
     private func decodeSettings(middleClickJSON: String) throws -> AppSettings {
+        try decodeSettings(
+            gestureJSON: """
+            {
+              "edgeWidthPercent": 0.10,
+              "physicalStepDistance": 0.05,
+              "physicalStepIntervalSeconds": 0.08,
+              "tabSwitchStepIntervalSeconds": 0.20,
+              "horizontalDominanceRatio": 1.5
+            }
+            """,
+            middleClickJSON: middleClickJSON
+        )
+    }
+
+    private func decodeSettings(
+        gestureJSON: String,
+        middleClickJSON: String = #"{"isEnabled": false, "tapEnabled": true, "fingerCount": 4}"#
+    ) throws -> AppSettings {
         let payload = try XCTUnwrap(
             """
             {
@@ -124,13 +176,7 @@ final class AppSettingsMigrationTests: XCTestCase {
                 "browserTabEdgeGesture": true,
                 "swapSides": false
               },
-              "gesture": {
-                "edgeWidthPercent": 0.10,
-                "physicalStepDistance": 0.05,
-                "physicalStepIntervalSeconds": 0.08,
-                "tabSwitchStepIntervalSeconds": 0.20,
-                "horizontalDominanceRatio": 1.5
-              },
+              "gesture": \(gestureJSON),
               "middleClick": \(middleClickJSON)
             }
             """.data(using: .utf8)

@@ -12,6 +12,36 @@ final class EdgeGestureArbitrationTests: XCTestCase {
         )
     }
 
+    func testEachEdgeUsesItsOwnConfiguredStepDistance() {
+        var settings = AppSettings.default
+        settings.gesture.leftPhysicalStepDistance = 0.04
+        settings.gesture.rightPhysicalStepDistance = 0.10
+        settings.gesture.topPhysicalStepDistance = 0.15
+
+        var leftRecognizer = GestureRecognizer(settings: settings)
+        XCTAssertNil(leftRecognizer.process(frame([touch(1, x: 0.05, y: 0.20)], timestamp: 1.0)))
+        XCTAssertEqual(
+            leftRecognizer.process(frame([touch(1, x: 0.05, y: 0.25)], timestamp: 1.1)),
+            .brightness(direction: .increase, magnitude: 1.0)
+        )
+
+        var rightRecognizer = GestureRecognizer(settings: settings)
+        XCTAssertNil(rightRecognizer.process(frame([touch(2, x: 0.95, y: 0.20)], timestamp: 2.0)))
+        XCTAssertNil(rightRecognizer.process(frame([touch(2, x: 0.95, y: 0.26)], timestamp: 2.1)))
+        XCTAssertEqual(
+            rightRecognizer.process(frame([touch(2, x: 0.95, y: 0.31)], timestamp: 2.2)),
+            .volume(direction: .increase, magnitude: 1.0)
+        )
+
+        var topRecognizer = GestureRecognizer(settings: settings)
+        XCTAssertNil(topRecognizer.process(frame([touch(3, x: 0.30, y: 0.95)], timestamp: 3.0)))
+        XCTAssertNil(topRecognizer.process(frame([touch(3, x: 0.41, y: 0.95)], timestamp: 3.21)))
+        XCTAssertEqual(
+            topRecognizer.process(frame([touch(3, x: 0.46, y: 0.95)], timestamp: 3.42)),
+            .browserTab(direction: .next)
+        )
+    }
+
     func testTwoTouchFrameSuppressesLaterSingleFingerFramesUntilEmpty() {
         assertMultitouchLatch(touchCount: 2)
     }
