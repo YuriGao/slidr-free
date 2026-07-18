@@ -1,10 +1,12 @@
 import AppKit
 import SwiftUI
 import SlidrFreeCore
+import UniformTypeIdentifiers
 
 private enum SettingsSection: String, CaseIterable, Identifiable {
     case overview
     case edges
+    case corners
     case middleClick
     case diagnostics
 
@@ -14,6 +16,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .overview: return "heart.text.square"
         case .edges: return "rectangle.and.hand.point.up.left"
+        case .corners: return "square.grid.2x2"
         case .middleClick: return "computermouse"
         case .diagnostics: return "stethoscope"
         }
@@ -27,6 +30,7 @@ struct SettingsView: View {
     @ObservedObject var gestureTestController: GestureTestController
     @State private var selection: SettingsSection? = .overview
     @State private var launchAtLoginError: String?
+    @State private var appSelectionError: String?
     @State private var showResetConfirmation = false
     @State private var diagnosticPreview: DiagnosticPreview?
     @State private var showCompatibility = false
@@ -118,12 +122,16 @@ struct SettingsView: View {
         if let launchAtLoginError {
             BannerView(text: launchAtLoginError)
         }
+        if let appSelectionError {
+            BannerView(text: appSelectionError)
+        }
     }
 
     @ViewBuilder private var detailView: some View {
         switch selection ?? .overview {
         case .overview: overview
         case .edges: edgeSettings
+        case .corners: cornerSettings
         case .middleClick: middleClickSettings
         case .diagnostics: diagnostics
         }
@@ -205,6 +213,28 @@ struct SettingsView: View {
                 .padding(8)
             }
             GestureTestPanel(controller: gestureTestController, kind: .edge)
+        }
+    }
+
+    private var cornerSettings: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            pageTitle("nav_corners", subtitleKey: "corners_subtitle")
+            HStack(alignment: .top, spacing: 24) {
+                CornerTrackpadDiagram(bindings: store.settings.cornerAppBindings)
+                    .frame(width: 250, height: 190)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(NSLocalizedString("corner_mapping_diagram", comment: ""))
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(TrackpadCorner.allCases, id: \.self) { corner in
+                        cornerBindingRow(corner)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            Text(NSLocalizedString("corner_double_tap_help", comment: ""))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            GestureTestPanel(controller: gestureTestController, kind: .corner)
         }
     }
 
@@ -328,6 +358,72 @@ struct SettingsView: View {
                 Text(NSLocalizedString("side_action_\(action.rawValue)", comment: "")).tag(action)
             }
         }
+    }
+
+    private func cornerBindingRow(_ corner: TrackpadCorner) -> some View {
+        let binding = store.settings.cornerAppBindings[corner]
+        return HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(NSLocalizedString(corner.localizationKey, comment: ""))
+                    .font(.headline)
+                Text(binding?.displayName ?? NSLocalizedString("corner_not_configured", comment: ""))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+            Button(NSLocalizedString(binding == nil ? "corner_choose_app" : "corner_change_app", comment: "")) {
+                chooseApplication(for: corner)
+            }
+            if binding != nil {
+                Button(NSLocalizedString("corner_clear", comment: ""), role: .destructive) {
+                    clearApplication(for: corner)
+                }
+            }
+        }
+    }
+
+    private func chooseApplication(for corner: TrackpadCorner) {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.application]
+        panel.allowsMultipleSelection = false
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.prompt = NSLocalizedString("corner_app_picker_prompt", comment: "")
+        panel.message = NSLocalizedString("corner_app_picker_message", comment: "")
+        if let path = store.settings.cornerAppBindings[corner]?.applicationPath {
+            panel.directoryURL = URL(fileURLWithPath: path).deletingLastPathComponent()
+        } else {
+            panel.directoryURL = URL(fileURLWithPath: "/Applications", isDirectory: true)
+        }
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard url.pathExtension.lowercased() == "app",
+              let bundle = Bundle(url: url),
+              let bundleIdentifier = bundle.bundleIdentifier,
+              !bundleIdentifier.isEmpty else {
+            appSelectionError = NSLocalizedString("corner_app_picker_error", comment: "")
+            return
+        }
+
+        let displayName = (bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
+            ?? (bundle.object(forInfoDictionaryKey: "CFBundleName") as? String)
+            ?? url.deletingPathExtension().lastPathComponent
+        var updated = store.settings
+        updated.cornerAppBindings[corner] = ApplicationBinding(
+            bundleIdentifier: bundleIdentifier,
+            displayName: displayName,
+            applicationPath: url.path
+        )
+        store.save(updated)
+        appSelectionError = nil
+    }
+
+    private func clearApplication(for corner: TrackpadCorner) {
+        var updated = store.settings
+        updated.cornerAppBindings[corner] = nil
+        store.save(updated)
+        appSelectionError = nil
     }
 
     private var topEdgePicker: some View {
@@ -459,7 +555,7 @@ private struct GestureTestPanel: View {
     var body: some View {
         GroupBox(NSLocalizedString("gesture_test_title", comment: "")) {
             VStack(alignment: .leading, spacing: 10) {
-                Text(NSLocalizedString(kind == .edge ? "gesture_test_edge_help" : "gesture_test_middle_help", comment: ""))
+                Text(NSLocalizedString(helpLocalizationKey, comment: ""))
                     .font(.callout).foregroundStyle(.secondary)
                 HStack {
                     if controller.kind == kind {
@@ -473,6 +569,14 @@ private struct GestureTestPanel: View {
                     if let feedback = controller.feedback { Label(feedback, systemImage: controller.didRecognizeGesture ? "checkmark.circle.fill" : "waveform").foregroundStyle(controller.didRecognizeGesture ? .green : .secondary) }
                 }
             }.padding(8)
+        }
+    }
+
+    private var helpLocalizationKey: String {
+        switch kind {
+        case .edge: return "gesture_test_edge_help"
+        case .corner: return "gesture_test_corner_help"
+        case .middleClick: return "gesture_test_middle_help"
         }
     }
 }
@@ -500,6 +604,56 @@ private struct TrackpadDiagram: View {
     private func edgeLabel(_ text: String, arrow: String) -> some View { VStack { Image(systemName: arrow); Text(text).font(.caption.bold()) } }
     private func sideText(_ action: SideEdgeAction) -> String { NSLocalizedString("side_action_\(action.rawValue)", comment: "") }
     private func topText(_ action: TopEdgeAction) -> String { NSLocalizedString("top_action_\(action.rawValue)", comment: "") }
+}
+
+private struct CornerTrackpadDiagram: View {
+    let bindings: CornerAppBindings
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 18)
+                .fill(Color.secondary.opacity(0.08))
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Color.secondary.opacity(0.4), lineWidth: 2)
+            ForEach(TrackpadCorner.allCases, id: \.self) { corner in
+                marker(for: corner)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: corner.alignment)
+                    .padding(14)
+            }
+        }
+    }
+
+    private func marker(for corner: TrackpadCorner) -> some View {
+        let binding = bindings[corner]
+        return VStack(spacing: 3) {
+            Image(systemName: binding == nil ? "plus.circle" : "app.fill")
+                .foregroundStyle(binding == nil ? Color.secondary : Color.accentColor)
+            Text(binding?.displayName ?? NSLocalizedString(corner.localizationKey, comment: ""))
+                .font(.caption2.bold())
+                .lineLimit(1)
+                .frame(maxWidth: 92)
+        }
+    }
+}
+
+private extension TrackpadCorner {
+    var localizationKey: String {
+        switch self {
+        case .topLeft: return "corner_top_left"
+        case .topRight: return "corner_top_right"
+        case .bottomLeft: return "corner_bottom_left"
+        case .bottomRight: return "corner_bottom_right"
+        }
+    }
+
+    var alignment: Alignment {
+        switch self {
+        case .topLeft: return .topLeading
+        case .topRight: return .topTrailing
+        case .bottomLeft: return .bottomLeading
+        case .bottomRight: return .bottomTrailing
+        }
+    }
 }
 
 private struct DiagnosticPreviewSheet: View {

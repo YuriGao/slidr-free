@@ -29,6 +29,27 @@ final class GestureTestControllerTests: XCTestCase {
         XCTAssertEqual(router.actions(for: .middleClickTap, settings: .default), [.middleClick])
     }
 
+    func testCornerPreviewConsumesDoubleTapWithoutOpeningApplication() {
+        let controller = GestureTestController()
+        let router = GestureDispatchRouter(preview: controller)
+        let binding = ApplicationBinding(
+            bundleIdentifier: "com.example.app",
+            displayName: "Example",
+            applicationPath: "/Applications/Example.app"
+        )
+        var settings = AppSettings.default
+        settings.cornerAppBindings.topLeft = binding
+
+        controller.start(.corner)
+        XCTAssertTrue(router.actions(for: .cornerDoubleTap(corner: .topLeft), settings: settings).isEmpty)
+        XCTAssertTrue(controller.didRecognizeGesture)
+        controller.stop()
+        XCTAssertEqual(
+            router.actions(for: .cornerDoubleTap(corner: .topLeft), settings: settings),
+            [.toggleApplication(binding)]
+        )
+    }
+
     func testEdgeTimeoutDistinguishesNoFramesMissedEdgeAndThreshold() {
         let controller = GestureTestController()
         controller.start(.edge)
@@ -42,6 +63,25 @@ final class GestureTestControllerTests: XCTestCase {
 
         controller.start(.edge)
         controller.observe(.physicalTouchFrame(touches: [PhysicalTouch(id: 1, x: 0.05, y: 0.5)], timestamp: 1), settings: .default)
+        controller.expire()
+        XCTAssertEqual(controller.feedback, NSLocalizedString("gesture_test_timeout_threshold", comment: ""))
+    }
+
+    func testCornerTimeoutDistinguishesMissedCornerFromIncompleteDoubleTap() {
+        let controller = GestureTestController()
+        controller.start(.corner)
+        controller.observe(
+            .physicalTouchFrame(touches: [PhysicalTouch(id: 1, x: 0.5, y: 0.5)], timestamp: 1),
+            settings: .default
+        )
+        controller.expire()
+        XCTAssertEqual(controller.feedback, NSLocalizedString("gesture_test_timeout_no_corner", comment: ""))
+
+        controller.start(.corner)
+        controller.observe(
+            .physicalTouchFrame(touches: [PhysicalTouch(id: 1, x: 0.05, y: 0.95)], timestamp: 1),
+            settings: .default
+        )
         controller.expire()
         XCTAssertEqual(controller.feedback, NSLocalizedString("gesture_test_timeout_threshold", comment: ""))
     }

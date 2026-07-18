@@ -63,10 +63,12 @@
 /* v0.4 Navigation */
 "nav_overview" = "Overview";
 "nav_edges" = "Edge Gestures";
+"nav_corners" = "Corner Shortcuts";
 "nav_middleClick" = "Middle Click";
 "nav_diagnostics" = "Diagnostics";
 "overview_subtitle" = "See whether Slidr Free is ready and fix the next issue.";
 "edges_subtitle" = "Assign an action directly to each physical trackpad edge.";
+"corners_subtitle" = "Bind a separate app to each physical trackpad corner.";
 "middle_click_subtitle" = "Configure an exact-finger tap or physical press.";
 "diagnostics_subtitle" = "Inspect components and prepare a privacy-safe support summary.";
 "overview_general" = "General";
@@ -108,6 +110,19 @@
 "left_edge" = "Left edge";
 "right_edge" = "Right edge";
 "top_edge" = "Top edge";
+"corner_top_left" = "Top left";
+"corner_top_right" = "Top right";
+"corner_bottom_left" = "Bottom left";
+"corner_bottom_right" = "Bottom right";
+"corner_not_configured" = "Not configured";
+"corner_choose_app" = "Choose App…";
+"corner_change_app" = "Change…";
+"corner_clear" = "Clear";
+"corner_app_picker_prompt" = "Choose";
+"corner_app_picker_message" = "Choose the macOS app to bind to this corner.";
+"corner_app_picker_error" = "The selected app could not be read. Choose an app with a valid bundle identifier.";
+"corner_double_tap_help" = "Tap the same corner twice quickly to open its app. If that app is already frontmost, its focused window toggles between minimized and restored. Corner size follows Edge width; multi-touch, significant movement, and cross-corner taps do not trigger.";
+"corner_mapping_diagram" = "Four trackpad corners and their bound apps";
 "side_action_none" = "None";
 "side_action_brightness" = "Brightness";
 "side_action_volume" = "Volume";
@@ -117,6 +132,7 @@
 "trackpad_mapping_diagram" = "Trackpad edge assignments and gesture directions";
 "gesture_test_title" = "Safe gesture test";
 "gesture_test_edge_help" = "For 15 seconds, Slidr Free recognizes edge gestures without changing brightness, volume, or browser tabs.";
+"gesture_test_corner_help" = "For 15 seconds, Slidr Free recognizes corner double taps without opening, minimizing, or restoring the bound app.";
 "gesture_test_middle_help" = "For 15 seconds, Slidr Free recognizes the selected finger tap without sending a middle click.";
 "start_safe_test" = "Start 15-second Test";
 "stop_test" = "Stop Test";
@@ -125,12 +141,14 @@
 "gesture_test_timeout_no_gesture" = "No qualifying gesture was detected. Check the edge and movement distance, then try again.";
 "gesture_test_timeout_no_frames" = "No touch frames were received. Check trackpad compatibility and try again.";
 "gesture_test_timeout_no_edge" = "Touch was detected, but it did not enter an assigned edge region. Follow the highlighted edge or increase edge width.";
+"gesture_test_timeout_no_corner" = "Touch was detected, but it did not start inside a corner. Tap within a corner or increase Edge width.";
 "gesture_test_timeout_threshold" = "The edge was detected, but direction or movement distance did not reach the gesture threshold.";
 "assigned_edge" = "Assigned edge";
 "gesture_test_brightness" = "Detected %@ · Brightness %@";
 "gesture_test_volume" = "Detected %@ · Volume %@";
 "gesture_test_next_tab" = "Detected top edge · Next tab";
 "gesture_test_previous_tab" = "Detected top edge · Previous tab";
+"gesture_test_corner" = "Detected %@ · Double tap";
 "gesture_test_middle_click" = "Detected exact-finger tap · Middle click";
 "test_no_side_effects" = "Test gestures are consumed before any system action is dispatched.";
 
@@ -155,7 +173,7 @@
 "rerun_onboarding" = "Run Setup Assistant Again";
 "restore_defaults" = "Restore Defaults…";
 "reset_settings_title" = "Restore default settings?";
-"reset_settings_message" = "Edge assignments, edge width, middle click, and launch preferences will be reset. Setup completion is retained.";
+"reset_settings_message" = "Edge assignments, trigger distances, corner app bindings, middle click, and launch preferences will be reset. Setup completion is retained.";
 "reset_settings_confirm" = "Restore Defaults";
 "settings_restored_banner" = "Stored settings were unreadable and have been restored to safe defaults.";
 "settings_save_error" = "Settings could not be saved. Your latest change may not persist.";

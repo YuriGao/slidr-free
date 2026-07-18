@@ -63,10 +63,12 @@
 /* v0.4 导航 */
 "nav_overview" = "概览";
 "nav_edges" = "边缘手势";
+"nav_corners" = "角点快捷启动";
 "nav_middleClick" = "中键点击";
 "nav_diagnostics" = "诊断";
 "overview_subtitle" = "确认 Slidr Free 是否就绪，并修复当前最重要的问题。";
 "edges_subtitle" = "直接为物理触控板的每条边分配动作。";
+"corners_subtitle" = "为物理触控板四个角分别绑定一个 App。";
 "middle_click_subtitle" = "配置精确手指数的轻点或物理按下。";
 "diagnostics_subtitle" = "检查底层组件，并生成隐私安全的支持摘要。";
 "overview_general" = "通用";
@@ -108,6 +110,19 @@
 "left_edge" = "左边缘";
 "right_edge" = "右边缘";
 "top_edge" = "上边缘";
+"corner_top_left" = "左上角";
+"corner_top_right" = "右上角";
+"corner_bottom_left" = "左下角";
+"corner_bottom_right" = "右下角";
+"corner_not_configured" = "未配置";
+"corner_choose_app" = "选择 App…";
+"corner_change_app" = "更换…";
+"corner_clear" = "清除";
+"corner_app_picker_prompt" = "选择";
+"corner_app_picker_message" = "选择要绑定到此角点的 macOS App。";
+"corner_app_picker_error" = "无法读取所选 App，请选择包含有效 Bundle Identifier 的应用。";
+"corner_double_tap_help" = "在同一角点快速轻点两次即可打开绑定的 App；该 App 已在前台时，会在最小化和恢复其焦点窗口之间切换。角点范围沿用边缘宽度；多指、明显移动或跨角点不会触发。";
+"corner_mapping_diagram" = "四个触控板角点与已绑定 App";
 "side_action_none" = "无";
 "side_action_brightness" = "亮度";
 "side_action_volume" = "音量";
@@ -117,6 +132,7 @@
 "trackpad_mapping_diagram" = "触控板边缘分配与手势方向";
 "gesture_test_title" = "安全手势测试";
 "gesture_test_edge_help" = "在 15 秒内识别边缘手势，但不会改变亮度、音量或浏览器标签页。";
+"gesture_test_corner_help" = "在 15 秒内识别角点双击，但不会真实打开、最小化或恢复绑定的 App。";
 "gesture_test_middle_help" = "在 15 秒内识别所选手指数的轻点，但不会发送真实中键点击。";
 "start_safe_test" = "开始 15 秒测试";
 "stop_test" = "停止测试";
@@ -125,12 +141,14 @@
 "gesture_test_timeout_no_gesture" = "未检测到符合条件的手势。请检查边缘位置和移动距离后重试。";
 "gesture_test_timeout_no_frames" = "未收到触摸帧，请检查触控板兼容性后重试。";
 "gesture_test_timeout_no_edge" = "已检测到触摸，但没有进入已分配的边缘区域。请沿高亮边缘操作或增大边缘宽度。";
+"gesture_test_timeout_no_corner" = "已检测到触摸，但没有从角点区域开始。请在任一角点内轻点或增大边缘宽度。";
 "gesture_test_timeout_threshold" = "已命中边缘，但方向或移动距离未达到手势阈值。";
 "assigned_edge" = "已分配边缘";
 "gesture_test_brightness" = "检测到%@ · 亮度 %@";
 "gesture_test_volume" = "检测到%@ · 音量 %@";
 "gesture_test_next_tab" = "检测到上边缘 · 下一个标签页";
 "gesture_test_previous_tab" = "检测到上边缘 · 上一个标签页";
+"gesture_test_corner" = "检测到%@ · 双击";
 "gesture_test_middle_click" = "检测到精确手指轻点 · 中键点击";
 "test_no_side_effects" = "测试手势会在派发任何系统动作前被消费。";
 
@@ -155,7 +173,7 @@
 "rerun_onboarding" = "重新运行设置向导";
 "restore_defaults" = "恢复默认设置…";
 "reset_settings_title" = "恢复默认设置？";
-"reset_settings_message" = "边缘分配、边缘宽度、中键点击和登录偏好将被重置；已完成设置的状态会保留。";
+"reset_settings_message" = "边缘分配、触发距离、角点 App 绑定、中键点击和登录偏好将被重置；已完成设置的状态会保留。";
 "reset_settings_confirm" = "恢复默认设置";
 "settings_restored_banner" = "原设置无法读取，已恢复为安全默认值。";
 "settings_save_error" = "设置无法保存，最近的更改可能不会保留。";

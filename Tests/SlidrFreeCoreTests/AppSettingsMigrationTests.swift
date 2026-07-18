@@ -49,6 +49,63 @@ final class AppSettingsMigrationTests: XCTestCase {
             )
         )
         XCTAssertEqual(decoded.middleClick, MiddleClickSettings(isEnabled: false, tapEnabled: true, fingerCount: 4))
+        XCTAssertEqual(decoded.cornerAppBindings, .empty)
+    }
+
+    func testCornerAppBindingsRoundTripIndependently() throws {
+        var original = AppSettings.default
+        original.cornerAppBindings = CornerAppBindings(
+            topLeft: app("com.example.one", "One", "/Applications/One.app"),
+            topRight: app("com.example.two", "Two", "/Applications/Two.app"),
+            bottomLeft: app("com.example.three", "Three", "/Applications/Three.app"),
+            bottomRight: app("com.example.four", "Four", "/Applications/Four.app")
+        )
+
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(original))
+
+        XCTAssertEqual(decoded.cornerAppBindings, original.cornerAppBindings)
+    }
+
+    func testValidationRemovesIncompleteCornerBindingsAndTrimsValidValues() {
+        var settings = AppSettings.default
+        settings.cornerAppBindings = CornerAppBindings(
+            topLeft: app("", "Missing ID", "/Applications/Missing.app"),
+            topRight: app("com.example.missing-name", "", "/Applications/Missing.app"),
+            bottomLeft: app("com.example.missing-path", "Missing path", ""),
+            bottomRight: app("  com.example.valid  ", "  Valid  ", "  /Applications/Valid.app  ")
+        )
+
+        let validated = settings.validated()
+
+        XCTAssertNil(validated.cornerAppBindings.topLeft)
+        XCTAssertNil(validated.cornerAppBindings.topRight)
+        XCTAssertNil(validated.cornerAppBindings.bottomLeft)
+        XCTAssertEqual(
+            validated.cornerAppBindings.bottomRight,
+            app("com.example.valid", "Valid", "/Applications/Valid.app")
+        )
+    }
+
+    func testValidationRemovesNonApplicationCornerBinding() {
+        var settings = AppSettings.default
+        settings.cornerAppBindings.topLeft = app(
+            "com.example.document",
+            "Document",
+            "/tmp/document.txt"
+        )
+
+        XCTAssertNil(settings.validated().cornerAppBindings.topLeft)
+    }
+
+    func testValidationRemovesRelativeApplicationPath() {
+        var settings = AppSettings.default
+        settings.cornerAppBindings.topLeft = app(
+            "com.example.app",
+            "Example",
+            "Applications/Example.app"
+        )
+
+        XCTAssertNil(settings.validated().cornerAppBindings.topLeft)
     }
 
     func testLegacySharedStepDistanceMigratesToEveryEdge() throws {
@@ -183,5 +240,9 @@ final class AppSettingsMigrationTests: XCTestCase {
         )
 
         return try JSONDecoder().decode(AppSettings.self, from: payload)
+    }
+
+    private func app(_ identifier: String, _ name: String, _ path: String) -> ApplicationBinding {
+        ApplicationBinding(bundleIdentifier: identifier, displayName: name, applicationPath: path)
     }
 }

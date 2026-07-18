@@ -472,7 +472,7 @@ final class ProductionInputPipeline: InputPipelineInstance {
     func updateEdgeSettings(_ settings: AppSettings) {
         withLock {
             guard isActive else { return }
-            edgeRecognizer.settings = settings.validated()
+            edgeRecognizer.updateSettings(settings)
         }
     }
 

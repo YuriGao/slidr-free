@@ -51,6 +51,26 @@ final class SettingsStoreMigrationTests: XCTestCase {
         XCTAssertFalse(store.lastLoadDiagnostic?.contains("secret-material") ?? true)
     }
 
+    func testCornerBindingsPersistAndReload() {
+        let defaults = isolatedDefaults()
+        let store = SettingsStore(defaults: defaults)
+        let binding = ApplicationBinding(
+            bundleIdentifier: "com.example.app",
+            displayName: "Example",
+            applicationPath: "/Applications/Example.app"
+        )
+        var settings = store.settings
+        settings.cornerAppBindings.bottomLeft = binding
+
+        store.save(settings)
+        let reloaded = SettingsStore(defaults: defaults)
+
+        XCTAssertEqual(reloaded.settings.cornerAppBindings.bottomLeft, binding)
+        XCTAssertNil(reloaded.settings.cornerAppBindings.topLeft)
+        XCTAssertNil(reloaded.settings.cornerAppBindings.topRight)
+        XCTAssertNil(reloaded.settings.cornerAppBindings.bottomRight)
+    }
+
     private func isolatedDefaults() -> UserDefaults {
         let suite = "SettingsStoreMigrationTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

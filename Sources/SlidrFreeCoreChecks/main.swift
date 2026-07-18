@@ -68,6 +68,7 @@ private func testDefaultSettingsEnableAllFirstVersionFeaturesIndividually() thro
     try check(!settings.middleClick.isEnabled, "Middle click should be disabled by default")
     try check(settings.middleClick.tapEnabled, "Middle-click Tap preference should be enabled by default")
     try check(settings.middleClick.fingerCount == 4, "Middle click should default to four fingers")
+    try check(settings.cornerAppBindings == .empty, "Corner app bindings should be empty by default")
     try checkEqual(settings.gesture.leftPhysicalStepDistance, 0.05, accuracy: 0.0001, "Left physical step distance should default to 0.05")
     try checkEqual(settings.gesture.rightPhysicalStepDistance, 0.05, accuracy: 0.0001, "Right physical step distance should default to 0.05")
     try checkEqual(settings.gesture.topPhysicalStepDistance, 0.05, accuracy: 0.0001, "Top physical step distance should default to 0.05")
@@ -331,6 +332,25 @@ private func testTopEdgeBrowserTabGestureRecognition() throws {
     )
 }
 
+private func testCornerDoubleTapRecognition() throws {
+    var recognizer = GestureRecognizer(settings: .default)
+
+    _ = recognizer.process(.physicalTouchFrame(
+        touches: [PhysicalTouch(id: 31, x: 0.05, y: 0.95)],
+        timestamp: 80.00
+    ))
+    _ = recognizer.process(.physicalTouchFrame(touches: [], timestamp: 80.10))
+    _ = recognizer.process(.physicalTouchFrame(
+        touches: [PhysicalTouch(id: 32, x: 0.05, y: 0.95)],
+        timestamp: 80.20
+    ))
+    try checkEqual(
+        recognizer.process(.physicalTouchFrame(touches: [], timestamp: 80.30)),
+        .cornerDoubleTap(corner: .topLeft),
+        "A short same-corner double tap should emit once on the second release"
+    )
+}
+
 private func testActionDispatcher() throws {
     let dispatcher = ActionDispatcher(settings: .default)
     try checkEqual(
@@ -358,6 +378,19 @@ private func testActionDispatcher() throws {
         [.middleClick],
         "Middle-click Tap should dispatch one middle click"
     )
+
+    let binding = ApplicationBinding(
+        bundleIdentifier: "com.example.app",
+        displayName: "Example",
+        applicationPath: "/Applications/Example.app"
+    )
+    var cornerSettings = AppSettings.default
+    cornerSettings.cornerAppBindings.topLeft = binding
+    try checkEqual(
+        ActionDispatcher(settings: cornerSettings).actions(for: .cornerDoubleTap(corner: .topLeft)),
+        [.toggleApplication(binding)],
+        "A bound corner should dispatch its application"
+    )
 }
 
 let checks: [(String, () throws -> Void)] = [
@@ -367,6 +400,7 @@ let checks: [(String, () throws -> Void)] = [
     ("middle-click recognition", testMiddleClickRecognizer),
     ("gesture recognition", testGestureRecognition),
     ("top edge browser tab gesture", testTopEdgeBrowserTabGestureRecognition),
+    ("corner double tap gesture", testCornerDoubleTapRecognition),
     ("action dispatch", testActionDispatcher),
     ("permission snapshot", testPermissionSnapshotCanListenRequiresAccessibility)
 ]
