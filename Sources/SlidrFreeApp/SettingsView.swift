@@ -185,7 +185,12 @@ struct SettingsView: View {
                 Label(NSLocalizedString("duplicate_edge_hint", comment: ""), systemImage: "info.circle")
                     .font(.callout).foregroundStyle(.secondary)
             }
-            labeledSlider(NSLocalizedString("edge_width", comment: ""), value: binding(\.gesture.edgeWidthPercent), range: 0.04...0.20, isPercent: true)
+            labeledSlider(
+                NSLocalizedString("edge_width", comment: ""),
+                value: binding(\.gesture.edgeWidthPercent),
+                range: GestureSettings.edgeWidthPercentRange,
+                isPercent: true
+            )
             GroupBox(NSLocalizedString("edge_step_distances", comment: "")) {
                 VStack(alignment: .leading, spacing: 12) {
                     labeledSlider(
@@ -231,6 +236,35 @@ struct SettingsView: View {
                 }
                 .frame(maxWidth: .infinity)
             }
+            labeledSlider(
+                NSLocalizedString("corner_trigger_percent", comment: ""),
+                value: binding(\.gesture.cornerTriggerPercent),
+                range: GestureSettings.cornerTriggerPercentRange,
+                isPercent: true
+            )
+            Text(NSLocalizedString("corner_trigger_percent_help", comment: ""))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            labeledSlider(
+                NSLocalizedString("corner_movement_tolerance", comment: ""),
+                value: binding(\.gesture.cornerMovementTolerancePercent),
+                range: GestureSettings.cornerMovementTolerancePercentRange,
+                isPercent: true,
+                step: 0.01
+            )
+            Text(NSLocalizedString("corner_movement_tolerance_help", comment: ""))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            labeledSlider(
+                NSLocalizedString("corner_double_tap_interval", comment: ""),
+                value: binding(\.gesture.cornerDoubleTapIntervalSeconds),
+                range: GestureSettings.cornerDoubleTapIntervalRange,
+                isPercent: false,
+                step: 0.05
+            )
+            Text(NSLocalizedString("corner_double_tap_interval_help", comment: ""))
+                .font(.callout)
+                .foregroundStyle(.secondary)
             Text(NSLocalizedString("corner_double_tap_help", comment: ""))
                 .font(.callout)
                 .foregroundStyle(.secondary)
@@ -438,11 +472,29 @@ struct SettingsView: View {
         store.settings.edgeAssignments.left != .none && store.settings.edgeAssignments.left == store.settings.edgeAssignments.right
     }
 
-    private func labeledSlider(_ title: String, value: Binding<Double>, range: ClosedRange<Double>, isPercent: Bool) -> some View {
+    private func labeledSlider(
+        _ title: String,
+        value: Binding<Double>,
+        range: ClosedRange<Double>,
+        isPercent: Bool,
+        step: Double = 0.01
+    ) -> some View {
         VStack(alignment: .leading) {
-            HStack { Text(title); Spacer(); Text(value.wrappedValue.formatted(.percent.precision(.fractionLength(0)))).foregroundStyle(.secondary) }
-            Slider(value: value, in: range, step: 0.01)
+            HStack {
+                Text(title)
+                Spacer()
+                Text(sliderValue(value.wrappedValue, isPercent: isPercent))
+                    .foregroundStyle(.secondary)
+            }
+            Slider(value: value, in: range, step: step)
         }
+    }
+
+    private func sliderValue(_ value: Double, isPercent: Bool) -> String {
+        if isPercent {
+            return value.formatted(.percent.precision(.fractionLength(0)))
+        }
+        return String(format: NSLocalizedString("seconds_value", comment: ""), value)
     }
 
     private func diagnosticRow(_ key: String, _ value: String) -> some View {

@@ -85,4 +85,25 @@ final class GestureTestControllerTests: XCTestCase {
         controller.expire()
         XCTAssertEqual(controller.feedback, NSLocalizedString("gesture_test_timeout_threshold", comment: ""))
     }
+
+    func testCornerPreviewUsesDedicatedCornerTriggerPercent() {
+        let controller = GestureTestController()
+        let touch = PhysicalTouch(id: 1, x: 0.12, y: 0.88)
+
+        var narrowCornerSettings = AppSettings.default
+        narrowCornerSettings.gesture.edgeWidthPercent = 0.20
+        narrowCornerSettings.gesture.cornerTriggerPercent = 0.05
+        controller.start(.corner)
+        controller.observe(.physicalTouchFrame(touches: [touch], timestamp: 1), settings: narrowCornerSettings)
+        controller.expire()
+        XCTAssertEqual(controller.feedback, NSLocalizedString("gesture_test_timeout_no_corner", comment: ""))
+
+        var wideCornerSettings = AppSettings.default
+        wideCornerSettings.gesture.edgeWidthPercent = 0.05
+        wideCornerSettings.gesture.cornerTriggerPercent = 0.15
+        controller.start(.corner)
+        controller.observe(.physicalTouchFrame(touches: [touch], timestamp: 2), settings: wideCornerSettings)
+        controller.expire()
+        XCTAssertEqual(controller.feedback, NSLocalizedString("gesture_test_timeout_threshold", comment: ""))
+    }
 }

@@ -211,6 +211,69 @@ final class ProductionInputPipelineTests: XCTestCase {
         XCTAssertEqual(actions, [.cornerDoubleTap(corner: .topLeft)])
     }
 
+    func testCornerDoubleTapUsesConfiguredIntervalAndRefreshesIt() {
+        let monitor = PipelineMonitorSpy()
+        var actions: [RecognizedGesture] = []
+        var settings = AppSettings.default
+        settings.gesture.cornerDoubleTapIntervalSeconds = 0.30
+        let pipeline = makePipeline(
+            settings: settings,
+            monitor: monitor,
+            actionHandler: { actions.append($0) }
+        )
+
+        sendCornerDoubleTap(to: pipeline, firstStart: 1.00, secondStart: 1.45)
+        XCTAssertTrue(actions.isEmpty)
+
+        settings.gesture.cornerDoubleTapIntervalSeconds = 0.45
+        pipeline.updateEdgeSettings(settings)
+        sendCornerDoubleTap(to: pipeline, firstStart: 2.00, secondStart: 2.45)
+        XCTAssertEqual(actions, [.cornerDoubleTap(corner: .topLeft)])
+    }
+
+    func testHoldingCornerDoesNotTriggerAnAction() {
+        let monitor = PipelineMonitorSpy()
+        var actions: [RecognizedGesture] = []
+        let pipeline = makePipeline(
+            settings: .default,
+            monitor: monitor,
+            actionHandler: { actions.append($0) }
+        )
+
+        pipeline.receiveEdge(.physicalTouchFrame(
+            touches: [PhysicalTouch(id: 1, x: 0.05, y: 0.95)],
+            timestamp: 1.00
+        ))
+        pipeline.receiveEdge(.physicalTouchFrame(
+            touches: [PhysicalTouch(id: 1, x: 0.05, y: 0.95)],
+            timestamp: 2.00
+        ))
+        pipeline.receiveEdge(.physicalTouchFrame(touches: [], timestamp: 2.10))
+
+        XCTAssertTrue(actions.isEmpty)
+    }
+
+    func testCornerMovementLimitRefreshesForDoubleTap() {
+        let monitor = PipelineMonitorSpy()
+        var actions: [RecognizedGesture] = []
+        var settings = AppSettings.default
+        settings.edgeAssignments.left = .none
+        settings.gesture.cornerMovementTolerancePercent = 0.02
+        let pipeline = makePipeline(
+            settings: settings,
+            monitor: monitor,
+            actionHandler: { actions.append($0) }
+        )
+
+        sendMovingCornerDoubleTap(to: pipeline, firstStart: 1.00)
+        XCTAssertTrue(actions.isEmpty)
+
+        settings.gesture.cornerMovementTolerancePercent = 0.04
+        pipeline.updateEdgeSettings(settings)
+        sendMovingCornerDoubleTap(to: pipeline, firstStart: 2.00)
+        XCTAssertEqual(actions, [.cornerDoubleTap(corner: .topLeft)])
+    }
+
     private func makePipeline(
         bridge: MiddleClickSessionBridge = MiddleClickSessionBridge(generation: 7, now: { 1.1 }),
         settings: AppSettings = enabledSettingsForProduction(fingerCount: 3),
@@ -236,6 +299,41 @@ final class ProductionInputPipelineTests: XCTestCase {
             eventTapFactory: { reducer, _, _ in eventTapFactory(reducer) },
             deliverAction: deliverAction
         )
+    }
+
+    private func sendCornerDoubleTap(
+        to pipeline: ProductionInputPipeline,
+        firstStart: Double,
+        secondStart: Double
+    ) {
+        pipeline.receiveEdge(.physicalTouchFrame(
+            touches: [PhysicalTouch(id: 1, x: 0.05, y: 0.95)],
+            timestamp: firstStart
+        ))
+        pipeline.receiveEdge(.physicalTouchFrame(touches: [], timestamp: firstStart + 0.10))
+        pipeline.receiveEdge(.physicalTouchFrame(
+            touches: [PhysicalTouch(id: 2, x: 0.05, y: 0.95)],
+            timestamp: secondStart
+        ))
+        pipeline.receiveEdge(.physicalTouchFrame(touches: [], timestamp: secondStart + 0.10))
+    }
+
+    private func sendMovingCornerDoubleTap(
+        to pipeline: ProductionInputPipeline,
+        firstStart: Double
+    ) {
+        for (index, start) in [firstStart, firstStart + 0.30].enumerated() {
+            let touchID = index + 1
+            pipeline.receiveEdge(.physicalTouchFrame(
+                touches: [PhysicalTouch(id: touchID, x: 0.05, y: 0.95)],
+                timestamp: start
+            ))
+            pipeline.receiveEdge(.physicalTouchFrame(
+                touches: [PhysicalTouch(id: touchID, x: 0.05, y: 0.92)],
+                timestamp: start + 0.05
+            ))
+            pipeline.receiveEdge(.physicalTouchFrame(touches: [], timestamp: start + 0.10))
+        }
     }
 
     private func touches(count: Int = 3) -> [PhysicalTouch] {
