@@ -1,3 +1,4 @@
+import Combine
 import SlidrFreeCore
 import XCTest
 @testable import SlidrFreeApp
@@ -249,11 +250,35 @@ final class InputPipelineLifecycleTests: XCTestCase {
         queued.removeFirst()()
         status.update(frameReceivedAt: 10, frameGeneration: 1)
         status.update(generation: 2)
-        let oldFrame = queued.removeFirst()
+        status.update(frameReceivedAt: 11, frameGeneration: 1)
         queued.removeFirst()()
-        oldFrame()
         XCTAssertEqual(status.generation, 2)
         XCTAssertNil(status.lastFrameReceivedAt)
+    }
+
+    func testFrameTelemetryDoesNotPublishOrScheduleMainThreadWork() {
+        var queued: [() -> Void] = []
+        let status = InputPipelineStatus(deliverOnMain: { queued.append($0) })
+        status.update(generation: 1)
+        queued.removeFirst()()
+        var changeCount = 0
+        let cancellable = status.objectWillChange.sink { changeCount += 1 }
+
+        status.update(frameReceivedAt: 10, frameGeneration: 1)
+
+        XCTAssertTrue(queued.isEmpty)
+        XCTAssertEqual(changeCount, 0)
+        XCTAssertEqual(status.lastFrameReceivedAt, 10)
+        withExtendedLifetime(cancellable) {}
+    }
+
+    func testFrameTelemetryRejectsOlderTimestampWithinCurrentGeneration() {
+        let status = InputPipelineStatus()
+        status.update(generation: 1)
+        status.update(frameReceivedAt: 10, frameGeneration: 1)
+        status.update(frameReceivedAt: 9, frameGeneration: 1)
+
+        XCTAssertEqual(status.lastFrameReceivedAt, 10)
     }
 
     func testQueuedOldMonitorStatusCannotOverwriteFreshGeneration() {

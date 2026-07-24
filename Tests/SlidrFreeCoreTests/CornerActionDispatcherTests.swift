@@ -24,4 +24,18 @@ final class CornerActionDispatcherTests: XCTestCase {
                 .isEmpty
         )
     }
+
+    func testMiddleClickTapRequiresEnabledTapSetting() {
+        var settings = AppSettings.default
+        settings.middleClick.isEnabled = false
+        settings.middleClick.tapEnabled = true
+        XCTAssertTrue(ActionDispatcher(settings: settings).actions(for: .middleClickTap).isEmpty)
+
+        settings.middleClick.isEnabled = true
+        settings.middleClick.tapEnabled = false
+        XCTAssertTrue(ActionDispatcher(settings: settings).actions(for: .middleClickTap).isEmpty)
+
+        settings.middleClick.tapEnabled = true
+        XCTAssertEqual(ActionDispatcher(settings: settings).actions(for: .middleClickTap), [.middleClick])
+    }
 }

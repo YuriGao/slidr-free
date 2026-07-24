@@ -9,15 +9,43 @@ enum TouchMonitorRuntimeState: String, Equatable, Sendable {
     case unavailable
 }
 
+private final class InputFrameTelemetry {
+    private let lock = NSLock()
+    private var generation: UInt64 = 0
+    private var frameReceivedAt: Double?
+
+    var lastFrameReceivedAt: Double? {
+        lock.withLock { frameReceivedAt }
+    }
+
+    func updateGeneration(_ newGeneration: UInt64) {
+        lock.withLock {
+            guard generation != newGeneration else { return }
+            generation = newGeneration
+            frameReceivedAt = nil
+        }
+    }
+
+    func record(frameReceivedAt: Double, generation frameGeneration: UInt64) {
+        lock.withLock {
+            guard frameGeneration == generation,
+                  self.frameReceivedAt.map({ frameReceivedAt >= $0 }) ?? true else { return }
+            self.frameReceivedAt = frameReceivedAt
+        }
+    }
+}
+
 final class InputPipelineStatus: ObservableObject {
     private let deliverOnMain: (@escaping () -> Void) -> Void
+    private let frameTelemetry = InputFrameTelemetry()
     @Published private(set) var frameworkAvailable: Bool?
     @Published private(set) var deviceAvailable: Bool?
     @Published private(set) var touchMonitor: TouchMonitorRuntimeState = .stopped
     @Published private(set) var eventTap: MouseButtonEventTapStatus = .stopped
     @Published private(set) var generation: UInt64 = 0
     @Published private(set) var lastFailureReason: String?
-    @Published private(set) var lastFrameReceivedAt: Double?
+
+    var lastFrameReceivedAt: Double? { frameTelemetry.lastFrameReceivedAt }
 
     init(deliverOnMain: @escaping (@escaping () -> Void) -> Void = { work in
         if Thread.isMainThread { work() } else { DispatchQueue.main.async(execute: work) }
@@ -41,6 +69,21 @@ final class InputPipelineStatus: ObservableObject {
         frameGeneration: UInt64? = nil,
         sourceGeneration: UInt64? = nil
     ) {
+        if let generation {
+            frameTelemetry.updateGeneration(generation)
+        }
+        if let frameReceivedAt, let frameGeneration {
+            frameTelemetry.record(frameReceivedAt: frameReceivedAt, generation: frameGeneration)
+        }
+
+        let hasPublishedUpdate = frameworkAvailable != nil ||
+            deviceAvailable != nil ||
+            touchMonitor != nil ||
+            eventTap != nil ||
+            generation != nil ||
+            failure != nil
+        guard hasPublishedUpdate else { return }
+
         let apply = { [weak self] in
             guard let self else { return }
             if let generation {
@@ -49,7 +92,6 @@ final class InputPipelineStatus: ObservableObject {
                     self.deviceAvailable = nil
                     self.touchMonitor = .stopped
                     self.lastFailureReason = nil
-                    self.lastFrameReceivedAt = nil
                 }
                 self.generation = generation
             }
@@ -61,11 +103,6 @@ final class InputPipelineStatus: ObservableObject {
                 if let failure { self.lastFailureReason = String(failure.prefix(160)) }
             }
             if let eventTap { self.eventTap = eventTap }
-            if let frameReceivedAt,
-               let frameGeneration,
-               frameGeneration == self.generation {
-                self.lastFrameReceivedAt = frameReceivedAt
-            }
         }
         deliverOnMain(apply)
     }
@@ -397,6 +434,7 @@ final class ProductionInputPipeline: InputPipelineInstance {
     private let actionHandler: (RecognizedGesture) -> Void
     private let inputObserver: (NormalizedInputEvent, AppSettings) -> Void
     private let eventTapStatus: (MouseButtonEventTapStatus) -> Void
+    private let middleClickEnabled: Bool
     private let monitorFactory: InputTouchMonitorFactory
     private let eventTapFactory: InputEventTapFactory
     private let deliverAction: (@escaping () -> Void) -> Void
@@ -432,6 +470,7 @@ final class ProductionInputPipeline: InputPipelineInstance {
         self.actionHandler = actionHandler
         self.inputObserver = inputObserver
         self.eventTapStatus = eventTapStatus
+        self.middleClickEnabled = settings.middleClick.isEnabled
         self.bridge = bridge ?? MiddleClickSessionBridge(generation: generation, now: { ProcessInfo.processInfo.systemUptime })
         self.monitorFactory = monitorFactory ?? { statusHandler, middleHandler, edgeHandler in
             PhysicalTrackpadMonitor(
@@ -457,9 +496,9 @@ final class ProductionInputPipeline: InputPipelineInstance {
     }
 
     func startTouchMonitor() -> Bool {
-        guard let token = withLock({ isActive ? activeToken : nil }) else { return false }
+        guard let lifecycleMarker = withLock({ isActive ? activeToken : nil }) else { return false }
         let started = monitor.start()
-        let remainsActive = withLock { isActive && activeToken == token }
+        let remainsActive = withLock { isActive && activeToken == lifecycleMarker }
         if !remainsActive { monitor.stop() }
         return started && remainsActive
     }
@@ -509,37 +548,40 @@ final class ProductionInputPipeline: InputPipelineInstance {
     }
 
     func receiveMiddleClick(_ update: MiddleClickInputUpdate) {
-        let result = withLock { () -> (receivedAt: Double, deliveryToken: UInt64?)? in
+        let result = withLock { () -> (receivedAt: Double, deliveryMarker: UInt64?)? in
             guard isActive else { return nil }
-            let updateMetadata: (generation: UInt64, sequence: UInt64)
+            let updateMetadata: (generation: UInt64, sequence: UInt64, receivedAt: Double)
             switch update {
-            case .frame(let generation, let sequence, _, _, _),
-                 .empty(let generation, let sequence, _, _),
-                 .cancel(let generation, let sequence, _, _):
-                updateMetadata = (generation, sequence)
+            case .frame(let generation, let sequence, _, let receivedAt, _),
+                 .empty(let generation, let sequence, _, let receivedAt),
+                 .cancel(let generation, let sequence, let receivedAt, _):
+                updateMetadata = (generation, sequence, receivedAt)
             }
             guard updateMetadata.generation == generation,
                   updateMetadata.sequence > lastAcceptedMiddleClickSequence else { return nil }
             lastAcceptedMiddleClickSequence = updateMetadata.sequence
+            guard middleClickEnabled else {
+                return (updateMetadata.receivedAt, nil)
+            }
             let output = middleRecognizer.process(update)
             bridge.applyTouchUpdate(output)
-            let token: UInt64?
+            let deliveryMarker: UInt64?
             if output.tapCandidate,
                let sessionID = output.sessionID,
                bridge.claimTap(sessionID: sessionID, generation: generation) {
-                token = activeToken
+                deliveryMarker = activeToken
             } else {
-                token = nil
+                deliveryMarker = nil
             }
-            return (output.receivedAt, token)
+            return (output.receivedAt, deliveryMarker)
         }
         guard let result else { return }
         status.update(frameReceivedAt: result.receivedAt, frameGeneration: generation)
-        guard let token = result.deliveryToken else { return }
+        guard let deliveryMarker = result.deliveryMarker else { return }
         deliverAction { [weak self] in
             guard let self else { return }
             // This token check is the action-delivery linearization point.
-            let shouldDeliver = self.withLock { self.isActive && self.activeToken == token }
+            let shouldDeliver = self.withLock { self.isActive && self.activeToken == deliveryMarker }
             if shouldDeliver { self.actionHandler(.middleClickTap) }
         }
     }

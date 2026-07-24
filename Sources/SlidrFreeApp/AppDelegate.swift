@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var gestureDispatchRouter = GestureDispatchRouter(preview: gestureTestController)
     private var menuBarController: MenuBarController?
     private var settingsWindowController: SettingsWindowController?
+    private var appStateSubscriptions: AppStateSubscriptions?
     private var cancellables = Set<AnyCancellable>()
     private let systemControl = SystemControl()
     private let terminationWaiter = PipelineTerminationWaiter(timeout: 2)
@@ -46,18 +47,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.updateInputPipeline(refreshPermission: false)
         }
 
-        settingsStore.$settings.sink { [weak self] _ in
-            self?.refreshHealthPresentation()
-            self?.updateInputPipeline(refreshPermission: false)
-        }.store(in: &cancellables)
-
-        permissionManager.$snapshot.dropFirst().sink { [weak self] _ in
-            if self?.permissionManager.snapshot.accessibility != .granted {
-                self?.gestureTestController.stop()
+        appStateSubscriptions = AppStateSubscriptions(
+            settingsPublisher: settingsStore.$settings.eraseToAnyPublisher(),
+            permissionPublisher: permissionManager.$snapshot.eraseToAnyPublisher(),
+            onSettings: { [weak self] settings in
+                guard let self else { return }
+                let permission = self.permissionManager.snapshot
+                self.refreshHealthPresentation(settings: settings, permission: permission)
+                self.updateInputPipeline(
+                    settings: settings,
+                    permission: permission.accessibility,
+                    refreshPermission: false
+                )
+            },
+            onPermission: { [weak self] permission in
+                guard let self else { return }
+                if permission.accessibility != .granted {
+                    self.gestureTestController.stop()
+                }
+                let settings = self.settingsStore.settings
+                self.refreshHealthPresentation(settings: settings, permission: permission)
+                self.updateInputPipeline(
+                    settings: settings,
+                    permission: permission.accessibility,
+                    refreshPermission: false
+                )
             }
-            self?.refreshHealthPresentation()
-            self?.updateInputPipeline(refreshPermission: false)
-        }.store(in: &cancellables)
+        )
 
         pipelineStatus.objectWillChange.sink { [weak self] _ in
             DispatchQueue.main.async { self?.refreshHealthPresentation() }
@@ -92,11 +108,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func updateInputPipeline(refreshPermission: Bool) {
-        let snapshot = refreshPermission ? permissionManager.currentSnapshot() : permissionManager.snapshot
+    private func updateInputPipeline(
+        settings: AppSettings? = nil,
+        permission: PermissionState? = nil,
+        refreshPermission: Bool
+    ) {
+        let permission = permission ?? (
+            refreshPermission
+                ? permissionManager.currentSnapshot().accessibility
+                : permissionManager.snapshot.accessibility
+        )
         pipelineCoordinator.update(
-            settings: settingsStore.settings,
-            permission: snapshot.accessibility,
+            settings: settings ?? settingsStore.settings,
+            permission: permission,
             previewMode: gestureTestController.isTesting
         )
     }
@@ -106,11 +130,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         actions.forEach(execute(action:))
     }
 
-    private func refreshHealthPresentation() {
-        menuBarController?.refresh()
+    private func refreshHealthPresentation(
+        settings: AppSettings? = nil,
+        permission: PermissionSnapshot? = nil
+    ) {
+        let settings = settings ?? settingsStore.settings
+        let permission = permission ?? permissionManager.snapshot
+        menuBarController?.refresh(settings: settings, permission: permission)
         let health = healthResolver.resolve(
-            settings: settingsStore.settings,
-            permission: permissionManager.snapshot,
+            settings: settings,
+            permission: permission,
             pipeline: pipelineStatus
         )
         defer { lastAnnouncedHealth = health }
@@ -126,12 +155,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func execute(action: SystemAction) {
+        if case .toggleApplication(let binding) = action {
+            systemControl.activateOrMinimizeApplication(binding) { result in
+                guard case .success = result else { return }
+                NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
+            }
+            return
+        }
+
         let result: SystemActionResult
         switch action {
         case .adjustVolume(let delta): result = systemControl.adjustVolume(delta: delta)
         case .adjustBrightness(let delta): result = systemControl.adjustBrightness(delta: delta)
         case .switchBrowserTab(let direction): result = systemControl.switchBrowserTab(direction: direction)
-        case .toggleApplication(let binding): result = systemControl.activateOrMinimizeApplication(binding)
+        case .toggleApplication: return
         case .middleClick: result = systemControl.middleClick()
         }
         guard case .success = result else { return }
@@ -139,7 +176,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .adjustVolume, .adjustBrightness, .switchBrowserTab:
             NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
         case .toggleApplication:
-            NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
+            break
         case .middleClick:
             break
         }
