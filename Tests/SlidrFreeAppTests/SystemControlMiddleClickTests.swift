@@ -8,6 +8,16 @@ final class SystemControlMiddleClickTests: XCTestCase {
         XCTAssertEqual(ApplicationWindowController.action(forIsMinimized: true), .restore)
     }
 
+    func testWindowTogglePolicyStopsStartingNewMessagesAfterBudget() {
+        let policy = ApplicationWindowTogglePolicy(
+            perMessageTimeout: 0.2,
+            operationBudget: 0.75
+        )
+
+        XCTAssertTrue(policy.hasTimeRemaining(startedAt: 1, now: 1.74))
+        XCTAssertFalse(policy.hasTimeRemaining(startedAt: 1, now: 1.75))
+    }
+
     func testMiddleClickDelegatesToEmitterAndReturnsItsResult() {
         let emitter = MiddleClickEmitterSpy(result: .failed("test failure"))
         let control = SystemControl(middleClickEmitter: emitter)
@@ -27,7 +37,7 @@ final class SystemControlMiddleClickTests: XCTestCase {
             applicationOpener: { url in opened.append(url); return true }
         )
 
-        XCTAssertEqual(control.activateOrMinimizeApplication(appBinding()), .success)
+        XCTAssertEqual(result(from: control, binding: appBinding()), .success)
         XCTAssertEqual(opened, [resolved])
     }
 
@@ -39,7 +49,7 @@ final class SystemControlMiddleClickTests: XCTestCase {
             applicationOpener: { url in opened.append(url); return true }
         )
 
-        XCTAssertEqual(control.activateOrMinimizeApplication(appBinding()), .success)
+        XCTAssertEqual(result(from: control, binding: appBinding()), .success)
         XCTAssertEqual(opened, [fallback])
     }
 
@@ -52,7 +62,7 @@ final class SystemControlMiddleClickTests: XCTestCase {
             applicationOpener: { url in opened.append(url); return url == fallback }
         )
 
-        XCTAssertEqual(control.activateOrMinimizeApplication(appBinding()), .success)
+        XCTAssertEqual(result(from: control, binding: appBinding()), .success)
         XCTAssertEqual(opened, [resolved, fallback])
     }
 
@@ -63,7 +73,7 @@ final class SystemControlMiddleClickTests: XCTestCase {
         )
 
         XCTAssertEqual(
-            control.activateOrMinimizeApplication(appBinding()),
+            result(from: control, binding: appBinding()),
             .failed("Configured application could not be opened")
         )
     }
@@ -81,7 +91,7 @@ final class SystemControlMiddleClickTests: XCTestCase {
         )
 
         XCTAssertEqual(
-            control.activateOrMinimizeApplication(binding),
+            result(from: control, binding: binding),
             .unsupported("Configured application is unavailable")
         )
         XCTAssertTrue(opened.isEmpty)
@@ -100,7 +110,7 @@ final class SystemControlMiddleClickTests: XCTestCase {
         )
 
         XCTAssertEqual(
-            control.activateOrMinimizeApplication(binding),
+            result(from: control, binding: binding),
             .unsupported("Configured application is unavailable")
         )
         XCTAssertTrue(opened.isEmpty)
@@ -125,10 +135,36 @@ final class SystemControlMiddleClickTests: XCTestCase {
             applicationOpener: { url in opened.append(url); return true }
         )
 
-        XCTAssertEqual(control.activateOrMinimizeApplication(appBinding()), .success)
+        XCTAssertEqual(result(from: control, binding: appBinding()), .success)
         XCTAssertEqual(minimizedProcessIdentifiers, [42])
         XCTAssertEqual(resolverCallCount, 0)
         XCTAssertTrue(opened.isEmpty)
+    }
+
+    func testFrontmostWindowToggleRunsOffMainAndCompletesOnMain() {
+        let togglerRan = expectation(description: "window toggler ran")
+        let completed = expectation(description: "completion ran")
+        let control = SystemControl(
+            frontmostApplicationProvider: {
+                FrontmostApplicationIdentity(
+                    bundleIdentifier: "com.example.app",
+                    processIdentifier: 42
+                )
+            },
+            applicationWindowToggler: { _ in
+                XCTAssertFalse(Thread.isMainThread)
+                togglerRan.fulfill()
+                return true
+            }
+        )
+
+        control.activateOrMinimizeApplication(appBinding()) { result in
+            XCTAssertTrue(Thread.isMainThread)
+            XCTAssertEqual(result, .success)
+            completed.fulfill()
+        }
+
+        wait(for: [togglerRan, completed], timeout: 1)
     }
 
     func testWindowToggleFailureDoesNotFallBackToOpeningFrontmostApplication() {
@@ -146,7 +182,7 @@ final class SystemControlMiddleClickTests: XCTestCase {
         )
 
         XCTAssertEqual(
-            control.activateOrMinimizeApplication(appBinding()),
+            result(from: control, binding: appBinding()),
             .failed("Configured application window could not be toggled")
         )
         XCTAssertTrue(opened.isEmpty)
@@ -171,7 +207,7 @@ final class SystemControlMiddleClickTests: XCTestCase {
             applicationOpener: { url in opened.append(url); return true }
         )
 
-        XCTAssertEqual(control.activateOrMinimizeApplication(appBinding()), .success)
+        XCTAssertEqual(result(from: control, binding: appBinding()), .success)
         XCTAssertTrue(minimizedProcessIdentifiers.isEmpty)
         XCTAssertEqual(opened, [resolved])
     }
@@ -182,6 +218,20 @@ final class SystemControlMiddleClickTests: XCTestCase {
             displayName: "Example",
             applicationPath: "/Applications/Example.app"
         )
+    }
+
+    private func result(
+        from control: SystemControl,
+        binding: ApplicationBinding
+    ) -> SystemActionResult {
+        let completed = expectation(description: "application action completed")
+        var result: SystemActionResult?
+        control.activateOrMinimizeApplication(binding) {
+            result = $0
+            completed.fulfill()
+        }
+        wait(for: [completed], timeout: 1)
+        return result ?? .failed("missing completion")
     }
 }
 

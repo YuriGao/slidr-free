@@ -26,6 +26,75 @@ final class ProductionInputPipelineTests: XCTestCase {
         XCTAssertEqual(actions, [.middleClickTap])
     }
 
+    func testDisabledMiddleClickCannotEmitTapWhileEdgePipelineRemainsActive() {
+        let monitor = PipelineMonitorSpy()
+        let status = InputPipelineStatus()
+        status.update(generation: 7)
+        var actions: [RecognizedGesture] = []
+        var settings = AppSettings.default
+        settings.middleClick.isEnabled = false
+        settings.middleClick.tapEnabled = true
+        settings.middleClick.fingerCount = 4
+        let pipeline = makePipeline(
+            settings: settings,
+            monitor: monitor,
+            status: status,
+            actionHandler: { actions.append($0) }
+        )
+
+        pipeline.receiveMiddleClick(.frame(
+            generation: 7,
+            sequence: 1,
+            timestamp: 1.00,
+            receivedAt: 1.00,
+            touches: touches(count: 4)
+        ))
+        pipeline.receiveMiddleClick(.empty(
+            generation: 7,
+            sequence: 2,
+            timestamp: 1.10,
+            receivedAt: 1.10
+        ))
+
+        XCTAssertTrue(actions.isEmpty)
+        XCTAssertEqual(status.lastFrameReceivedAt, 1.10)
+    }
+
+    func testDisabledMiddleClickTelemetryRespectsSequenceAndQuiesce() {
+        let status = InputPipelineStatus()
+        status.update(generation: 7)
+        var settings = AppSettings.default
+        settings.middleClick.isEnabled = false
+        let pipeline = makePipeline(
+            settings: settings,
+            monitor: PipelineMonitorSpy(),
+            status: status
+        )
+
+        pipeline.receiveMiddleClick(.empty(
+            generation: 7,
+            sequence: 2,
+            timestamp: 1,
+            receivedAt: 1
+        ))
+        pipeline.receiveMiddleClick(.empty(
+            generation: 7,
+            sequence: 1,
+            timestamp: 2,
+            receivedAt: 2
+        ))
+        XCTAssertEqual(status.lastFrameReceivedAt, 1)
+
+        pipeline.quiesce {}
+        pipeline.receiveMiddleClick(.empty(
+            generation: 7,
+            sequence: 3,
+            timestamp: 3,
+            receivedAt: 3
+        ))
+        XCTAssertEqual(status.lastFrameReceivedAt, 1)
+    }
+
     func testSequentialFourFingerPlacementQualifiesPhysicalClick() {
         let monitor = PipelineMonitorSpy()
         var tap: PipelineEventTapSpy?
@@ -278,6 +347,7 @@ final class ProductionInputPipelineTests: XCTestCase {
         bridge: MiddleClickSessionBridge = MiddleClickSessionBridge(generation: 7, now: { 1.1 }),
         settings: AppSettings = enabledSettingsForProduction(fingerCount: 3),
         monitor: PipelineMonitorSpy,
+        status: InputPipelineStatus = InputPipelineStatus(),
         emitter: ReleaseEmitterSpy = ReleaseEmitterSpy(),
         eventTapFactory: @escaping (MouseButtonEventReducer) -> any InputEventTapLifecycle = { PipelineEventTapSpy(reducer: $0) },
         deliverAction: @escaping (@escaping () -> Void) -> Void = { $0() },
@@ -286,7 +356,7 @@ final class ProductionInputPipelineTests: XCTestCase {
         ProductionInputPipeline(
             generation: 7,
             settings: settings,
-            status: InputPipelineStatus(),
+            status: status,
             bridge: bridge,
             releaseEmitter: emitter,
             actionHandler: actionHandler,

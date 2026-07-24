@@ -27,6 +27,7 @@ public struct ActionDispatcher: Sendable {
             guard let binding = settings.cornerAppBindings[corner] else { return [] }
             return [.toggleApplication(binding)]
         case .middleClickTap:
+            guard settings.middleClick.isEnabled, settings.middleClick.tapEnabled else { return [] }
             return [.middleClick]
         }
     }

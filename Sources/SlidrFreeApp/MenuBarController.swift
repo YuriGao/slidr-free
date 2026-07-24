@@ -1,6 +1,22 @@
 import AppKit
 import SlidrFreeCore
 
+struct MenuBarPresentation: Equatable {
+    let health: AppHealthState
+    let isAppEnabled: Bool
+    let canToggle: Bool
+}
+
+struct MenuBarRefreshGate {
+    private var previous: MenuBarPresentation?
+
+    mutating func shouldRefresh(_ presentation: MenuBarPresentation) -> Bool {
+        guard presentation != previous else { return false }
+        previous = presentation
+        return true
+    }
+}
+
 final class MenuBarController: NSObject {
     private let statusItem: NSStatusItem
     private let settingsStore: SettingsStore
@@ -9,6 +25,7 @@ final class MenuBarController: NSObject {
     private let showSettings: () -> Void
     private let healthResolver = AppHealthResolver()
     private var currentHealth: AppHealthState = .starting
+    private var refreshGate = MenuBarRefreshGate()
 
     init(
         settingsStore: SettingsStore,
@@ -25,12 +42,21 @@ final class MenuBarController: NSObject {
         refresh()
     }
 
-    func refresh() {
-        currentHealth = healthResolver.resolve(
-            settings: settingsStore.settings,
-            permission: permissionManager.snapshot,
+    func refresh(settings: AppSettings? = nil, permission: PermissionSnapshot? = nil) {
+        let settings = settings ?? settingsStore.settings
+        let permission = permission ?? permissionManager.snapshot
+        let health = healthResolver.resolve(
+            settings: settings,
+            permission: permission,
             pipeline: pipelineStatus
         )
+        let presentation = MenuBarPresentation(
+            health: health,
+            isAppEnabled: settings.isAppEnabled,
+            canToggle: settings.experience.onboardingVersion >= ExperienceSettings.currentOnboardingVersion
+        )
+        guard refreshGate.shouldRefresh(presentation) else { return }
+        currentHealth = health
         updateIcon(for: currentHealth)
 
         let menu = NSMenu()
@@ -50,11 +76,11 @@ final class MenuBarController: NSObject {
         }
         menu.addItem(NSMenuItem.separator())
 
-        let enabledTitle = settingsStore.settings.isAppEnabled
+        let enabledTitle = settings.isAppEnabled
             ? NSLocalizedString("pause_app", comment: "")
             : NSLocalizedString("enable_app", comment: "")
         let toggle = NSMenuItem(title: enabledTitle, action: #selector(toggleEnabled), keyEquivalent: "")
-        toggle.isEnabled = settingsStore.settings.experience.onboardingVersion >= ExperienceSettings.currentOnboardingVersion
+        toggle.isEnabled = presentation.canToggle
         menu.addItem(toggle)
         menu.addItem(NSMenuItem(title: NSLocalizedString("settings", comment: ""), action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(NSMenuItem.separator())

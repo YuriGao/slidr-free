@@ -26,7 +26,9 @@ final class GestureTestControllerTests: XCTestCase {
         XCTAssertTrue(router.actions(for: .middleClickTap, settings: .default).isEmpty)
         XCTAssertTrue(router.actions(for: .volume(direction: .increase, magnitude: 1), settings: .default).isEmpty)
         controller.stop()
-        XCTAssertEqual(router.actions(for: .middleClickTap, settings: .default), [.middleClick])
+        var enabledSettings = AppSettings.default
+        enabledSettings.middleClick.isEnabled = true
+        XCTAssertEqual(router.actions(for: .middleClickTap, settings: enabledSettings), [.middleClick])
     }
 
     func testCornerPreviewConsumesDoubleTapWithoutOpeningApplication() {

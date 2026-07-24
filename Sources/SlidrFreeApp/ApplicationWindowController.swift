@@ -12,19 +12,25 @@ enum ApplicationWindowToggleAction: Equatable {
 }
 
 enum ApplicationWindowController {
+    private static let policy = ApplicationWindowTogglePolicy(
+        perMessageTimeout: 0.20,
+        operationBudget: 0.75
+    )
+
     static func toggleFrontWindow(processIdentifier: pid_t) -> Bool {
         let application = AXUIElementCreateApplication(processIdentifier)
-        if let focusedWindow = elementAttribute(kAXFocusedWindowAttribute, from: application),
-           toggle(focusedWindow) {
+        let operation = AXWindowToggleOperation(policy: policy)
+        if let focusedWindow = operation.elementAttribute(kAXFocusedWindowAttribute, from: application),
+           operation.toggle(focusedWindow) {
             return true
         }
-        if let mainWindow = elementAttribute(kAXMainWindowAttribute, from: application),
-           toggle(mainWindow) {
+        if let mainWindow = operation.elementAttribute(kAXMainWindowAttribute, from: application),
+           operation.toggle(mainWindow) {
             return true
         }
-        for window in elementArrayAttribute(kAXWindowsAttribute, from: application)
-        where boolAttribute(kAXMinimizedAttribute, from: window) == true {
-            if restore(window) { return true }
+        for window in operation.elementArrayAttribute(kAXWindowsAttribute, from: application)
+        where operation.boolAttribute(kAXMinimizedAttribute, from: window) == true {
+            if operation.restore(window) { return true }
         }
         return false
     }
@@ -33,35 +39,57 @@ enum ApplicationWindowController {
         isMinimized ? .restore : .minimize
     }
 
-    private static func toggle(_ window: AXUIElement) -> Bool {
-        switch action(forIsMinimized: boolAttribute(kAXMinimizedAttribute, from: window) ?? false) {
+}
+
+struct ApplicationWindowTogglePolicy {
+    let perMessageTimeout: Float
+    let operationBudget: TimeInterval
+
+    func hasTimeRemaining(startedAt: TimeInterval, now: TimeInterval) -> Bool {
+        now - startedAt < operationBudget
+    }
+}
+
+private final class AXWindowToggleOperation {
+    private let policy: ApplicationWindowTogglePolicy
+    private let startedAt: TimeInterval
+    private let now: () -> TimeInterval
+
+    init(
+        policy: ApplicationWindowTogglePolicy,
+        now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
+    ) {
+        self.policy = policy
+        self.now = now
+        self.startedAt = now()
+    }
+
+    func toggle(_ window: AXUIElement) -> Bool {
+        switch ApplicationWindowController.action(
+            forIsMinimized: boolAttribute(kAXMinimizedAttribute, from: window) ?? false
+        ) {
         case .restore:
             return restore(window)
 
         case .minimize:
             if let button = elementAttribute(kAXMinimizeButtonAttribute, from: window),
-               AXUIElementPerformAction(button, kAXPressAction as CFString) == .success {
+               performAction(kAXPressAction, on: button) {
                 return true
             }
-            return AXUIElementSetAttributeValue(
-                window,
-                kAXMinimizedAttribute as CFString,
-                kCFBooleanTrue
-            ) == .success
+            return setAttribute(kAXMinimizedAttribute, value: kCFBooleanTrue, on: window)
         }
     }
 
-    private static func restore(_ window: AXUIElement) -> Bool {
-        guard AXUIElementSetAttributeValue(
-            window,
-            kAXMinimizedAttribute as CFString,
-            kCFBooleanFalse
-        ) == .success else { return false }
-        _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+    func restore(_ window: AXUIElement) -> Bool {
+        guard setAttribute(kAXMinimizedAttribute, value: kCFBooleanFalse, on: window) else {
+            return false
+        }
+        _ = performAction(kAXRaiseAction, on: window)
         return true
     }
 
-    private static func elementAttribute(_ attribute: String, from element: AXUIElement) -> AXUIElement? {
+    func elementAttribute(_ attribute: String, from element: AXUIElement) -> AXUIElement? {
+        guard prepare(element) else { return nil }
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success,
               let value,
@@ -69,7 +97,8 @@ enum ApplicationWindowController {
         return (value as! AXUIElement)
     }
 
-    private static func boolAttribute(_ attribute: String, from element: AXUIElement) -> Bool? {
+    func boolAttribute(_ attribute: String, from element: AXUIElement) -> Bool? {
+        guard prepare(element) else { return nil }
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success,
               let value,
@@ -77,11 +106,27 @@ enum ApplicationWindowController {
         return CFBooleanGetValue((value as! CFBoolean))
     }
 
-    private static func elementArrayAttribute(_ attribute: String, from element: AXUIElement) -> [AXUIElement] {
+    func elementArrayAttribute(_ attribute: String, from element: AXUIElement) -> [AXUIElement] {
+        guard prepare(element) else { return [] }
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success,
               let value,
               CFGetTypeID(value) == CFArrayGetTypeID() else { return [] }
         return (value as? [AXUIElement]) ?? []
+    }
+
+    private func setAttribute(_ attribute: String, value: CFTypeRef, on element: AXUIElement) -> Bool {
+        guard prepare(element) else { return false }
+        return AXUIElementSetAttributeValue(element, attribute as CFString, value) == .success
+    }
+
+    private func performAction(_ action: String, on element: AXUIElement) -> Bool {
+        guard prepare(element) else { return false }
+        return AXUIElementPerformAction(element, action as CFString) == .success
+    }
+
+    private func prepare(_ element: AXUIElement) -> Bool {
+        guard policy.hasTimeRemaining(startedAt: startedAt, now: now()) else { return false }
+        return AXUIElementSetMessagingTimeout(element, policy.perMessageTimeout) == .success
     }
 }

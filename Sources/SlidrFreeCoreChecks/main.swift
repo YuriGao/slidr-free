@@ -387,8 +387,15 @@ private func testActionDispatcher() throws {
     )
     try checkEqual(
         dispatcher.actions(for: .middleClickTap),
+        [],
+        "Disabled middle-click should not dispatch a synthesized click"
+    )
+    var middleClickSettings = AppSettings.default
+    middleClickSettings.middleClick.isEnabled = true
+    try checkEqual(
+        ActionDispatcher(settings: middleClickSettings).actions(for: .middleClickTap),
         [.middleClick],
-        "Middle-click Tap should dispatch one middle click"
+        "Enabled middle-click Tap should dispatch one middle click"
     )
 
     let binding = ApplicationBinding(

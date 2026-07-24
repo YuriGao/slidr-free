@@ -154,7 +154,7 @@ struct SettingsView: View {
                     HStack {
                         Text(NSLocalizedString("recent_touch", comment: ""))
                         Spacer()
-                        Text(lastFrameText).foregroundStyle(.secondary)
+                        RecentTouchText(pipelineStatus: pipelineStatus)
                     }
                 }.padding(8)
             }
@@ -187,7 +187,7 @@ struct SettingsView: View {
             }
             labeledSlider(
                 NSLocalizedString("edge_width", comment: ""),
-                value: binding(\.gesture.edgeWidthPercent),
+                keyPath: \.gesture.edgeWidthPercent,
                 range: GestureSettings.edgeWidthPercentRange,
                 isPercent: true
             )
@@ -195,19 +195,19 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     labeledSlider(
                         NSLocalizedString("left_edge_step_distance", comment: ""),
-                        value: binding(\.gesture.leftPhysicalStepDistance),
+                        keyPath: \.gesture.leftPhysicalStepDistance,
                         range: GestureSettings.physicalStepDistanceRange,
                         isPercent: true
                     )
                     labeledSlider(
                         NSLocalizedString("right_edge_step_distance", comment: ""),
-                        value: binding(\.gesture.rightPhysicalStepDistance),
+                        keyPath: \.gesture.rightPhysicalStepDistance,
                         range: GestureSettings.physicalStepDistanceRange,
                         isPercent: true
                     )
                     labeledSlider(
                         NSLocalizedString("top_edge_step_distance", comment: ""),
-                        value: binding(\.gesture.topPhysicalStepDistance),
+                        keyPath: \.gesture.topPhysicalStepDistance,
                         range: GestureSettings.physicalStepDistanceRange,
                         isPercent: true
                     )
@@ -238,7 +238,7 @@ struct SettingsView: View {
             }
             labeledSlider(
                 NSLocalizedString("corner_trigger_percent", comment: ""),
-                value: binding(\.gesture.cornerTriggerPercent),
+                keyPath: \.gesture.cornerTriggerPercent,
                 range: GestureSettings.cornerTriggerPercentRange,
                 isPercent: true
             )
@@ -247,7 +247,7 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
             labeledSlider(
                 NSLocalizedString("corner_movement_tolerance", comment: ""),
-                value: binding(\.gesture.cornerMovementTolerancePercent),
+                keyPath: \.gesture.cornerMovementTolerancePercent,
                 range: GestureSettings.cornerMovementTolerancePercentRange,
                 isPercent: true,
                 step: 0.01
@@ -257,7 +257,7 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
             labeledSlider(
                 NSLocalizedString("corner_double_tap_interval", comment: ""),
-                value: binding(\.gesture.cornerDoubleTapIntervalSeconds),
+                keyPath: \.gesture.cornerDoubleTapIntervalSeconds,
                 range: GestureSettings.cornerDoubleTapIntervalRange,
                 isPercent: false,
                 step: 0.05
@@ -306,7 +306,13 @@ struct SettingsView: View {
                     diagnosticRow("diagnostic_device", localizedOptional(pipelineStatus.deviceAvailable))
                     diagnosticRow("touch_monitor_status", localizedTouch(pipelineStatus.touchMonitor))
                     diagnosticRow("event_tap_status", eventTapDisplay)
-                    diagnosticRow("recent_touch", lastFrameText)
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(NSLocalizedString("recent_touch", comment: ""))
+                        Spacer()
+                        RecentTouchText(pipelineStatus: pipelineStatus)
+                            .multilineTextAlignment(.trailing)
+                            .textSelection(.enabled)
+                    }
                     diagnosticRow("diagnostic_last_failure", pipelineStatus.lastFailureReason ?? NSLocalizedString("none", comment: ""))
                     diagnosticRow("diagnostic_version", versionText)
                     diagnosticRow("diagnostic_system", systemText)
@@ -474,19 +480,21 @@ struct SettingsView: View {
 
     private func labeledSlider(
         _ title: String,
-        value: Binding<Double>,
+        keyPath: WritableKeyPath<AppSettings, Double>,
         range: ClosedRange<Double>,
         isPercent: Bool,
         step: Double = 0.01
     ) -> some View {
-        VStack(alignment: .leading) {
-            HStack {
-                Text(title)
-                Spacer()
-                Text(sliderValue(value.wrappedValue, isPercent: isPercent))
-                    .foregroundStyle(.secondary)
-            }
-            Slider(value: value, in: range, step: step)
+        DeferredSettingsSlider(
+            title: title,
+            value: store.settings[keyPath: keyPath],
+            range: range,
+            step: step,
+            valueText: { sliderValue($0, isPercent: isPercent) }
+        ) { value in
+            var updated = store.settings
+            updated[keyPath: keyPath] = value
+            store.save(updated)
         }
     }
 
@@ -521,10 +529,6 @@ struct SettingsView: View {
         case .degraded: return NSLocalizedString("pipeline_degraded", comment: "")
         }
     }
-    private var lastFrameText: String {
-        guard let age = pipelineStatus.lastFrameAge else { return NSLocalizedString("no_recent_touch", comment: "") }
-        return String(format: NSLocalizedString("seconds_ago", comment: ""), Int(age))
-    }
     private var versionText: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "local"
@@ -552,6 +556,123 @@ struct SettingsView: View {
             "version=\(versionText)",
             "system=\(systemText)"
         ].joined(separator: "\n")
+    }
+}
+
+struct DeferredSliderValue {
+    private(set) var draft: Double
+    private var persisted: Double
+    private var isEditing = false
+
+    init(persisted: Double) {
+        self.draft = persisted
+        self.persisted = persisted
+    }
+
+    mutating func beginEditing() {
+        isEditing = true
+    }
+
+    mutating func updateDraft(_ value: Double) {
+        draft = value
+    }
+
+    mutating func finishEditing() -> Double? {
+        guard isEditing else { return nil }
+        isEditing = false
+        guard draft != persisted else { return nil }
+        persisted = draft
+        return draft
+    }
+
+    mutating func synchronizePersistedValue(_ value: Double) {
+        persisted = value
+        guard !isEditing else { return }
+        draft = value
+    }
+}
+
+private struct DeferredSettingsSlider: View {
+    let title: String
+    let persistedValue: Double
+    let range: ClosedRange<Double>
+    let step: Double
+    let valueText: (Double) -> String
+    let onCommit: (Double) -> Void
+    @State private var value: DeferredSliderValue
+
+    init(
+        title: String,
+        value: Double,
+        range: ClosedRange<Double>,
+        step: Double,
+        valueText: @escaping (Double) -> String,
+        onCommit: @escaping (Double) -> Void
+    ) {
+        self.title = title
+        self.persistedValue = value
+        self.range = range
+        self.step = step
+        self.valueText = valueText
+        self.onCommit = onCommit
+        _value = State(initialValue: DeferredSliderValue(persisted: value))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading) {
+            HStack {
+                Text(title)
+                Spacer()
+                Text(valueText(value.draft))
+                    .foregroundStyle(.secondary)
+            }
+            Slider(
+                value: Binding(
+                    get: { value.draft },
+                    set: { value.updateDraft($0) }
+                ),
+                in: range,
+                step: step,
+                onEditingChanged: { editing in
+                    if editing {
+                        value.beginEditing()
+                    } else if let committed = value.finishEditing() {
+                        onCommit(committed)
+                    }
+                }
+            )
+        }
+        .onChange(of: persistedValue) { newValue in
+            value.synchronizePersistedValue(newValue)
+        }
+    }
+}
+
+enum RecentTouchDescription {
+    static func age(lastFrameReceivedAt: Double?, now: Double) -> Int? {
+        guard let lastFrameReceivedAt else { return nil }
+        return Int(max(0, now - lastFrameReceivedAt))
+    }
+}
+
+private struct RecentTouchText: View {
+    let pipelineStatus: InputPipelineStatus
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { _ in
+            Text(text)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var text: String {
+        guard let age = RecentTouchDescription.age(
+            lastFrameReceivedAt: pipelineStatus.lastFrameReceivedAt,
+            now: ProcessInfo.processInfo.systemUptime
+        ) else {
+            return NSLocalizedString("no_recent_touch", comment: "")
+        }
+        return String(format: NSLocalizedString("seconds_ago", comment: ""), age)
     }
 }
 
