@@ -283,6 +283,7 @@ public struct GestureSettings: Codable, Equatable, Sendable {
 public struct AppSettings: Codable, Equatable, Sendable {
     public var isAppEnabled: Bool
     public var launchAtLogin: Bool
+    public var browserTabWrapsAround: Bool
     public var features: FeatureToggles
     public var gesture: GestureSettings
     public var middleClick: MiddleClickSettings
@@ -301,6 +302,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case isAppEnabled
         case launchAtLogin
+        case browserTabWrapsAround
         case features
         case gesture
         case middleClick
@@ -312,6 +314,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public static let `default` = AppSettings(
         isAppEnabled: true,
         launchAtLogin: false,
+        browserTabWrapsAround: true,
         features: FeatureToggles(
             volumeEdgeGesture: true,
             brightnessEdgeGesture: true,
@@ -339,6 +342,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public static let newInstall = AppSettings(
         isAppEnabled: false,
         launchAtLogin: false,
+        browserTabWrapsAround: true,
         features: FeatureToggles(
             volumeEdgeGesture: true,
             brightnessEdgeGesture: true,
@@ -355,6 +359,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public init(
         isAppEnabled: Bool,
         launchAtLogin: Bool,
+        browserTabWrapsAround: Bool = true,
         features: FeatureToggles,
         gesture: GestureSettings,
         middleClick: MiddleClickSettings,
@@ -364,6 +369,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     ) {
         self.isAppEnabled = isAppEnabled
         self.launchAtLogin = launchAtLogin
+        self.browserTabWrapsAround = browserTabWrapsAround
         self.features = features
         self.gesture = gesture
         self.middleClick = middleClick
@@ -376,6 +382,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.isAppEnabled = try container.decode(Bool.self, forKey: .isAppEnabled)
         self.launchAtLogin = try container.decode(Bool.self, forKey: .launchAtLogin)
+        self.browserTabWrapsAround = try container.decodeIfPresent(Bool.self, forKey: .browserTabWrapsAround) ?? true
         self.features = try container.decode(FeatureToggles.self, forKey: .features)
         self.gesture = try container.decode(GestureSettings.self, forKey: .gesture)
         self.middleClick = try container.decodeIfPresent(MiddleClickSettings.self, forKey: .middleClick) ?? Self.default.middleClick

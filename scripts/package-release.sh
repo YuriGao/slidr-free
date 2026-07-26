@@ -51,6 +51,8 @@ cat > "release/Slidr-Free.app/Contents/Info.plist" <<EOF
     <string>AppIcon</string>
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Slidr Free reads the active browser tab position to optionally stop switching at the first or last tab.</string>
     <key>CFBundleLocalizations</key>
     <array>
         <string>en</string>

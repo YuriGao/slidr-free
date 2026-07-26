@@ -25,6 +25,7 @@ final class SettingsStoreMigrationTests: XCTestCase {
             middleClick: .default
         ))
         XCTAssertFalse(store.isNewInstall)
+        XCTAssertTrue(store.settings.browserTabWrapsAround)
         XCTAssertEqual(store.settings.experience.onboardingVersion, ExperienceSettings.currentOnboardingVersion)
         XCTAssertFalse(store.settings.experience.hasSeenV04Welcome)
 
@@ -45,6 +46,25 @@ final class SettingsStoreMigrationTests: XCTestCase {
         XCTAssertEqual(savedGesture["rightPhysicalStepDistance"] as? Double, 0.13)
         XCTAssertEqual(savedGesture["topPhysicalStepDistance"] as? Double, 0.13)
         XCTAssertNil(savedGesture["physicalStepDistance"])
+    }
+
+    func testBrowserTabWrapPreferencePersistsAndOldPayloadDefaultsToEnabled() throws {
+        let defaults = isolatedDefaults()
+        let legacyPayload = #"{"isAppEnabled":true,"launchAtLogin":false,"features":{"volumeEdgeGesture":true,"brightnessEdgeGesture":true,"browserTabEdgeGesture":true,"swapSides":false},"gesture":{"edgeWidthPercent":0.1,"physicalStepDistance":0.05,"physicalStepIntervalSeconds":0.08,"tabSwitchStepIntervalSeconds":0.2,"horizontalDominanceRatio":1.5}}"#.data(using: .utf8)!
+        defaults.set(legacyPayload, forKey: SettingsStore.defaultsKey)
+
+        let store = SettingsStore(defaults: defaults)
+        XCTAssertTrue(store.settings.browserTabWrapsAround)
+
+        var settings = store.settings
+        settings.browserTabWrapsAround = false
+        store.save(settings)
+
+        let reloaded = SettingsStore(defaults: defaults)
+        XCTAssertFalse(reloaded.settings.browserTabWrapsAround)
+        let savedData = try XCTUnwrap(defaults.data(forKey: SettingsStore.defaultsKey))
+        let savedRoot = try XCTUnwrap(JSONSerialization.jsonObject(with: savedData) as? [String: Any])
+        XCTAssertEqual(savedRoot["browserTabWrapsAround"] as? Bool, false)
     }
 
     func testCorruptPayloadFallsBackAndRecordsBoundedNonSensitiveDiagnostic() {

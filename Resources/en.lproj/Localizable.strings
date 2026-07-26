@@ -135,6 +135,8 @@
 "side_action_volume" = "Volume";
 "top_action_none" = "None";
 "top_action_browserTabs" = "Browser tabs";
+"browser_tab_wraps_around" = "Cycle between first and last tabs";
+"browser_tab_wraps_around_help" = "When off, sliding stops at the first or last tab. macOS may ask for permission to read the browser's current tab position.";
 "duplicate_edge_hint" = "Both side edges use the same action. This is allowed and both remain active.";
 "trackpad_mapping_diagram" = "Trackpad edge assignments and gesture directions";
 "gesture_test_title" = "Safe gesture test";

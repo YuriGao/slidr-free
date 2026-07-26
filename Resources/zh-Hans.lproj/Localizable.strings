@@ -135,6 +135,8 @@
 "side_action_volume" = "音量";
 "top_action_none" = "无";
 "top_action_browserTabs" = "浏览器标签页";
+"browser_tab_wraps_around" = "在首尾标签页之间循环切换";
+"browser_tab_wraps_around_help" = "关闭后，滑动到第一个或最后一个标签页时停止。macOS 可能会请求读取浏览器当前标签位置的权限。";
 "duplicate_edge_hint" = "左右两侧使用相同动作；这是允许的，两侧都会保持启用。";
 "trackpad_mapping_diagram" = "触控板边缘分配与手势方向";
 "gesture_test_title" = "安全手势测试";

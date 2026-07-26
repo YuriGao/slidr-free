@@ -461,10 +461,20 @@ struct SettingsView: View {
     }
 
     private var topEdgePicker: some View {
-        Picker(NSLocalizedString("top_edge", comment: ""), selection: binding(\.edgeAssignments.top)) {
-            ForEach(TopEdgeAction.allCases, id: \.self) { action in
-                Text(NSLocalizedString("top_action_\(action.rawValue)", comment: "")).tag(action)
+        VStack(alignment: .leading, spacing: 6) {
+            Picker(NSLocalizedString("top_edge", comment: ""), selection: binding(\.edgeAssignments.top)) {
+                ForEach(TopEdgeAction.allCases, id: \.self) { action in
+                    Text(NSLocalizedString("top_action_\(action.rawValue)", comment: "")).tag(action)
+                }
             }
+            Toggle(
+                NSLocalizedString("browser_tab_wraps_around", comment: ""),
+                isOn: binding(\.browserTabWrapsAround)
+            )
+            .disabled(store.settings.edgeAssignments.top != .browserTabs)
+            Text(NSLocalizedString("browser_tab_wraps_around_help", comment: ""))
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 

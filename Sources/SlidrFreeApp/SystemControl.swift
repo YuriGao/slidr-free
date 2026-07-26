@@ -7,7 +7,7 @@ import SlidrFreeCore
 public protocol SystemControlling: AnyObject {
     func adjustVolume(delta: Double) -> SystemActionResult
     func adjustBrightness(delta: Double) -> SystemActionResult
-    func switchBrowserTab(direction: BrowserTabDirection) -> SystemActionResult
+    func switchBrowserTab(direction: BrowserTabDirection, wrapsAround: Bool) -> SystemActionResult
     func activateOrMinimizeApplication(_ binding: ApplicationBinding) -> SystemActionResult
     func middleClick() -> SystemActionResult
 }
@@ -26,6 +26,8 @@ final class SystemControl: SystemControlling {
     private let applicationWindowToggler: (pid_t) -> Bool
     private let applicationURLResolver: (String) -> URL?
     private let applicationOpener: (URL) -> Bool
+    private let browserTabStateProvider: (String) -> BrowserTabState?
+    private let browserTabEventPoster: (BrowserTabDirection) -> Bool
 
     init(
         middleClickEmitter: any MiddleClickEmitting = MiddleClickEmitter(),
@@ -42,13 +44,23 @@ final class SystemControl: SystemControlling {
         applicationURLResolver: @escaping (String) -> URL? = {
             NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0)
         },
-        applicationOpener: @escaping (URL) -> Bool = { NSWorkspace.shared.open($0) }
+        applicationOpener: @escaping (URL) -> Bool = { NSWorkspace.shared.open($0) },
+        browserTabStateProvider: @escaping (String) -> BrowserTabState? = {
+            BrowserTabStateProvider.state(bundleIdentifier: $0)
+        },
+        browserTabEventPoster: @escaping (BrowserTabDirection) -> Bool = { direction in
+            guard let events = BrowserTabKeyEventFactory.events(for: direction) else { return false }
+            events.forEach { $0.post(tap: .cghidEventTap) }
+            return true
+        }
     ) {
         self.middleClickEmitter = middleClickEmitter
         self.frontmostApplicationProvider = frontmostApplicationProvider
         self.applicationWindowToggler = applicationWindowToggler
         self.applicationURLResolver = applicationURLResolver
         self.applicationOpener = applicationOpener
+        self.browserTabStateProvider = browserTabStateProvider
+        self.browserTabEventPoster = browserTabEventPoster
     }
 
     func adjustVolume(delta: Double) -> SystemActionResult {
@@ -71,21 +83,30 @@ final class SystemControl: SystemControlling {
         return .success
     }
 
-    func switchBrowserTab(direction: BrowserTabDirection) -> SystemActionResult {
-        let bundleIdentifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+    func switchBrowserTab(direction: BrowserTabDirection, wrapsAround: Bool) -> SystemActionResult {
+        let bundleIdentifier = frontmostApplicationProvider()?.bundleIdentifier
         guard BrowserTabKeyEventFactory.isSupportedBrowser(bundleIdentifier: bundleIdentifier) else {
             return .unsupported("Frontmost app is not Safari, Chrome, or Edge")
         }
 
-        guard let events = BrowserTabKeyEventFactory.events(for: direction) else {
+        if !wrapsAround {
+            guard let bundleIdentifier,
+                  let state = browserTabStateProvider(bundleIdentifier) else {
+                let message = "Browser tab boundary could not be determined"
+                logWarning(message)
+                return .failed(message)
+            }
+            guard state.permitsSwitch(direction) else {
+                return .unsupported("Browser tab is already at the boundary")
+            }
+        }
+
+        guard browserTabEventPoster(direction) else {
             let message = "Failed to create browser tab key events"
             logWarning(message)
             return .failed(message)
         }
 
-        for event in events {
-            event.post(tap: .cghidEventTap)
-        }
         return .success
     }
 

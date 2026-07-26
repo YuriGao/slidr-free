@@ -17,7 +17,7 @@ This project is independent and non-affiliated with any similarly named commerci
 - **Direct edge assignments** — Choose Brightness, Volume, or None independently for each side; choose Browser Tabs or None for the top edge.
 - **Independent trigger distances** — Configure the physical movement required per step separately for the left, right, and top edges; lower values are more sensitive.
 - **Four-corner app shortcuts** — Bind a separate macOS app to each corner, then double-tap to open or activate it. While that app remains frontmost, later double taps toggle its focused window between minimized and restored.
-- **Top-edge browser tab gesture** — Slide horizontally along the physical trackpad top edge to switch Safari, Google Chrome, and Microsoft Edge tabs, with haptic feedback for each switch.
+- **Top-edge browser tab gesture** — Slide horizontally along the physical trackpad top edge to switch Safari, Google Chrome, and Microsoft Edge tabs, with haptic feedback for each switch; choose whether switching cycles between the first and last tabs or stops at the boundary.
 - **Edge-origin gate** — Each contact must begin inside the configured edge width. Sliding into an edge from elsewhere is ignored until all touches lift.
 - **Configurable middle click (beta)** — Use exactly 2, 3, or 4 fingers to produce a middle click by Tap or physical Click. The default is 4.
 - **Guided setup and safe tests** — First run checks compatibility and permission, then verifies a gesture without dispatching a system action.

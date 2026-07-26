@@ -130,7 +130,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch action {
         case .adjustVolume(let delta): result = systemControl.adjustVolume(delta: delta)
         case .adjustBrightness(let delta): result = systemControl.adjustBrightness(delta: delta)
-        case .switchBrowserTab(let direction): result = systemControl.switchBrowserTab(direction: direction)
+        case .switchBrowserTab(let direction):
+            result = systemControl.switchBrowserTab(
+                direction: direction,
+                wrapsAround: settingsStore.settings.browserTabWrapsAround
+            )
         case .toggleApplication(let binding): result = systemControl.activateOrMinimizeApplication(binding)
         case .middleClick: result = systemControl.middleClick()
         }
