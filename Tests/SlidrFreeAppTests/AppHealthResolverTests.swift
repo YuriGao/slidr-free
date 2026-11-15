@@ -69,6 +69,58 @@ final class AppHealthResolverTests: XCTestCase {
         }, .ready)
     }
 
+    func testScrollReversalAloneBecomesReadyWithoutTheGesturePipeline() {
+        var input = AppHealthInput(
+            settings: .default,
+            permission: .granted,
+            frameworkAvailable: nil,
+            deviceAvailable: nil,
+            touchMonitor: .stopped,
+            eventTap: .stopped,
+            scrollReversal: .running
+        )
+        input.settings.edgeAssignments = EdgeAssignments(left: .none, right: .none, top: .none)
+        input.settings.middleClick.isEnabled = false
+        input.settings.cornerAppBindings = .empty
+        input.settings.scrollDirection = ScrollDirectionSettings(invertMouseWheel: true)
+
+        XCTAssertEqual(resolver.resolve(input), .ready)
+
+        input.scrollReversal = .degraded
+        XCTAssertEqual(resolver.resolve(input), .degraded)
+
+        // Stopped or starting scroll reversal is not a failure: the app is still
+        // waiting on its own permission/settings round trip.
+        input.scrollReversal = .stopped
+        XCTAssertEqual(resolver.resolve(input), .ready)
+    }
+
+    func testScrollReversalAloneIsNotEnoughWhenTheAppIsDisabledOrUnpermitted() {
+        var input = AppHealthInput(
+            settings: .default,
+            permission: .denied,
+            frameworkAvailable: nil,
+            deviceAvailable: nil,
+            touchMonitor: .stopped,
+            eventTap: .stopped,
+            scrollReversal: .stopped
+        )
+        input.settings.edgeAssignments = EdgeAssignments(left: .none, right: .none, top: .none)
+        input.settings.middleClick.isEnabled = false
+        input.settings.cornerAppBindings = .empty
+        input.settings.scrollDirection = ScrollDirectionSettings(invertTrackpad: true)
+
+        XCTAssertEqual(resolver.resolve(input), .permissionRequired)
+
+        input.permission = .granted
+        input.settings.isAppEnabled = false
+        XCTAssertEqual(resolver.resolve(input), .disabledByUser)
+
+        input.settings.isAppEnabled = true
+        input.settings.scrollDirection = .default
+        XCTAssertEqual(resolver.resolve(input), .noGesturesConfigured)
+    }
+
     private func resolve(_ mutate: (inout AppHealthInput) -> Void = { _ in }) -> AppHealthState {
         var input = AppHealthInput(
             settings: .default,

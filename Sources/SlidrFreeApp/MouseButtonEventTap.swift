@@ -77,7 +77,7 @@ final class MouseButtonEventTap {
             mask | (CGEventMask(1) << type.rawValue)
         }
 
-    private let executor: MouseButtonEventTapExecutor
+    private let executor: EventTapRunLoopExecutor
     private let context: MouseButtonEventTapContext
 
     init(
@@ -85,7 +85,7 @@ final class MouseButtonEventTap {
         releaseEmitter: any MiddleClickReleaseEmitting = MiddleClickEmitter(),
         statusHandler: @escaping (MouseButtonEventTapStatus) -> Void = { _ in }
     ) {
-        executor = MouseButtonEventTapExecutor()
+        executor = EventTapRunLoopExecutor(threadName: "com.slidr.free.middle-click-event-tap")
         context = MouseButtonEventTapContext(
             reducer: reducer,
             releaseHandler: { pending in
@@ -332,79 +332,4 @@ private func mouseButtonEventTapCallback(
     }
     let context = Unmanaged<MouseButtonEventTapContext>.fromOpaque(userInfo).takeUnretainedValue()
     return context.handle(type: type, event: event)
-}
-
-private final class MouseButtonEventTapExecutor {
-    private final class State {
-        let condition = NSCondition()
-        var runLoop: CFRunLoop?
-        var isStopping = false
-        var didStop = false
-
-        func run() {
-            let keepAlivePort = Port()
-            RunLoop.current.add(keepAlivePort, forMode: .default)
-
-            condition.lock()
-            runLoop = CFRunLoopGetCurrent()
-            condition.broadcast()
-            condition.unlock()
-
-            CFRunLoopRun()
-
-            condition.lock()
-            runLoop = nil
-            didStop = true
-            condition.broadcast()
-            condition.unlock()
-        }
-
-        func waitForRunLoop() -> CFRunLoop? {
-            condition.lock()
-            defer { condition.unlock() }
-            while runLoop == nil && !isStopping && !didStop {
-                condition.wait()
-            }
-            return isStopping ? nil : runLoop
-        }
-
-        func markStopping() {
-            condition.lock()
-            isStopping = true
-            condition.broadcast()
-            condition.unlock()
-        }
-    }
-
-    private let state = State()
-    private let thread: Thread
-
-    init() {
-        let state = self.state
-        thread = Thread {
-            state.run()
-        }
-        thread.name = "com.slidr.free.middle-click-event-tap"
-        thread.qualityOfService = .userInteractive
-        thread.start()
-        precondition(state.waitForRunLoop() != nil, "Event Tap run loop failed to start")
-    }
-
-    var isCurrentThread: Bool {
-        Thread.current === thread
-    }
-
-    @discardableResult
-    func perform(_ work: @escaping () -> Void) -> Bool {
-        guard let runLoop = state.waitForRunLoop() else { return false }
-        CFRunLoopPerformBlock(runLoop, CFRunLoopMode.defaultMode.rawValue, work)
-        CFRunLoopWakeUp(runLoop)
-        return true
-    }
-
-    func stopRunLoop() {
-        precondition(isCurrentThread, "Event Tap run loop must stop on its owning thread")
-        state.markStopping()
-        CFRunLoopStop(CFRunLoopGetCurrent())
-    }
 }

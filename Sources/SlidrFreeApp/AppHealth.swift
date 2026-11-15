@@ -36,6 +36,7 @@ struct AppHealthInput: Equatable, Sendable {
     var deviceAvailable: Bool?
     var touchMonitor: TouchMonitorRuntimeState
     var eventTap: MouseButtonEventTapStatus
+    var scrollReversal: ScrollDirectionTapStatus = .stopped
 }
 
 struct AppHealthResolver {
@@ -44,12 +45,22 @@ struct AppHealthResolver {
             return .setupRequired
         }
         if !input.settings.isAppEnabled { return .disabledByUser }
-        if !input.settings.hasConfiguredGesture { return .noGesturesConfigured }
+        if !input.settings.hasConfiguredFeature { return .noGesturesConfigured }
         if input.permission != .granted { return .permissionRequired }
+
+        let scrollReversalActive = input.settings.scrollDirection.isActive
+        let scrollReversalDegraded = scrollReversalActive && input.scrollReversal == .degraded
+        // Scroll reversal runs without the gesture pipeline, so a user who only
+        // reverses one device class never has to satisfy the touch-monitor checks.
+        guard input.settings.hasConfiguredGesture else {
+            return scrollReversalDegraded ? .degraded : .ready
+        }
+
         if input.frameworkAvailable == false || input.deviceAvailable == false { return .hardwareUnavailable }
         if input.eventTap == .recoveryRequiresPipelineRestart { return .recovering }
         if input.touchMonitor == .unavailable ||
-            (input.settings.middleClick.isEnabled && input.eventTap == .degraded) {
+            (input.settings.middleClick.isEnabled && input.eventTap == .degraded) ||
+            scrollReversalDegraded {
             return .degraded
         }
         if input.touchMonitor == .starting || input.touchMonitor == .stopped ||
@@ -68,7 +79,8 @@ extension AppHealthResolver {
             frameworkAvailable: pipeline.frameworkAvailable,
             deviceAvailable: pipeline.deviceAvailable,
             touchMonitor: pipeline.touchMonitor,
-            eventTap: pipeline.eventTap
+            eventTap: pipeline.eventTap,
+            scrollReversal: pipeline.scrollReversal
         ))
     }
 }

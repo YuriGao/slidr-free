@@ -8,6 +8,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     case edges
     case corners
     case middleClick
+    case scrollDirection
     case diagnostics
 
     var id: String { rawValue }
@@ -18,6 +19,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .edges: return "rectangle.and.hand.point.up.left"
         case .corners: return "square.grid.2x2"
         case .middleClick: return "computermouse"
+        case .scrollDirection: return "arrow.up.arrow.down"
         case .diagnostics: return "stethoscope"
         }
     }
@@ -133,6 +135,7 @@ struct SettingsView: View {
         case .edges: edgeSettings
         case .corners: cornerSettings
         case .middleClick: middleClickSettings
+        case .scrollDirection: scrollDirectionSettings
         case .diagnostics: diagnostics
         }
     }
@@ -295,6 +298,43 @@ struct SettingsView: View {
         }
     }
 
+    private var scrollDirectionSettings: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            pageTitle("nav_scrollDirection", subtitleKey: "scroll_direction_subtitle")
+            GroupBox(NSLocalizedString("scroll_direction_group", comment: "")) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Toggle(
+                        NSLocalizedString("scroll_direction_invert_mouse", comment: ""),
+                        isOn: binding(\.scrollDirection.invertMouseWheel)
+                    )
+                    Toggle(
+                        NSLocalizedString("scroll_direction_invert_trackpad", comment: ""),
+                        isOn: binding(\.scrollDirection.invertTrackpad)
+                    )
+                    Divider()
+                    Toggle(
+                        NSLocalizedString("scroll_direction_invert_horizontal", comment: ""),
+                        isOn: binding(\.scrollDirection.invertHorizontal)
+                    )
+                    .disabled(!store.settings.scrollDirection.isActive)
+                    Text(NSLocalizedString("scroll_direction_horizontal_help", comment: ""))
+                        .font(.callout).foregroundStyle(.secondary)
+                }.padding(8)
+            }
+            Text(NSLocalizedString("scroll_direction_system_note", comment: ""))
+                .font(.callout).foregroundStyle(.secondary)
+            Text(NSLocalizedString("scroll_direction_probe_hint", comment: ""))
+                .font(.callout).foregroundStyle(.secondary)
+            Text(NSLocalizedString("scroll_direction_magic_mouse_note", comment: ""))
+                .font(.callout).foregroundStyle(.secondary)
+            HStack {
+                Text(NSLocalizedString("scroll_reversal_status", comment: ""))
+                Spacer()
+                Text(scrollReversalDisplay).foregroundStyle(.secondary)
+            }
+        }
+    }
+
     private var diagnostics: some View {
         VStack(alignment: .leading, spacing: 18) {
             pageTitle("nav_diagnostics", subtitleKey: "diagnostics_subtitle")
@@ -306,6 +346,7 @@ struct SettingsView: View {
                     diagnosticRow("diagnostic_device", localizedOptional(pipelineStatus.deviceAvailable))
                     diagnosticRow("touch_monitor_status", localizedTouch(pipelineStatus.touchMonitor))
                     diagnosticRow("event_tap_status", eventTapDisplay)
+                    diagnosticRow("scroll_reversal_status", scrollReversalDisplay)
                     diagnosticRow("recent_touch", lastFrameText)
                     diagnosticRow("diagnostic_last_failure", pipelineStatus.lastFailureReason ?? NSLocalizedString("none", comment: ""))
                     diagnosticRow("diagnostic_version", versionText)
@@ -531,6 +572,15 @@ struct SettingsView: View {
         case .degraded: return NSLocalizedString("pipeline_degraded", comment: "")
         }
     }
+    private var scrollReversalDisplay: String {
+        guard store.settings.scrollDirection.isActive else { return NSLocalizedString("not_enabled", comment: "") }
+        switch pipelineStatus.scrollReversal {
+        case .stopped: return NSLocalizedString("pipeline_stopped", comment: "")
+        case .starting: return NSLocalizedString("pipeline_starting", comment: "")
+        case .running: return NSLocalizedString("pipeline_running", comment: "")
+        case .degraded: return NSLocalizedString("pipeline_degraded", comment: "")
+        }
+    }
     private var lastFrameText: String {
         guard let age = pipelineStatus.lastFrameAge else { return NSLocalizedString("no_recent_touch", comment: "") }
         return String(format: NSLocalizedString("seconds_ago", comment: ""), Int(age))
@@ -557,6 +607,7 @@ struct SettingsView: View {
             "device=\(pipelineStatus.deviceAvailable.map(String.init) ?? "unknown")",
             "touchMonitor=\(pipelineStatus.touchMonitor.rawValue)",
             "physicalClickListener=\(store.settings.middleClick.isEnabled ? String(describing: pipelineStatus.eventTap) : "notEnabled")",
+            "scrollReversal=\(store.settings.scrollDirection.isActive ? String(describing: pipelineStatus.scrollReversal) : "notEnabled")",
             "lastFrameAgeSeconds=\(pipelineStatus.lastFrameAge.map { String(Int($0)) } ?? "none")",
             "lastFailure=\(pipelineStatus.lastFailureReason ?? "none")",
             "version=\(versionText)",

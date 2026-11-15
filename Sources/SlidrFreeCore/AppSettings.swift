@@ -287,6 +287,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var features: FeatureToggles
     public var gesture: GestureSettings
     public var middleClick: MiddleClickSettings
+    public var scrollDirection: ScrollDirectionSettings
     public var edgeAssignments: EdgeAssignments
     public var cornerAppBindings: CornerAppBindings
     public var experience: ExperienceSettings
@@ -299,6 +300,11 @@ public struct AppSettings: Codable, Equatable, Sendable {
             || cornerAppBindings.hasAnyBinding
     }
 
+    /// Gestures or scroll-direction rules, whichever the user configured.
+    public var hasConfiguredFeature: Bool {
+        hasConfiguredGesture || scrollDirection.isActive
+    }
+
     private enum CodingKeys: String, CodingKey {
         case isAppEnabled
         case launchAtLogin
@@ -306,6 +312,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case features
         case gesture
         case middleClick
+        case scrollDirection
         case edgeAssignments
         case cornerAppBindings
         case experience
@@ -363,6 +370,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         features: FeatureToggles,
         gesture: GestureSettings,
         middleClick: MiddleClickSettings,
+        scrollDirection: ScrollDirectionSettings = .default,
         edgeAssignments: EdgeAssignments? = nil,
         cornerAppBindings: CornerAppBindings = .empty,
         experience: ExperienceSettings = ExperienceSettings(onboardingVersion: ExperienceSettings.currentOnboardingVersion, hasSeenV04Welcome: false)
@@ -373,6 +381,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.features = features
         self.gesture = gesture
         self.middleClick = middleClick
+        self.scrollDirection = scrollDirection
         self.edgeAssignments = edgeAssignments ?? EdgeAssignments(legacyFeatures: features)
         self.cornerAppBindings = cornerAppBindings
         self.experience = experience
@@ -386,6 +395,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.features = try container.decode(FeatureToggles.self, forKey: .features)
         self.gesture = try container.decode(GestureSettings.self, forKey: .gesture)
         self.middleClick = try container.decodeIfPresent(MiddleClickSettings.self, forKey: .middleClick) ?? Self.default.middleClick
+        self.scrollDirection = try container.decodeIfPresent(ScrollDirectionSettings.self, forKey: .scrollDirection) ?? .default
         self.edgeAssignments = try container.decodeIfPresent(EdgeAssignments.self, forKey: .edgeAssignments)
             ?? EdgeAssignments(legacyFeatures: features)
         self.cornerAppBindings = try container.decodeIfPresent(CornerAppBindings.self, forKey: .cornerAppBindings) ?? .empty

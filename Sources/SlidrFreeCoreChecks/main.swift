@@ -405,6 +405,50 @@ private func testActionDispatcher() throws {
     )
 }
 
+private func testScrollDirectionRules() throws {
+    let classification = ScrollEventClassification(isContinuous: false, verticalDelta: -4)
+    try check(
+        classification.deviceKind == .mouse,
+        "Discrete wheel deltas must classify as a mouse"
+    )
+    try check(
+        ScrollEventClassification(isContinuous: true).deviceKind == .trackpad,
+        "Continuous deltas must classify as a trackpad"
+    )
+    try check(
+        ScrollEventClassification(isContinuous: false, momentumPhase: 2).deviceKind == .trackpad,
+        "Momentum frames must classify as a trackpad"
+    )
+
+    try check(
+        ScrollDirectionSettings.default.decision(for: classification) == .identity,
+        "Default scroll settings must pass events through"
+    )
+    try check(
+        ScrollDirectionSettings(invertMouseWheel: true).decision(for: classification)
+            == ScrollDirectionDecision(invertsVertical: true, invertsHorizontal: false),
+        "Reversing the mouse wheel must invert vertical deltas only"
+    )
+    try check(
+        ScrollDirectionSettings(invertMouseWheel: true)
+            .decision(for: ScrollEventClassification(isContinuous: true, verticalDelta: 4)) == .identity,
+        "Reversing the mouse wheel must leave the trackpad alone"
+    )
+    try check(
+        ScrollDirectionSettings(invertTrackpad: true, invertHorizontal: true)
+            .decision(for: ScrollEventClassification(isContinuous: true, scrollPhase: 1)) == .identity,
+        "Phase-only frames must never be inverted"
+    )
+
+    var settings = AppSettings.default
+    settings.edgeAssignments = EdgeAssignments(left: .none, right: .none, top: .none)
+    settings.middleClick.isEnabled = false
+    settings.cornerAppBindings = .empty
+    try check(!settings.hasConfiguredFeature, "An unconfigured app must report no features")
+    settings.scrollDirection = ScrollDirectionSettings(invertTrackpad: true)
+    try check(settings.hasConfiguredFeature, "Scroll reversal alone must count as a configured feature")
+}
+
 let checks: [(String, () throws -> Void)] = [
     ("default settings", testDefaultSettingsEnableAllFirstVersionFeaturesIndividually),
     ("gesture validation", testValidationClampsGestureSettings),
@@ -414,7 +458,8 @@ let checks: [(String, () throws -> Void)] = [
     ("top edge browser tab gesture", testTopEdgeBrowserTabGestureRecognition),
     ("corner double tap gesture", testCornerDoubleTapRecognition),
     ("action dispatch", testActionDispatcher),
-    ("permission snapshot", testPermissionSnapshotCanListenRequiresAccessibility)
+    ("permission snapshot", testPermissionSnapshotCanListenRequiresAccessibility),
+    ("scroll direction rules", testScrollDirectionRules)
 ]
 
 do {

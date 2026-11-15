@@ -15,6 +15,7 @@ final class InputPipelineStatus: ObservableObject {
     @Published private(set) var deviceAvailable: Bool?
     @Published private(set) var touchMonitor: TouchMonitorRuntimeState = .stopped
     @Published private(set) var eventTap: MouseButtonEventTapStatus = .stopped
+    @Published private(set) var scrollReversal: ScrollDirectionTapStatus = .stopped
     @Published private(set) var generation: UInt64 = 0
     @Published private(set) var lastFailureReason: String?
     @Published private(set) var lastFrameReceivedAt: Double?
@@ -68,6 +69,14 @@ final class InputPipelineStatus: ObservableObject {
             }
         }
         deliverOnMain(apply)
+    }
+
+    /// Scroll reversal owns its own tap lifecycle, so its status is reported
+    /// without the gesture generation handshake above.
+    func updateScrollReversal(_ status: ScrollDirectionTapStatus) {
+        deliverOnMain { [weak self] in
+            self?.scrollReversal = status
+        }
     }
 }
 

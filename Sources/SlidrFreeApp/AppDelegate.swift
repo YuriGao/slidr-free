@@ -20,6 +20,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         actionHandler: { [weak self] gesture in self?.dispatch(gesture: gesture) },
         inputObserver: { [weak self] event, settings in self?.gestureTestController.observe(event, settings: settings) }
     )
+    private lazy var scrollReversal = ScrollReversalController(
+        makeTap: { settings, statusHandler in
+            ScrollDirectionEventTap(settings: settings, statusHandler: statusHandler)
+        },
+        refreshPermission: { PermissionManager.currentSnapshot().accessibility },
+        statusHandler: { [weak self] status in self?.pipelineStatus.updateScrollReversal(status) }
+    )
     private lazy var pipelineCoordinator = InputPipelineCoordinator(
         factory: pipelineFactory,
         status: pipelineStatus,
@@ -49,6 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsStore.$settings.sink { [weak self] _ in
             self?.refreshHealthPresentation()
             self?.updateInputPipeline(refreshPermission: false)
+            self?.updateScrollReversal(refreshPermission: false)
         }.store(in: &cancellables)
 
         permissionManager.$snapshot.dropFirst().sink { [weak self] _ in
@@ -57,6 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             self?.refreshHealthPresentation()
             self?.updateInputPipeline(refreshPermission: false)
+            self?.updateScrollReversal(refreshPermission: false)
         }.store(in: &cancellables)
 
         pipelineStatus.objectWillChange.sink { [weak self] _ in
@@ -65,17 +74,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification).sink { [weak self] _ in
             self?.updateInputPipeline(refreshPermission: true)
+            self?.updateScrollReversal(refreshPermission: true)
         }.store(in: &cancellables)
 
         NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.willSleepNotification).sink { [weak self] _ in
             self?.gestureTestController.stop()
+            self?.scrollReversal.willSleep()
             self?.pipelineCoordinator.willSleep()
         }.store(in: &cancellables)
         NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didWakeNotification).sink { [weak self] _ in
             self?.pipelineCoordinator.didWake()
+            self?.scrollReversal.didWake()
         }.store(in: &cancellables)
 
         updateInputPipeline(refreshPermission: false)
+        updateScrollReversal(refreshPermission: false)
         if settingsStore.settings.experience.onboardingVersion < ExperienceSettings.currentOnboardingVersion ||
             CommandLine.arguments.contains("--show-settings") {
             settingsWindowController?.show()
@@ -84,12 +97,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         gestureTestController.stop()
+        scrollReversal.terminate()
         let stopped = terminationWaiter.waitForStop { [pipelineCoordinator] completion in
             pipelineCoordinator.terminate(completion: completion)
         }
         if !stopped {
             pipelineStatus.update(failure: "Input pipeline stop timed out during termination.")
         }
+    }
+
+    private func updateScrollReversal(refreshPermission: Bool) {
+        let snapshot = refreshPermission ? permissionManager.currentSnapshot() : permissionManager.snapshot
+        scrollReversal.update(
+            settings: settingsStore.settings,
+            permission: snapshot.accessibility,
+            refreshPermission: false
+        )
     }
 
     private func updateInputPipeline(refreshPermission: Bool) {

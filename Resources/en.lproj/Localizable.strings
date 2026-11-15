@@ -216,3 +216,16 @@
 "mapping_direction_help" = "Side edges: up increases, down decreases. Top edge: right selects the next tab, left selects the previous tab.";
 "onboarding_test_title" = "Verify one gesture safely";
 "onboarding_test_subtitle" = "Use an assigned edge. Recognition is shown here, but no system action is performed.";
+
+/* Scroll Direction */
+"nav_scrollDirection" = "Scroll Direction";
+"scroll_direction_subtitle" = "Give the trackpad and the mouse opposite scrolling directions";
+"scroll_direction_group" = "Separate directions per device";
+"scroll_direction_invert_mouse" = "Reverse wheel mouse scrolling";
+"scroll_direction_invert_trackpad" = "Reverse trackpad scrolling";
+"scroll_direction_invert_horizontal" = "Also reverse horizontal scrolling";
+"scroll_direction_horizontal_help" = "Off by default, so two-finger horizontal swipes and browser back or forward gestures keep their current direction.";
+"scroll_direction_system_note" = "macOS applies one Natural scrolling setting to every pointing device. A switch here reverses that device class relative to whatever macOS is currently doing, so the two devices can scroll in opposite directions.";
+"scroll_direction_probe_hint" = "Verify in any scrollable window. If the wrong class flipped, swap the two switches: wheel hardware reports non-continuous deltas, while trackpads and touch surfaces report continuous deltas with gesture phases.";
+"scroll_direction_magic_mouse_note" = "The Magic Mouse streams continuous deltas like a trackpad, so the trackpad switch controls it.";
+"scroll_reversal_status" = "Scroll reversal Event Tap";

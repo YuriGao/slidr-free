@@ -2,7 +2,7 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Slidr Free is an open-source macOS menu bar utility for physical trackpad edge gestures and an optional configurable middle-click beta.
+Slidr Free is an open-source macOS menu bar utility for physical trackpad edge gestures, an optional configurable middle-click beta, and independent scroll directions for trackpads and mice.
 
 This project is independent and non-affiliated with any similarly named commercial products or vendors.
 
@@ -19,6 +19,7 @@ This project is independent and non-affiliated with any similarly named commerci
 - **Four-corner app shortcuts** — Bind a separate macOS app to each corner, then double-tap to open or activate it. While that app remains frontmost, later double taps toggle its focused window between minimized and restored.
 - **Top-edge browser tab gesture** — Slide horizontally along the physical trackpad top edge to switch Safari, Google Chrome, and Microsoft Edge tabs, with haptic feedback for each switch; choose whether switching cycles between the first and last tabs or stops at the boundary.
 - **Edge-origin gate** — Each contact must begin inside the configured edge width. Sliding into an edge from elsewhere is ignored until all touches lift.
+- **Separate trackpad and mouse scroll directions** — macOS applies one Natural scrolling setting to every pointing device. Slidr Free can reverse the trackpad and the wheel mouse independently, so each device class keeps the direction you actually want.
 - **Configurable middle click (beta)** — Use exactly 2, 3, or 4 fingers to produce a middle click by Tap or physical Click. The default is 4.
 - **Guided setup and safe tests** — First run checks compatibility and permission, then verifies a gesture without dispatching a system action.
 - **Unified health and diagnostics** — The menu bar and Overview share one actionable status; Diagnostics can preview a privacy-safe support summary before copying.
@@ -33,6 +34,16 @@ Middle click is **disabled by default**. Enable it from the menu bar item under 
 
 Use 4 fingers when macOS **three-finger drag** is enabled. The 2-finger option may conflict with macOS secondary click and common two-finger gestures.
 
+## Separate scroll directions
+
+macOS has a single **Natural scrolling** switch that applies to the trackpad and the mouse at once. Slidr Free can invert one device class relative to whatever macOS is currently doing, which is the split most people ask for: natural scrolling on the trackpad and classic scrolling on a wheel mouse, or the reverse.
+
+- Open **Settings… → Scroll Direction** and enable **Reverse wheel mouse scrolling**, **Reverse trackpad scrolling**, or both. Both are off by default, and disabling them leaves scrolling untouched.
+- Every switch is relative to the system setting. With Natural scrolling enabled, turning on **Reverse wheel mouse scrolling** makes the wheel behave the classic way while the trackpad stays natural. Turning it off returns the wheel to the system direction.
+- **Also reverse horizontal scrolling** is off by default so two-finger horizontal swipes and browser back/forward gestures keep their current direction. Enable it only if you want the horizontal axis reversed too.
+- Devices are split by how they report deltas: continuous, phased deltas (trackpad, Magic Mouse) use the trackpad switch, while non-continuous notch deltas (wheel mice, including third-party wheels) use the mouse switch. The Magic Mouse therefore follows the trackpad switch.
+- Scroll reversal needs the same **Accessibility** permission as the gesture pipeline, because it rewrites events from a global Event Tap. It runs independently of the physical trackpad pipeline, so reversing only the mouse never starts the private `MultitouchSupport` monitor.
+
 ## Experimental physical trackpad support
 
 Physical trackpad gestures use Apple's private `MultitouchSupport` framework because macOS does not provide a public API for per-finger physical trackpad coordinates.
@@ -44,7 +55,7 @@ Physical trackpad gestures use Apple's private `MultitouchSupport` framework bec
 
 ## Settings and permissions
 
-The menu bar **Settings…** window has Overview, Edge Gestures, Corner Shortcuts, Middle Click, and Diagnostics sections. New installs stay disabled until the setup assistant is completed; existing v0.3 edge behavior is migrated to direct assignments.
+The menu bar **Settings…** window has Overview, Edge Gestures, Corner Shortcuts, Middle Click, Scroll Direction, and Diagnostics sections. New installs stay disabled until the setup assistant is completed; existing v0.3 edge behavior is migrated to direct assignments.
 
 Corner shortcuts have their own configurable trigger ratio, movement limit, and double-tap interval, independent of Edge width. Movement tolerance defaults to 3% of the normalized trackpad span and can be adjusted from 1% to 10%. While a corner tap remains within that tolerance, edge output is deferred; exceeding it hands the accumulated movement to the edge gesture. The double-tap interval defaults to 0.75 seconds and can be adjusted from 0.30 to 1.20 seconds. Each tap must be a short one-finger tap and both taps must start in the same corner. Multi-touch, excessive movement, cross-corner taps, and timeouts do not perform a corner action. If the bound app is not frontmost, Slidr Free resolves it by bundle identifier first and uses the selected path only as a fallback. If that exact app is already frontmost, Slidr Free minimizes its focused window, or restores and raises it when it is already minimized.
 
@@ -66,6 +77,8 @@ Packaging produces `release/Slidr-Free.app` and `release/Slidr-Free.app.zip`, ve
 
 ## Known limitations
 
+- Scroll reversal only distinguishes device classes, not individual devices: two different mice share the mouse switch, and the Magic Mouse is treated as a trackpad-class device. A device whose driver reports deltas in an unexpected form may need the opposite switch.
+- Scroll reversal rewrites the public `scrollWheel` trigger and its line, point, and fixed-point deltas. Web content that reads deltas from an embedded HID event can keep the system direction; such a page is a known boundary of what a public Event Tap can change.
 - Middle click supports exact 2–4-finger gestures on the default physical touch device only. Higher counts, “at least N” matching, multi-device routing, and per-application exclusions are not included.
 - The global mouse-source limitation described above means an external mouse click can be converted while the chord is active.
 - Top-edge tab switching only runs when Safari, Google Chrome, or Microsoft Edge is frontmost.

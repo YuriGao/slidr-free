@@ -216,3 +216,16 @@
 "mapping_direction_help" = "左右边缘：向上增加、向下减少。上边缘：向右切到下一标签页、向左切到上一标签页。";
 "onboarding_test_title" = "安全验证一个手势";
 "onboarding_test_subtitle" = "使用任一已分配边缘；识别结果会显示在这里，但不会执行系统动作。";
+
+/* Scroll Direction */
+"nav_scrollDirection" = "滚动方向";
+"scroll_direction_subtitle" = "让触控板和鼠标朝相反方向滚动";
+"scroll_direction_group" = "按设备分别设置方向";
+"scroll_direction_invert_mouse" = "反转鼠标滚轮滚动方向";
+"scroll_direction_invert_trackpad" = "反转触控板滚动方向";
+"scroll_direction_invert_horizontal" = "同时反转水平滚动方向";
+"scroll_direction_horizontal_help" = "默认关闭，保持双指左右滑动与浏览器前进、后退手势的现有方向。";
+"scroll_direction_system_note" = "macOS 只提供一个“自然滚动”开关，且同时作用于所有指针设备。此处的开关是在系统当前方向的基础上反转对应设备，因此触控板与鼠标可以朝相反方向滚动。";
+"scroll_direction_probe_hint" = "可在任意可滚动窗口中验证。若反转的设备不对，请交换两个开关：滚轮鼠标上报的是非连续增量，触控板与触摸表面上报的是带手势阶段的连续增量。";
+"scroll_direction_magic_mouse_note" = "妙控鼠标上报的是类似触控板的连续增量，因此由“触控板”开关控制。";
+"scroll_reversal_status" = "滚动反转监听";
