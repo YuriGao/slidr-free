@@ -319,6 +319,23 @@ struct SettingsView: View {
                     .disabled(!store.settings.scrollDirection.isActive)
                     Text(NSLocalizedString("scroll_direction_horizontal_help", comment: ""))
                         .font(.callout).foregroundStyle(.secondary)
+                    Divider()
+                    Toggle(
+                        NSLocalizedString("scroll_direction_uniform_wheel", comment: ""),
+                        isOn: binding(\.scrollDirection.uniformWheel)
+                    )
+                    Stepper(
+                        value: binding(\.scrollDirection.linesPerNotch),
+                        in: ScrollDirectionSettings.linesPerNotchRange
+                    ) {
+                        Text(String(
+                            format: NSLocalizedString("scroll_direction_lines_per_notch", comment: ""),
+                            store.settings.scrollDirection.linesPerNotch
+                        ))
+                    }
+                    .disabled(!store.settings.scrollDirection.uniformWheel)
+                    Text(NSLocalizedString("scroll_direction_uniform_help", comment: ""))
+                        .font(.callout).foregroundStyle(.secondary)
                 }.padding(8)
             }
             Text(NSLocalizedString("scroll_direction_system_note", comment: ""))

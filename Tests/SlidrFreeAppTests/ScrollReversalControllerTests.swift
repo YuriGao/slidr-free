@@ -63,6 +63,18 @@ final class ScrollReversalControllerTests: XCTestCase {
         XCTAssertEqual(statuses, [.running])
     }
 
+    func testUniformWheelSteppingAloneStartsTheTap() {
+        let controller = makeController()
+        var settings = AppSettings.default
+        settings.scrollDirection = ScrollDirectionSettings(uniformWheel: true)
+
+        controller.update(settings: settings, permission: .granted)
+
+        XCTAssertEqual(taps.count, 1)
+        XCTAssertTrue(taps[0].didStart)
+        XCTAssertEqual(taps[0].settings.uniformWheel, true)
+    }
+
     func testSettingChangeUpdatesTheExistingTapInsteadOfRestarting() {
         let controller = makeController()
         controller.update(settings: enabledSettings(), permission: .granted)

@@ -85,6 +85,56 @@ final class ScrollDirectionSettingsTests: XCTestCase {
         XCTAssertEqual(settings.decision(for: ended), .identity)
     }
 
+    func testUniformWheelSteppingAloneArmsTheTapForMiceOnly() {
+        let settings = ScrollDirectionSettings(uniformWheel: true)
+        XCTAssertTrue(settings.isActive)
+
+        XCTAssertEqual(
+            settings.decision(for: ScrollEventClassification(isContinuous: false, verticalDelta: -1)),
+            ScrollDirectionDecision(invertsVertical: false, invertsHorizontal: false, uniformLines: 3)
+        )
+        XCTAssertEqual(
+            settings.decision(for: ScrollEventClassification(isContinuous: true, verticalDelta: -1)),
+            .identity
+        )
+    }
+
+    func testUniformSteppingCombinesWithVerticalInversion() {
+        let settings = ScrollDirectionSettings(invertMouseWheel: true, uniformWheel: true, linesPerNotch: 5)
+        XCTAssertEqual(
+            settings.decision(for: ScrollEventClassification(isContinuous: false, verticalDelta: 2)),
+            ScrollDirectionDecision(invertsVertical: true, invertsHorizontal: false, uniformLines: 5)
+        )
+    }
+
+    func testHorizontalInversionStaysTiedToDeviceInversion() {
+        let uniformOnly = ScrollDirectionSettings(invertHorizontal: true, uniformWheel: true)
+        XCTAssertEqual(
+            uniformOnly.decision(for: ScrollEventClassification(isContinuous: false, verticalDelta: 1)),
+            ScrollDirectionDecision(invertsVertical: false, invertsHorizontal: false, uniformLines: 3)
+        )
+
+        let both = ScrollDirectionSettings(invertMouseWheel: true, invertHorizontal: true, uniformWheel: true)
+        XCTAssertEqual(
+            both.decision(for: ScrollEventClassification(isContinuous: false, verticalDelta: 1)),
+            ScrollDirectionDecision(invertsVertical: true, invertsHorizontal: true, uniformLines: 3)
+        )
+    }
+
+    func testUniformSteppingIgnoresHorizontalOnlyNotches() {
+        let settings = ScrollDirectionSettings(uniformWheel: true)
+        XCTAssertEqual(
+            settings.decision(for: ScrollEventClassification(isContinuous: false, horizontalDelta: 2)),
+            .identity
+        )
+    }
+
+    func testLinesPerNotchIsClampedToItsRange() {
+        XCTAssertEqual(ScrollDirectionSettings(uniformWheel: true, linesPerNotch: 0).linesPerNotch, 1)
+        XCTAssertEqual(ScrollDirectionSettings(uniformWheel: true, linesPerNotch: 99).linesPerNotch, 10)
+        XCTAssertEqual(ScrollDirectionSettings.validatedLinesPerNotch(4), 4)
+    }
+
     func testDecodingMissingKeysFallsBackToDisabledDirections() throws {
         let decoded = try JSONDecoder().decode(ScrollDirectionSettings.self, from: Data("{}".utf8))
         XCTAssertEqual(decoded, .default)
@@ -96,10 +146,18 @@ final class ScrollDirectionSettingsTests: XCTestCase {
         XCTAssertTrue(partial.invertMouseWheel)
         XCTAssertFalse(partial.invertTrackpad)
         XCTAssertFalse(partial.invertHorizontal)
+        XCTAssertFalse(partial.uniformWheel)
+        XCTAssertEqual(partial.linesPerNotch, ScrollDirectionSettings.defaultLinesPerNotch)
     }
 
     func testRoundTripKeepsEveryFlag() throws {
-        let original = ScrollDirectionSettings(invertTrackpad: true, invertMouseWheel: false, invertHorizontal: true)
+        let original = ScrollDirectionSettings(
+            invertTrackpad: true,
+            invertMouseWheel: false,
+            invertHorizontal: true,
+            uniformWheel: true,
+            linesPerNotch: 7
+        )
         let data = try JSONEncoder().encode(original)
         XCTAssertEqual(try JSONDecoder().decode(ScrollDirectionSettings.self, from: data), original)
     }

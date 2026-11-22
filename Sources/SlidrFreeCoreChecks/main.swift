@@ -440,6 +440,22 @@ private func testScrollDirectionRules() throws {
         "Phase-only frames must never be inverted"
     )
 
+    let uniform = ScrollDirectionSettings(uniformWheel: true, linesPerNotch: 3)
+    try check(uniform.isActive, "Uniform wheel stepping alone must arm the tap")
+    try check(
+        uniform.decision(for: classification)
+            == ScrollDirectionDecision(invertsVertical: false, invertsHorizontal: false, uniformLines: 3),
+        "Uniform stepping must replace the wheel magnitude without inverting it"
+    )
+    try check(
+        uniform.decision(for: ScrollEventClassification(isContinuous: true, verticalDelta: 4)) == .identity,
+        "Uniform stepping must never touch continuous trackpad deltas"
+    )
+    try check(
+        ScrollDirectionSettings(invertMouseWheel: true, uniformWheel: true, linesPerNotch: 99).linesPerNotch == 10,
+        "Lines per notch must be clamped to its supported range"
+    )
+
     var settings = AppSettings.default
     settings.edgeAssignments = EdgeAssignments(left: .none, right: .none, top: .none)
     settings.middleClick.isEnabled = false

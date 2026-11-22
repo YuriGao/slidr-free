@@ -427,6 +427,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
         copy.gesture.tabSwitchStepIntervalSeconds = min(max(copy.gesture.tabSwitchStepIntervalSeconds, 0.05), 0.80)
         copy.gesture.horizontalDominanceRatio = min(max(copy.gesture.horizontalDominanceRatio, 1.0), 4.0)
         copy.cornerAppBindings = copy.cornerAppBindings.validated()
+        copy.scrollDirection.linesPerNotch = ScrollDirectionSettings.validatedLinesPerNotch(
+            copy.scrollDirection.linesPerNotch
+        )
         return copy
     }
 }

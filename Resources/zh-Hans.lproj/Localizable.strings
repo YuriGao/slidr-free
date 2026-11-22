@@ -229,3 +229,6 @@
 "scroll_direction_probe_hint" = "可在任意可滚动窗口中验证。若反转的设备不对，请交换两个开关：滚轮鼠标上报的是非连续增量，触控板与触摸表面上报的是带手势阶段的连续增量。";
 "scroll_direction_magic_mouse_note" = "妙控鼠标上报的是类似触控板的连续增量，因此由“触控板”开关控制。";
 "scroll_reversal_status" = "滚动反转监听";
+"scroll_direction_uniform_wheel" = "均匀滚轮步进（消除滚动加速）";
+"scroll_direction_lines_per_notch" = "每格行数：%d";
+"scroll_direction_uniform_help" = "macOS 会把滚轮转得越快、每格滚得越远。该模式把每一格重写为固定行数，因此每格滚动的距离始终一致；触控板滚动不受影响。";

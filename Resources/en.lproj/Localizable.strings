@@ -229,3 +229,6 @@
 "scroll_direction_probe_hint" = "Verify in any scrollable window. If the wrong class flipped, swap the two switches: wheel hardware reports non-continuous deltas, while trackpads and touch surfaces report continuous deltas with gesture phases.";
 "scroll_direction_magic_mouse_note" = "The Magic Mouse streams continuous deltas like a trackpad, so the trackpad switch controls it.";
 "scroll_reversal_status" = "Scroll reversal Event Tap";
+"scroll_direction_uniform_wheel" = "Uniform wheel scrolling (remove acceleration)";
+"scroll_direction_lines_per_notch" = "Lines per notch: %d";
+"scroll_direction_uniform_help" = "macOS scrolls further per notch the faster you spin the wheel. This mode rewrites every wheel notch to the same line count, so one notch always travels the same distance. Trackpad scrolling is unaffected.";

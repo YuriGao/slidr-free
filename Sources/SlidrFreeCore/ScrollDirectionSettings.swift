@@ -57,38 +57,65 @@ public struct ScrollDirectionDecision: Equatable, Sendable {
     public let invertsVertical: Bool
     public let invertsHorizontal: Bool
 
-    public init(invertsVertical: Bool, invertsHorizontal: Bool) {
+    /// When set, the vertical delta is replaced by exactly this many lines
+    /// instead of being scaled by macOS wheel acceleration. The sign follows
+    /// the incoming scroll, flipped by `invertsVertical`.
+    public let uniformLines: Int?
+
+    public init(invertsVertical: Bool, invertsHorizontal: Bool, uniformLines: Int? = nil) {
         self.invertsVertical = invertsVertical
         self.invertsHorizontal = invertsHorizontal
+        self.uniformLines = uniformLines
     }
 
-    public var isIdentity: Bool { !invertsVertical && !invertsHorizontal }
+    public var isIdentity: Bool { !invertsVertical && !invertsHorizontal && uniformLines == nil }
 }
 
 /// Independent scroll-direction rules for trackpad-class and wheel-class
 /// devices. Every flag is relative to whatever macOS is currently doing: an
 /// enabled flag makes that device class scroll opposite to the system setting.
 public struct ScrollDirectionSettings: Codable, Equatable, Sendable {
+    public static let linesPerNotchRange = 1...10
+    public static let defaultLinesPerNotch = 3
+
     public var invertTrackpad: Bool
     public var invertMouseWheel: Bool
     public var invertHorizontal: Bool
+    /// Replaces the accelerated wheel delta with a fixed number of lines per
+    /// notch. macOS scales wheel deltas with rotation speed, so a slow notch
+    /// and a fast notch travel different distances; this rule removes that.
+    public var uniformWheel: Bool
+    public var linesPerNotch: Int {
+        didSet { linesPerNotch = Self.validatedLinesPerNotch(linesPerNotch) }
+    }
 
     public static let `default` = ScrollDirectionSettings(
         invertTrackpad: false,
         invertMouseWheel: false,
-        invertHorizontal: false
+        invertHorizontal: false,
+        uniformWheel: false
     )
 
     private enum CodingKeys: String, CodingKey {
         case invertTrackpad
         case invertMouseWheel
         case invertHorizontal
+        case uniformWheel
+        case linesPerNotch
     }
 
-    public init(invertTrackpad: Bool = false, invertMouseWheel: Bool = false, invertHorizontal: Bool = false) {
+    public init(
+        invertTrackpad: Bool = false,
+        invertMouseWheel: Bool = false,
+        invertHorizontal: Bool = false,
+        uniformWheel: Bool = false,
+        linesPerNotch: Int = ScrollDirectionSettings.defaultLinesPerNotch
+    ) {
         self.invertTrackpad = invertTrackpad
         self.invertMouseWheel = invertMouseWheel
         self.invertHorizontal = invertHorizontal
+        self.uniformWheel = uniformWheel
+        self.linesPerNotch = Self.validatedLinesPerNotch(linesPerNotch)
     }
 
     public init(from decoder: Decoder) throws {
@@ -96,18 +123,34 @@ public struct ScrollDirectionSettings: Codable, Equatable, Sendable {
         self.init(
             invertTrackpad: try container.decodeIfPresent(Bool.self, forKey: .invertTrackpad) ?? false,
             invertMouseWheel: try container.decodeIfPresent(Bool.self, forKey: .invertMouseWheel) ?? false,
-            invertHorizontal: try container.decodeIfPresent(Bool.self, forKey: .invertHorizontal) ?? false
+            invertHorizontal: try container.decodeIfPresent(Bool.self, forKey: .invertHorizontal) ?? false,
+            uniformWheel: try container.decodeIfPresent(Bool.self, forKey: .uniformWheel) ?? false,
+            linesPerNotch: try container.decodeIfPresent(Int.self, forKey: .linesPerNotch) ?? Self.defaultLinesPerNotch
         )
     }
 
-    /// True when at least one device class is inverted, which is what arms the
-    /// scroll Event Tap.
-    public var isActive: Bool { invertTrackpad || invertMouseWheel }
+    public static func validatedLinesPerNotch(_ value: Int) -> Int {
+        min(max(value, linesPerNotchRange.lowerBound), linesPerNotchRange.upperBound)
+    }
+
+    /// True when any rule would rewrite wheel or trackpad scroll events, which
+    /// is what arms the scroll Event Tap.
+    public var isActive: Bool { invertTrackpad || invertMouseWheel || uniformWheel }
 
     public func decision(for event: ScrollEventClassification) -> ScrollDirectionDecision {
         guard event.hasDelta else { return .identity }
-        let invertsDevice = event.deviceKind == .trackpad ? invertTrackpad : invertMouseWheel
-        guard invertsDevice else { return .identity }
-        return ScrollDirectionDecision(invertsVertical: true, invertsHorizontal: invertHorizontal)
+        let kind = event.deviceKind
+        let invertsDevice = kind == .trackpad ? invertTrackpad : invertMouseWheel
+        // Uniform stepping only makes sense for notch hardware; continuous
+        // trackpad streams are already pixel-accurate per frame.
+        let uniformLines = kind == .mouse && uniformWheel && event.verticalDelta != 0
+            ? linesPerNotch
+            : nil
+        guard invertsDevice || uniformLines != nil else { return .identity }
+        return ScrollDirectionDecision(
+            invertsVertical: invertsDevice,
+            invertsHorizontal: invertsDevice && invertHorizontal,
+            uniformLines: uniformLines
+        )
     }
 }

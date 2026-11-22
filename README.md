@@ -20,6 +20,7 @@ This project is independent and non-affiliated with any similarly named commerci
 - **Top-edge browser tab gesture** — Slide horizontally along the physical trackpad top edge to switch Safari, Google Chrome, and Microsoft Edge tabs, with haptic feedback for each switch; choose whether switching cycles between the first and last tabs or stops at the boundary.
 - **Edge-origin gate** — Each contact must begin inside the configured edge width. Sliding into an edge from elsewhere is ignored until all touches lift.
 - **Separate trackpad and mouse scroll directions** — macOS applies one Natural scrolling setting to every pointing device. Slidr Free can reverse the trackpad and the wheel mouse independently, so each device class keeps the direction you actually want.
+- **Uniform wheel scrolling** — macOS scrolls further per wheel notch the faster you spin it. Slidr Free can rewrite every notch to a fixed line count, so one notch always travels the same distance.
 - **Configurable middle click (beta)** — Use exactly 2, 3, or 4 fingers to produce a middle click by Tap or physical Click. The default is 4.
 - **Guided setup and safe tests** — First run checks compatibility and permission, then verifies a gesture without dispatching a system action.
 - **Unified health and diagnostics** — The menu bar and Overview share one actionable status; Diagnostics can preview a privacy-safe support summary before copying.
@@ -41,6 +42,7 @@ macOS has a single **Natural scrolling** switch that applies to the trackpad and
 - Open **Settings… → Scroll Direction** and enable **Reverse wheel mouse scrolling**, **Reverse trackpad scrolling**, or both. Both are off by default, and disabling them leaves scrolling untouched.
 - Every switch is relative to the system setting. With Natural scrolling enabled, turning on **Reverse wheel mouse scrolling** makes the wheel behave the classic way while the trackpad stays natural. Turning it off returns the wheel to the system direction.
 - **Also reverse horizontal scrolling** is off by default so two-finger horizontal swipes and browser back/forward gestures keep their current direction. Enable it only if you want the horizontal axis reversed too.
+- **Uniform wheel scrolling (remove acceleration)** rewrites each wheel notch to a fixed line count instead of macOS's speed-scaled delta, so a slow notch and a fast flick move the same distance. Use the Lines per notch stepper (1–10, default 3) to set that distance; trackpad scrolling is never rewritten. It can be combined with either reversal switch, and it works without them.
 - Devices are split by how they report deltas: continuous, phased deltas (trackpad, Magic Mouse) use the trackpad switch, while non-continuous notch deltas (wheel mice, including third-party wheels) use the mouse switch. The Magic Mouse therefore follows the trackpad switch.
 - Scroll reversal needs the same **Accessibility** permission as the gesture pipeline, because it rewrites events from a global Event Tap. It runs independently of the physical trackpad pipeline, so reversing only the mouse never starts the private `MultitouchSupport` monitor.
 
@@ -78,6 +80,7 @@ Packaging produces `release/Slidr-Free.app` and `release/Slidr-Free.app.zip`, ve
 ## Known limitations
 
 - Scroll reversal only distinguishes device classes, not individual devices: two different mice share the mouse switch, and the Magic Mouse is treated as a trackpad-class device. A device whose driver reports deltas in an unexpected form may need the opposite switch.
+- Uniform wheel scrolling removes the acceleration macOS applies to wheel deltas, but it cannot change apps that apply their own smoothing or acceleration on top of the event stream.
 - Scroll reversal rewrites the public `scrollWheel` trigger and its line, point, and fixed-point deltas. Web content that reads deltas from an embedded HID event can keep the system direction; such a page is a known boundary of what a public Event Tap can change.
 - Middle click supports exact 2–4-finger gestures on the default physical touch device only. Higher counts, “at least N” matching, multi-device routing, and per-application exclusions are not included.
 - The global mouse-source limitation described above means an external mouse click can be converted while the chord is active.

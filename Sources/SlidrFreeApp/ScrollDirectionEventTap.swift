@@ -157,7 +157,23 @@ final class ScrollDirectionTapContext {
             return Unmanaged.passUnretained(event)
         }
         withLock { consecutiveReenables = 0 }
-        ScrollDirectionTapContext.invert(decision, in: event)
+        if let uniformLines = decision.uniformLines {
+            ScrollDirectionTapContext.applyUniformVertical(
+                lines: uniformLines,
+                inverts: decision.invertsVertical,
+                in: event
+            )
+            if decision.invertsHorizontal {
+                ScrollDirectionTapContext.invertAxis(
+                    in: event,
+                    line: .scrollWheelEventDeltaAxis2,
+                    point: .scrollWheelEventPointDeltaAxis2,
+                    fixedPoint: .scrollWheelEventFixedPtDeltaAxis2
+                )
+            }
+        } else {
+            ScrollDirectionTapContext.invert(decision, in: event)
+        }
         return Unmanaged.passUnretained(event)
     }
 
@@ -204,7 +220,34 @@ final class ScrollDirectionTapContext {
         }
     }
 
-    private static func invertAxis(
+    /// Replaces the vertical delta with a fixed number of lines per notch.
+    ///
+    /// macOS scales wheel deltas with rotation speed, so a slow notch and a fast
+    /// notch move different distances. Writing only the line delta is what makes
+    /// this uniform: Quartz derives the point (line × 8) and fixed-point views
+    /// from the line value, which discards the accelerated magnitudes the driver
+    /// and WindowServer supplied. `NSEvent.deltaY` and
+    /// `NSEvent.scrollingDeltaY` both follow those derived fields.
+    static func applyUniformVertical(lines: Int, inverts: Bool, in event: CGEvent) {
+        let lineDelta = event.getIntegerValueField(.scrollWheelEventDeltaAxis1)
+        let pointDelta = event.getIntegerValueField(.scrollWheelEventPointDeltaAxis1)
+        let fixedPointDelta = event.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1)
+        guard lineDelta != 0 || pointDelta != 0 || fixedPointDelta != 0 else { return }
+
+        let scrollsPositive: Bool
+        if lineDelta != 0 {
+            scrollsPositive = lineDelta > 0
+        } else if pointDelta != 0 {
+            scrollsPositive = pointDelta > 0
+        } else {
+            scrollsPositive = fixedPointDelta > 0
+        }
+        let magnitude = Int64(max(1, lines))
+        let signed = (scrollsPositive ? magnitude : -magnitude) * (inverts ? -1 : 1)
+        event.setIntegerValueField(.scrollWheelEventDeltaAxis1, value: signed)
+    }
+
+    static func invertAxis(
         in event: CGEvent,
         line: CGEventField,
         point: CGEventField,
